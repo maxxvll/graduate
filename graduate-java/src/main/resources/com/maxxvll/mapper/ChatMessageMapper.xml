@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.maxxvll.mapper.ChatMessageMapper">
+
+    <resultMap id="BaseResultMap" type="com.maxxvll.domain.ChatMessage">
+            <id property="id" column="id" />
+            <result property="messageNo" column="message_no" />
+            <result property="sessionId" column="session_id" />
+            <result property="sessionType" column="session_type" />
+            <result property="senderId" column="sender_id" />
+            <result property="receiverId" column="receiver_id" />
+            <result property="messageType" column="message_type" />
+            <result property="content" column="content" />
+            <result property="contentReplaced" column="content_replaced" />
+            <result property="atUserIds" column="at_user_ids" />
+            <result property="isAtAll" column="is_at_all" />
+            <result property="quoteMessageId" column="quote_message_id" />
+            <result property="fileUrl" column="file_url" />
+            <result property="fileName" column="file_name" />
+            <result property="fileSize" column="file_size" />
+            <result property="fileType" column="file_type" />
+            <result property="thumbnailUrl" column="thumbnail_url" />
+            <result property="fileExpired" column="file_expired" />
+            <result property="sendTime" column="send_time" />
+            <result property="revokeTime" column="revoke_time" />
+            <result property="status" column="status" />
+            <result property="operatorId" column="operator_id" />
+            <result property="extInfo" column="ext_info" />
+            <result property="isSensitive" column="is_sensitive" />
+            <result property="isDeleted" column="is_deleted" />
+            <result property="createdAt" column="created_at" />
+            <result property="updatedAt" column="updated_at" />
+        <result property="duration" column="duration" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,message_no,session_id,session_type,sender_id,receiver_id,
+        message_type,content,content_replaced,at_user_ids,is_at_all,
+        quote_message_id,file_url,file_name,file_size,file_type,
+        thumbnail_url,file_expired,send_time,revoke_time,status,
+        operator_id,ext_info,is_sensitive,is_deleted,created_at,
+        updated_at,duration
+    </sql>
+</mapper>

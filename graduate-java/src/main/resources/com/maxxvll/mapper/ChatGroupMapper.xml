@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.maxxvll.mapper.ChatGroupMapper">
+
+    <resultMap id="BaseResultMap" type="com.maxxvll.domain.ChatGroup">
+            <id property="id" column="id" />
+            <result property="groupName" column="group_name" />
+            <result property="groupAvatar" column="group_avatar" />
+            <result property="creatorId" column="creator_id" />
+            <result property="maxMember" column="max_member" />
+            <result property="joinType" column="join_type" />
+            <result property="notice" column="notice" />
+            <result property="isMuteAll" column="is_mute_all" />
+            <result property="status" column="status" />
+            <result property="extInfo" column="ext_info" />
+            <result property="createdAt" column="created_at" />
+            <result property="updatedAt" column="updated_at" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id,group_name,group_avatar,creator_id,max_member,join_type,
+        notice,is_mute_all,status,ext_info,created_at,
+        updated_at
+    </sql>
+</mapper>

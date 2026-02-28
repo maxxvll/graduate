@@ -1,0 +1,37 @@
+{
+  "hash": "823e0c9b",
+  "configHash": "4cfa1ea6",
+  "lockfileHash": "88a384b6",
+  "browserHash": "03933d93",
+  "optimized": {
+    "uview-plus": {
+      "src": "../../../../../node_modules/uview-plus/index.js",
+      "file": "uview-plus.js",
+      "fileHash": "e35db032",
+      "needsInterop": false
+    },
+    "axios": {
+      "src": "../../../../../node_modules/axios/index.js",
+      "file": "axios.js",
+      "fileHash": "23c9acfe",
+      "needsInterop": false
+    },
+    "axios-adapter-uniapp": {
+      "src": "../../../../../node_modules/axios-adapter-uniapp/index.js",
+      "file": "axios-adapter-uniapp.js",
+      "fileHash": "aa450c84",
+      "needsInterop": true
+    },
+    "spark-md5": {
+      "src": "../../../../../node_modules/spark-md5/spark-md5.js",
+      "file": "spark-md5.js",
+      "fileHash": "3da862db",
+      "needsInterop": true
+    }
+  },
+  "chunks": {
+    "chunk-P2LSHJDD": {
+      "file": "chunk-P2LSHJDD.js"
+    }
+  }
+}

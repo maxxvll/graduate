@@ -1,0 +1,51 @@
+# Java & Maven
+graduate-java/target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# Kotlin
+.kotlin
+
+# Node.js & Frontend
+node_modules/
+dist/
+build/
+.nuxt/
+.next/
+out/
+.cache/
+
+# IntelliJ IDEA
+# 先忽略整个 .idea 目录
+.idea/
+# 再把需要共享的配置文件加回来（可选，根据团队需要）
+# !.idea/codeStyles/
+# !.idea/codeStyles/*
+# !.idea/*.xml
+# 注意：像 modules.xml、jarRepositories.xml 这类文件通常不建议共享
+
+# Eclipse
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+# VS Code
+.vscode/
+
+# Mac OS
+.DS_Store

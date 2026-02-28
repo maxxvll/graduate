@@ -1,0 +1,522 @@
+[INFO] Scanning for projects...
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/mojo/build-helper-maven-plugin/3.6.1/build-helper-maven-plugin-3.6.1.pom
+Progress (1): 4.1/8.1 kBProgress (1): 8.1 kB                        Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/mojo/build-helper-maven-plugin/3.6.1/build-helper-maven-plugin-3.6.1.pom (8.1 kB at 11 kB/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/mojo/mojo-parent/91/mojo-parent-91.pom
+Progress (1): 4.1/38 kBProgress (1): 7.3/38 kBProgress (1): 11/38 kB Progress (1): 15/38 kBProgress (1): 20/38 kBProgress (1): 24/38 kBProgress (1): 28/38 kBProgress (1): 32/38 kBProgress (1): 36/38 kBProgress (1): 38 kB                      Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/mojo/mojo-parent/91/mojo-parent-91.pom (38 kB at 163 kB/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/junit/junit-bom/5.13.0/junit-bom-5.13.0.pom
+Progress (1): 4.1/5.6 kBProgress (1): 5.6 kB                        Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/junit/junit-bom/5.13.0/junit-bom-5.13.0.pom (5.6 kB at 13 kB/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/mojo/build-helper-maven-plugin/3.6.1/build-helper-maven-plugin-3.6.1.jar
+Progress (1): 4.1/72 kBProgress (1): 8.2/72 kBProgress (1): 12/72 kB Progress (1): 16/72 kBProgress (1): 20/72 kBProgress (1): 24/72 kBProgress (1): 28/72 kBProgress (1): 32/72 kBProgress (1): 36/72 kBProgress (1): 40/72 kBProgress (1): 44/72 kBProgress (1): 48/72 kBProgress (1): 52/72 kBProgress (1): 56/72 kBProgress (1): 61/72 kBProgress (1): 65/72 kBProgress (1): 69/72 kBProgress (1): 72 kB                      Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/mojo/build-helper-maven-plugin/3.6.1/build-helper-maven-plugin-3.6.1.jar (72 kB at 176 kB/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/cyclonedx/cyclonedx-maven-plugin/2.9.1/cyclonedx-maven-plugin-2.9.1.pom
+Progress (1): 4.1/19 kBProgress (1): 8.2/19 kBProgress (1): 12/19 kB Progress (1): 16/19 kBProgress (1): 19 kB                      Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/cyclonedx/cyclonedx-maven-plugin/2.9.1/cyclonedx-maven-plugin-2.9.1.pom (19 kB at 82 kB/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/junit/junit-bom/5.11.2/junit-bom-5.11.2.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/junit/junit-bom/5.11.2/junit-bom-5.11.2.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/cyclonedx/cyclonedx-maven-plugin/2.9.1/cyclonedx-maven-plugin-2.9.1.jar
+Progress (1): 4.1/52 kBProgress (1): 7.3/52 kBProgress (1): 11/52 kB Progress (1): 15/52 kBProgress (1): 20/52 kBProgress (1): 24/52 kBProgress (1): 28/52 kBProgress (1): 32/52 kBProgress (1): 36/52 kBProgress (1): 40/52 kBProgress (1): 44/52 kBProgress (1): 48/52 kBProgress (1): 52 kB                      Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/cyclonedx/cyclonedx-maven-plugin/2.9.1/cyclonedx-maven-plugin-2.9.1.jar (52 kB at 100 kB/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/flywaydb/flyway-maven-plugin/11.7.2/flyway-maven-plugin-11.7.2.pom
+Progress (1): 3.8 kB                    Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/flywaydb/flyway-maven-plugin/11.7.2/flyway-maven-plugin-11.7.2.pom (3.8 kB at 8.8 kB/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/flywaydb/flyway-parent/11.7.2/flyway-parent-11.7.2.pom
+Progress (1): 4.1/36 kBProgress (1): 7.3/36 kBProgress (1): 11/36 kB Progress (1): 15/36 kBProgress (1): 20/36 kBProgress (1): 24/36 kBProgress (1): 28/36 kBProgress (1): 32/36 kBProgress (1): 36/36 kBProgress (1): 36 kB                      Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/flywaydb/flyway-parent/11.7.2/flyway-parent-11.7.2.pom (36 kB at 141 kB/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/flywaydb/flyway-maven-plugin/11.7.2/flyway-maven-plugin-11.7.2.jar
+Progress (1): 4.1/110 kBProgress (1): 8.2/110 kBProgress (1): 12/110 kB Progress (1): 15/110 kBProgress (1): 19/110 kBProgress (1): 23/110 kBProgress (1): 27/110 kBProgress (1): 31/110 kBProgress (1): 35/110 kBProgress (1): 39/110 kBProgress (1): 43/110 kBProgress (1): 47/110 kBProgress (1): 51/110 kBProgress (1): 56/110 kBProgress (1): 60/110 kBProgress (1): 64/110 kBProgress (1): 68/110 kBProgress (1): 72/110 kBProgress (1): 76/110 kBProgress (1): 80/110 kBProgress (1): 84/110 kBProgress (1): 88/110 kBProgress (1): 92/110 kBProgress (1): 97/110 kBProgress (1): 101/110 kBProgress (1): 105/110 kBProgress (1): 109/110 kBProgress (1): 110 kB                        Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/flywaydb/flyway-maven-plugin/11.7.2/flyway-maven-plugin-11.7.2.jar (110 kB at 229 kB/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/jooq/jooq-codegen-maven/3.19.24/jooq-codegen-maven-3.19.24.pom
+Progress (1): 3.8 kB                    Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/jooq/jooq-codegen-maven/3.19.24/jooq-codegen-maven-3.19.24.pom (3.8 kB at 7.4 kB/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/jooq/jooq-parent/3.19.24/jooq-parent-3.19.24.pom
+Progress (1): 4.1/41 kBProgress (1): 8.2/41 kBProgress (1): 12/41 kB Progress (1): 16/41 kBProgress (1): 19/41 kBProgress (1): 23/41 kBProgress (1): 27/41 kBProgress (1): 31/41 kBProgress (1): 35/41 kBProgress (1): 39/41 kBProgress (1): 41 kB                      Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/jooq/jooq-parent/3.19.24/jooq-parent-3.19.24.pom (41 kB at 83 kB/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/jooq/jooq-codegen-maven/3.19.24/jooq-codegen-maven-3.19.24.jar
+Progress (1): 4.1/18 kBProgress (1): 8.2/18 kBProgress (1): 12/18 kB Progress (1): 16/18 kBProgress (1): 18 kB                      Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/jooq/jooq-codegen-maven/3.19.24/jooq-codegen-maven-3.19.24.jar (18 kB at 39 kB/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/jetbrains/kotlin/kotlin-maven-plugin/1.9.25/kotlin-maven-plugin-1.9.25.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/jetbrains/kotlin/kotlin-maven-plugin/1.9.25/kotlin-maven-plugin-1.9.25.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/jetbrains/kotlin/kotlin-project/1.9.25/kotlin-project-1.9.25.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/jetbrains/kotlin/kotlin-project/1.9.25/kotlin-project-1.9.25.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/jetbrains/kotlin/kotlin-maven-plugin/1.9.25/kotlin-maven-plugin-1.9.25.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/jetbrains/kotlin/kotlin-maven-plugin/1.9.25/kotlin-maven-plugin-1.9.25.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/liquibase/liquibase-maven-plugin/4.31.1/liquibase-maven-plugin-4.31.1.pom
+Progress (1): 2.0 kB                    Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/liquibase/liquibase-maven-plugin/4.31.1/liquibase-maven-plugin-4.31.1.pom (2.0 kB at 4.7 kB/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/liquibase/liquibase-maven-plugin/4.31.1/liquibase-maven-plugin-4.31.1.jar
+Progress (1): 4.1/352 kBProgress (1): 8.2/352 kBProgress (1): 12/352 kB Progress (1): 16/352 kBProgress (1): 20/352 kBProgress (1): 25/352 kBProgress (1): 29/352 kBProgress (1): 33/352 kBProgress (1): 37/352 kBProgress (1): 41/352 kBProgress (1): 45/352 kBProgress (1): 49/352 kBProgress (1): 53/352 kBProgress (1): 57/352 kBProgress (1): 61/352 kBProgress (1): 66/352 kBProgress (1): 70/352 kBProgress (1): 74/352 kBProgress (1): 78/352 kBProgress (1): 82/352 kBProgress (1): 86/352 kBProgress (1): 90/352 kBProgress (1): 94/352 kBProgress (1): 98/352 kBProgress (1): 102/352 kBProgress (1): 106/352 kBProgress (1): 110/352 kBProgress (1): 114/352 kBProgress (1): 118/352 kBProgress (1): 122/352 kBProgress (1): 126/352 kBProgress (1): 130/352 kBProgress (1): 134/352 kBProgress (1): 137/352 kBProgress (1): 141/352 kBProgress (1): 145/352 kBProgress (1): 148/352 kBProgress (1): 151/352 kBProgress (1): 155/352 kBProgress (1): 159/352 kBProgress (1): 163/352 kBProgress (1): 167/352 kBProgress (1): 170/352 kBProgress (1): 173/352 kBProgress (1): 177/352 kBProgress (1): 180/352 kBProgress (1): 183/352 kBProgress (1): 188/352 kBProgress (1): 191/352 kBProgress (1): 195/352 kBProgress (1): 199/352 kBProgress (1): 203/352 kBProgress (1): 207/352 kBProgress (1): 210/352 kBProgress (1): 214/352 kBProgress (1): 218/352 kBProgress (1): 221/352 kBProgress (1): 223/352 kBProgress (1): 228/352 kBProgress (1): 231/352 kBProgress (1): 234/352 kBProgress (1): 238/352 kBProgress (1): 242/352 kBProgress (1): 246/352 kBProgress (1): 250/352 kBProgress (1): 254/352 kBProgress (1): 259/352 kBProgress (1): 263/352 kBProgress (1): 267/352 kBProgress (1): 271/352 kBProgress (1): 275/352 kBProgress (1): 279/352 kBProgress (1): 283/352 kBProgress (1): 286/352 kBProgress (1): 290/352 kBProgress (1): 294/352 kBProgress (1): 298/352 kBProgress (1): 302/352 kBProgress (1): 305/352 kBProgress (1): 309/352 kBProgress (1): 314/352 kBProgress (1): 316/352 kBProgress (1): 320/352 kBProgress (1): 324/352 kBProgress (1): 328/352 kBProgress (1): 332/352 kBProgress (1): 336/352 kBProgress (1): 338/352 kBProgress (1): 341/352 kBProgress (1): 344/352 kBProgress (1): 348/352 kBProgress (1): 352 kB                        Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/liquibase/liquibase-maven-plugin/4.31.1/liquibase-maven-plugin-4.31.1.jar (352 kB at 1.1 MB/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/plugins/maven-antrun-plugin/3.1.0/maven-antrun-plugin-3.1.0.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/plugins/maven-antrun-plugin/3.1.0/maven-antrun-plugin-3.1.0.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/plugins/maven-antrun-plugin/3.1.0/maven-antrun-plugin-3.1.0.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/plugins/maven-antrun-plugin/3.1.0/maven-antrun-plugin-3.1.0.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/plugins/maven-assembly-plugin/3.7.1/maven-assembly-plugin-3.7.1.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/plugins/maven-assembly-plugin/3.7.1/maven-assembly-plugin-3.7.1.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/plugins/maven-plugins/41/maven-plugins-41.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/plugins/maven-plugins/41/maven-plugins-41.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/plugins/maven-assembly-plugin/3.7.1/maven-assembly-plugin-3.7.1.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/plugins/maven-assembly-plugin/3.7.1/maven-assembly-plugin-3.7.1.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/plugins/maven-dependency-plugin/3.8.1/maven-dependency-plugin-3.8.1.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/plugins/maven-dependency-plugin/3.8.1/maven-dependency-plugin-3.8.1.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/plugins/maven-dependency-plugin/3.8.1/maven-dependency-plugin-3.8.1.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/plugins/maven-dependency-plugin/3.8.1/maven-dependency-plugin-3.8.1.jar (0 B at 0 B/s)
+[INFO] 
+[INFO] ---------------------< com.maxxvll:graduate-front >---------------------
+[INFO] Building graduate-front 1.0-SNAPSHOT
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- maven-dependency-plugin:3.8.1:tree (default-cli) @ graduate-front ---
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-sink-api/2.0.0/doxia-sink-api-2.0.0.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-sink-api/2.0.0/doxia-sink-api-2.0.0.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia/2.0.0/doxia-2.0.0.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia/2.0.0/doxia-2.0.0.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/junit/junit-bom/5.11.1/junit-bom-5.11.1.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/junit/junit-bom/5.11.1/junit-bom-5.11.1.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/reporting/maven-reporting-api/4.0.0/maven-reporting-api-4.0.0.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/reporting/maven-reporting-api/4.0.0/maven-reporting-api-4.0.0.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/shared/maven-shared-components/43/maven-shared-components-43.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/shared/maven-shared-components/43/maven-shared-components-43.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/reporting/maven-reporting-impl/4.0.0/maven-reporting-impl-4.0.0.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/reporting/maven-reporting-impl/4.0.0/maven-reporting-impl-4.0.0.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-site-model/2.0.0/doxia-site-model-2.0.0.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-site-model/2.0.0/doxia-site-model-2.0.0.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-sitetools/2.0.0/doxia-sitetools-2.0.0.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-sitetools/2.0.0/doxia-sitetools-2.0.0.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/eclipse/sisu/org.eclipse.sisu.plexus/0.9.0.M3/org.eclipse.sisu.plexus-0.9.0.M3.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/eclipse/sisu/org.eclipse.sisu.plexus/0.9.0.M3/org.eclipse.sisu.plexus-0.9.0.M3.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/eclipse/sisu/sisu-inject/0.9.0.M3/sisu-inject-0.9.0.M3.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/eclipse/sisu/sisu-inject/0.9.0.M3/sisu-inject-0.9.0.M3.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/eclipse/sisu/org.eclipse.sisu.inject/0.9.0.M3/org.eclipse.sisu.inject-0.9.0.M3.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/eclipse/sisu/org.eclipse.sisu.inject/0.9.0.M3/org.eclipse.sisu.inject-0.9.0.M3.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/plexus/plexus-component-annotations/2.1.0/plexus-component-annotations-2.1.0.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/plexus/plexus-component-annotations/2.1.0/plexus-component-annotations-2.1.0.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-core/2.0.0/doxia-core-2.0.0.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-core/2.0.0/doxia-core-2.0.0.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/commons/commons-parent/74/commons-parent-74.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/commons/commons-parent/74/commons-parent-74.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/commons/commons-text/1.12.0/commons-text-1.12.0.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/commons/commons-text/1.12.0/commons-text-1.12.0.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/commons/commons-lang3/3.17.0/commons-lang3-3.17.0.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/commons/commons-lang3/3.17.0/commons-lang3-3.17.0.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/commons/commons-parent/73/commons-parent-73.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/commons/commons-parent/73/commons-parent-73.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-integration-tools/2.0.0/doxia-integration-tools-2.0.0.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-integration-tools/2.0.0/doxia-integration-tools-2.0.0.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-site-renderer/2.0.0/doxia-site-renderer-2.0.0.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-site-renderer/2.0.0/doxia-site-renderer-2.0.0.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-skin-model/2.0.0/doxia-skin-model-2.0.0.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-skin-model/2.0.0/doxia-skin-model-2.0.0.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-module-xhtml5/2.0.0/doxia-module-xhtml5-2.0.0.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-module-xhtml5/2.0.0/doxia-module-xhtml5-2.0.0.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-modules/2.0.0/doxia-modules-2.0.0.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-modules/2.0.0/doxia-modules-2.0.0.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/plexus/plexus-velocity/2.2.0/plexus-velocity-2.2.0.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/plexus/plexus-velocity/2.2.0/plexus-velocity-2.2.0.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/plexus/plexus/19/plexus-19.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/plexus/plexus/19/plexus-19.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/velocity/velocity-engine-core/2.4/velocity-engine-core-2.4.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/velocity/velocity-engine-core/2.4/velocity-engine-core-2.4.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/velocity/velocity-engine-parent/2.4/velocity-engine-parent-2.4.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/velocity/velocity-engine-parent/2.4/velocity-engine-parent-2.4.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/velocity/velocity-master/7/velocity-master-7.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/velocity/velocity-master/7/velocity-master-7.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/velocity/tools/velocity-tools-generic/3.1/velocity-tools-generic-3.1.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/velocity/tools/velocity-tools-generic/3.1/velocity-tools-generic-3.1.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/velocity/tools/velocity-tools-parent/3.1/velocity-tools-parent-3.1.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/velocity/tools/velocity-tools-parent/3.1/velocity-tools-parent-3.1.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/velocity/velocity-master/4/velocity-master-4.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/velocity/velocity-master/4/velocity-master-4.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/velocity/velocity-engine-core/2.3/velocity-engine-core-2.3.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/velocity/velocity-engine-core/2.3/velocity-engine-core-2.3.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/velocity/velocity-engine-parent/2.3/velocity-engine-parent-2.3.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/velocity/velocity-engine-parent/2.3/velocity-engine-parent-2.3.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/commons/commons-lang3/3.11/commons-lang3-3.11.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/commons/commons-lang3/3.11/commons-lang3-3.11.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/commons/commons-parent/51/commons-parent-51.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/commons/commons-parent/51/commons-parent-51.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/commons/commons-digester3/3.2/commons-digester3-3.2.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/commons/commons-digester3/3.2/commons-digester3-3.2.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/commons/commons-parent/14/commons-parent-14.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/commons/commons-parent/14/commons-parent-14.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/commons/commons-lang3/3.10/commons-lang3-3.10.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/commons/commons-lang3/3.10/commons-lang3-3.10.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/commons/commons-parent/50/commons-parent-50.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/commons/commons-parent/50/commons-parent-50.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/com/github/cliftonlabs/json-simple/3.0.2/json-simple-3.0.2.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/com/github/cliftonlabs/json-simple/3.0.2/json-simple-3.0.2.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-module-apt/2.0.0/doxia-module-apt-2.0.0.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-module-apt/2.0.0/doxia-module-apt-2.0.0.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-module-xdoc/2.0.0/doxia-module-xdoc-2.0.0.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-module-xdoc/2.0.0/doxia-module-xdoc-2.0.0.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/commons/commons-parent/65/commons-parent-65.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/commons/commons-parent/65/commons-parent-65.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/plexus/plexus-archiver/4.10.0/plexus-archiver-4.10.0.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/plexus/plexus-archiver/4.10.0/plexus-archiver-4.10.0.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/plexus/plexus-io/3.5.0/plexus-io-3.5.0.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/plexus/plexus-io/3.5.0/plexus-io-3.5.0.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/commons/commons-compress/1.26.2/commons-compress-1.26.2.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/commons/commons-compress/1.26.2/commons-compress-1.26.2.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/junit/junit-bom/5.8.0-M1/junit-bom-5.8.0-M1.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/junit/junit-bom/5.8.0-M1/junit-bom-5.8.0-M1.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/com/github/luben/zstd-jni/1.5.6-3/zstd-jni-1.5.6-3.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/com/github/luben/zstd-jni/1.5.6-3/zstd-jni-1.5.6-3.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/plexus/plexus-io/3.5.1/plexus-io-3.5.1.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/plexus/plexus-io/3.5.1/plexus-io-3.5.1.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/shared/maven-dependency-analyzer/1.15.0/maven-dependency-analyzer-1.15.0.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/shared/maven-dependency-analyzer/1.15.0/maven-dependency-analyzer-1.15.0.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/ow2/asm/asm/9.7/asm-9.7.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/ow2/asm/asm/9.7/asm-9.7.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/shared/maven-dependency-tree/3.3.0/maven-dependency-tree-3.3.0.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/shared/maven-dependency-tree/3.3.0/maven-dependency-tree-3.3.0.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/shared/maven-artifact-transfer/0.13.1/maven-artifact-transfer-0.13.1.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/shared/maven-artifact-transfer/0.13.1/maven-artifact-transfer-0.13.1.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/slf4j/slf4j-api/1.7.5/slf4j-api-1.7.5.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/slf4j/slf4j-api/1.7.5/slf4j-api-1.7.5.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/slf4j/slf4j-parent/1.7.5/slf4j-parent-1.7.5.pom
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/slf4j/slf4j-parent/1.7.5/slf4j-parent-1.7.5.pom (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-sink-api/2.0.0/doxia-sink-api-2.0.0.jar
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/reporting/maven-reporting-api/4.0.0/maven-reporting-api-4.0.0.jar
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/reporting/maven-reporting-impl/4.0.0/maven-reporting-impl-4.0.0.jar
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-site-model/2.0.0/doxia-site-model-2.0.0.jar
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-core/2.0.0/doxia-core-2.0.0.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-core/2.0.0/doxia-core-2.0.0.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/commons/commons-text/1.12.0/commons-text-1.12.0.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-site-model/2.0.0/doxia-site-model-2.0.0.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-integration-tools/2.0.0/doxia-integration-tools-2.0.0.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-sink-api/2.0.0/doxia-sink-api-2.0.0.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/plexus/plexus-interpolation/1.27/plexus-interpolation-1.27.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/commons/commons-text/1.12.0/commons-text-1.12.0.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-site-renderer/2.0.0/doxia-site-renderer-2.0.0.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/plexus/plexus-interpolation/1.27/plexus-interpolation-1.27.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-skin-model/2.0.0/doxia-skin-model-2.0.0.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/reporting/maven-reporting-impl/4.0.0/maven-reporting-impl-4.0.0.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-module-xhtml5/2.0.0/doxia-module-xhtml5-2.0.0.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/reporting/maven-reporting-api/4.0.0/maven-reporting-api-4.0.0.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/plexus/plexus-velocity/2.2.0/plexus-velocity-2.2.0.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-integration-tools/2.0.0/doxia-integration-tools-2.0.0.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/velocity/velocity-engine-core/2.4/velocity-engine-core-2.4.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-skin-model/2.0.0/doxia-skin-model-2.0.0.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/velocity/tools/velocity-tools-generic/3.1/velocity-tools-generic-3.1.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/velocity/tools/velocity-tools-generic/3.1/velocity-tools-generic-3.1.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/commons/commons-digester3/3.2/commons-digester3-3.2.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-site-renderer/2.0.0/doxia-site-renderer-2.0.0.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/com/github/cliftonlabs/json-simple/3.0.2/json-simple-3.0.2.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/commons/commons-digester3/3.2/commons-digester3-3.2.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-module-apt/2.0.0/doxia-module-apt-2.0.0.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/plexus/plexus-velocity/2.2.0/plexus-velocity-2.2.0.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-module-xdoc/2.0.0/doxia-module-xdoc-2.0.0.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/com/github/cliftonlabs/json-simple/3.0.2/json-simple-3.0.2.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/maven-archiver/3.6.2/maven-archiver-3.6.2.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/velocity/velocity-engine-core/2.4/velocity-engine-core-2.4.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/resolver/maven-resolver-api/1.4.1/maven-resolver-api-1.4.1.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-module-xhtml5/2.0.0/doxia-module-xhtml5-2.0.0.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/eclipse/sisu/org.eclipse.sisu.plexus/0.9.0.M3/org.eclipse.sisu.plexus-0.9.0.M3.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/resolver/maven-resolver-api/1.4.1/maven-resolver-api-1.4.1.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/eclipse/sisu/org.eclipse.sisu.inject/0.9.0.M3/org.eclipse.sisu.inject-0.9.0.M3.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/maven-archiver/3.6.2/maven-archiver-3.6.2.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/plexus/plexus-classworlds/2.6.0/plexus-classworlds-2.6.0.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-module-xdoc/2.0.0/doxia-module-xdoc-2.0.0.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/plexus/plexus-archiver/4.10.0/plexus-archiver-4.10.0.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/doxia/doxia-module-apt/2.0.0/doxia-module-apt-2.0.0.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/commons/commons-compress/1.26.2/commons-compress-1.26.2.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/eclipse/sisu/org.eclipse.sisu.plexus/0.9.0.M3/org.eclipse.sisu.plexus-0.9.0.M3.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/commons-codec/commons-codec/1.17.0/commons-codec-1.17.0.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/plexus/plexus-classworlds/2.6.0/plexus-classworlds-2.6.0.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/tukaani/xz/1.9/xz-1.9.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/eclipse/sisu/org.eclipse.sisu.inject/0.9.0.M3/org.eclipse.sisu.inject-0.9.0.M3.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/com/github/luben/zstd-jni/1.5.6-3/zstd-jni-1.5.6-3.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/tukaani/xz/1.9/xz-1.9.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/commons/commons-lang3/3.17.0/commons-lang3-3.17.0.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/commons/commons-lang3/3.17.0/commons-lang3-3.17.0.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/plexus/plexus-xml/3.0.1/plexus-xml-3.0.1.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/commons/commons-compress/1.26.2/commons-compress-1.26.2.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/plexus/plexus-io/3.5.1/plexus-io-3.5.1.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/plexus/plexus-archiver/4.10.0/plexus-archiver-4.10.0.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/plexus/plexus-i18n/1.0-beta-10/plexus-i18n-1.0-beta-10.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/plexus/plexus-io/3.5.1/plexus-io-3.5.1.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/shared/maven-dependency-analyzer/1.15.0/maven-dependency-analyzer-1.15.0.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/commons-codec/commons-codec/1.17.0/commons-codec-1.17.0.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/ow2/asm/asm/9.7/asm-9.7.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/ow2/asm/asm/9.7/asm-9.7.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/shared/maven-dependency-tree/3.3.0/maven-dependency-tree-3.3.0.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/com/github/luben/zstd-jni/1.5.6-3/zstd-jni-1.5.6-3.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/shared/maven-common-artifact-filters/3.4.0/maven-common-artifact-filters-3.4.0.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/shared/maven-dependency-tree/3.3.0/maven-dependency-tree-3.3.0.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/shared/maven-artifact-transfer/0.13.1/maven-artifact-transfer-0.13.1.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/plexus/plexus-xml/3.0.1/plexus-xml-3.0.1.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/plexus/plexus-component-annotations/2.0.0/plexus-component-annotations-2.0.0.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/plexus/plexus-component-annotations/2.0.0/plexus-component-annotations-2.0.0.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/shared/maven-shared-utils/3.4.2/maven-shared-utils-3.4.2.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/codehaus/plexus/plexus-i18n/1.0-beta-10/plexus-i18n-1.0-beta-10.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/resolver/maven-resolver-util/1.4.1/maven-resolver-util-1.4.1.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/shared/maven-dependency-analyzer/1.15.0/maven-dependency-analyzer-1.15.0.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/sonatype/plexus/plexus-build-api/0.0.7/plexus-build-api-0.0.7.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/shared/maven-artifact-transfer/0.13.1/maven-artifact-transfer-0.13.1.jar (0 B at 0 B/s)
+Downloading from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/slf4j/slf4j-api/1.7.36/slf4j-api-1.7.36.jar
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/shared/maven-shared-utils/3.4.2/maven-shared-utils-3.4.2.jar (0 B at 0 B/s)
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/sonatype/plexus/plexus-build-api/0.0.7/plexus-build-api-0.0.7.jar (0 B at 0 B/s)
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/slf4j/slf4j-api/1.7.36/slf4j-api-1.7.36.jar (0 B at 0 B/s)
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/shared/maven-common-artifact-filters/3.4.0/maven-common-artifact-filters-3.4.0.jar (0 B at 0 B/s)
+Downloaded from alimaven: http://maven.aliyun.com/nexus/content/repositories/central/org/apache/maven/resolver/maven-resolver-util/1.4.1/maven-resolver-util-1.4.1.jar (0 B at 0 B/s)
+[INFO] com.maxxvll:graduate-front:jar:1.0-SNAPSHOT
+[INFO] +- org.springframework.boot:spring-boot-starter-data-redis:jar:3.5.4:compile
+[INFO] |  +- org.springframework.boot:spring-boot-starter:jar:3.5.4:compile (version managed from 3.5.4; scope not updated to compile)
+[INFO] |  |  +- org.springframework.boot:spring-boot:jar:3.5.4:compile (version managed from 3.5.4)
+[INFO] |  |  |  +- (org.springframework:spring-core:jar:6.2.9:compile - version managed from 6.2.9; omitted for duplicate)
+[INFO] |  |  |  \- (org.springframework:spring-context:jar:6.2.9:compile - version managed from 6.2.9; omitted for duplicate)
+[INFO] |  |  +- org.springframework.boot:spring-boot-autoconfigure:jar:3.5.4:compile (version managed from 3.5.4)
+[INFO] |  |  |  \- (org.springframework.boot:spring-boot:jar:3.5.4:compile - version managed from 3.5.4; omitted for duplicate)
+[INFO] |  |  +- org.springframework.boot:spring-boot-starter-logging:jar:3.5.4:compile (version managed from 3.5.4)
+[INFO] |  |  |  +- (ch.qos.logback:logback-classic:jar:1.5.20:compile - version managed from 1.5.18; omitted for duplicate)
+[INFO] |  |  |  +- org.apache.logging.log4j:log4j-to-slf4j:jar:2.24.3:compile (version managed from 2.24.3)
+[INFO] |  |  |  |  +- org.apache.logging.log4j:log4j-api:jar:2.24.3:compile (version managed from 2.24.3)
+[INFO] |  |  |  |  \- (org.slf4j:slf4j-api:jar:2.0.17:compile - version managed from 2.0.16; omitted for duplicate)
+[INFO] |  |  |  \- org.slf4j:jul-to-slf4j:jar:2.0.17:compile (version managed from 2.0.17)
+[INFO] |  |  |     \- (org.slf4j:slf4j-api:jar:2.0.17:compile - version managed from 2.0.17; omitted for duplicate)
+[INFO] |  |  +- jakarta.annotation:jakarta.annotation-api:jar:2.1.1:compile (version managed from 2.1.1)
+[INFO] |  |  +- org.springframework:spring-core:jar:6.2.9:compile (version managed from 6.2.9; scope not updated to compile)
+[INFO] |  |  |  \- org.springframework:spring-jcl:jar:6.2.9:compile (version managed from 6.2.9)
+[INFO] |  |  \- (org.yaml:snakeyaml:jar:2.4:compile - version managed from 2.4; omitted for duplicate)
+[INFO] |  +- io.lettuce:lettuce-core:jar:6.6.0.RELEASE:compile (version managed from 6.6.0.RELEASE)
+[INFO] |  |  +- redis.clients.authentication:redis-authx-core:jar:0.1.1-beta2:compile
+[INFO] |  |  |  \- (org.slf4j:slf4j-api:jar:2.0.17:compile - version managed from 1.7.36; omitted for duplicate)
+[INFO] |  |  +- (io.netty:netty-common:jar:4.1.123.Final:compile - version managed from 4.1.118.Final; omitted for duplicate)
+[INFO] |  |  +- (io.netty:netty-handler:jar:4.1.123.Final:compile - version managed from 4.1.118.Final; omitted for duplicate)
+[INFO] |  |  +- (io.netty:netty-transport:jar:4.1.123.Final:compile - version managed from 4.1.118.Final; omitted for duplicate)
+[INFO] |  |  \- (io.projectreactor:reactor-core:jar:3.7.8:compile - version managed from 3.6.6; omitted for duplicate)
+[INFO] |  \- org.springframework.data:spring-data-redis:jar:3.5.2:compile (version managed from 3.5.2)
+[INFO] |     +- org.springframework.data:spring-data-keyvalue:jar:3.5.2:compile (version managed from 3.5.2)
+[INFO] |     |  +- (org.springframework.data:spring-data-commons:jar:3.5.2:compile - version managed from 3.5.2; omitted for duplicate)
+[INFO] |     |  +- (org.springframework:spring-context:jar:6.2.9:compile - version managed from 6.2.9; omitted for duplicate)
+[INFO] |     |  +- (org.springframework:spring-tx:jar:6.2.9:compile - version managed from 6.2.9; omitted for duplicate)
+[INFO] |     |  \- (org.slf4j:slf4j-api:jar:2.0.17:compile - version managed from 2.0.2; omitted for duplicate)
+[INFO] |     +- org.springframework:spring-tx:jar:6.2.9:compile (version managed from 6.2.9)
+[INFO] |     |  +- (org.springframework:spring-beans:jar:6.2.9:compile - version managed from 6.2.9; omitted for duplicate)
+[INFO] |     |  \- (org.springframework:spring-core:jar:6.2.9:compile - version managed from 6.2.9; omitted for duplicate)
+[INFO] |     +- org.springframework:spring-oxm:jar:6.2.9:compile (version managed from 6.2.9)
+[INFO] |     |  +- (org.springframework:spring-beans:jar:6.2.9:compile - version managed from 6.2.9; omitted for duplicate)
+[INFO] |     |  +- (org.springframework:spring-core:jar:6.2.9:compile - version managed from 6.2.9; omitted for duplicate)
+[INFO] |     |  \- jakarta.xml.bind:jakarta.xml.bind-api:jar:4.0.2:runtime (version managed from 3.0.1)
+[INFO] |     |     \- jakarta.activation:jakarta.activation-api:jar:2.1.3:runtime (version managed from 2.1.3)
+[INFO] |     +- (org.springframework:spring-aop:jar:6.2.9:compile - version managed from 6.2.9; omitted for duplicate)
+[INFO] |     +- org.springframework:spring-context-support:jar:6.2.9:compile (version managed from 6.2.9)
+[INFO] |     |  +- (org.springframework:spring-beans:jar:6.2.9:compile - version managed from 6.2.9; omitted for duplicate)
+[INFO] |     |  +- (org.springframework:spring-context:jar:6.2.9:compile - version managed from 6.2.9; omitted for duplicate)
+[INFO] |     |  \- (org.springframework:spring-core:jar:6.2.9:compile - version managed from 6.2.9; omitted for duplicate)
+[INFO] |     \- (org.slf4j:slf4j-api:jar:2.0.17:compile - version managed from 2.0.2; omitted for duplicate)
+[INFO] +- org.springframework.boot:spring-boot-starter-aop:jar:3.5.4:compile
+[INFO] |  +- (org.springframework.boot:spring-boot-starter:jar:3.5.4:compile - version managed from 3.5.4; omitted for duplicate)
+[INFO] |  +- org.springframework:spring-aop:jar:6.2.9:compile (version managed from 6.2.9)
+[INFO] |  |  +- org.springframework:spring-beans:jar:6.2.9:compile (version managed from 6.2.9; scope not updated to compile)
+[INFO] |  |  |  \- (org.springframework:spring-core:jar:6.2.9:compile - version managed from 6.2.9; omitted for duplicate)
+[INFO] |  |  \- (org.springframework:spring-core:jar:6.2.9:compile - version managed from 6.2.9; omitted for duplicate)
+[INFO] |  \- org.aspectj:aspectjweaver:jar:1.9.24:compile (version managed from 1.9.24)
+[INFO] +- org.springframework.boot:spring-boot-starter-validation:jar:3.5.4:compile
+[INFO] |  +- (org.springframework.boot:spring-boot-starter:jar:3.5.4:compile - version managed from 3.5.4; omitted for duplicate)
+[INFO] |  +- org.apache.tomcat.embed:tomcat-embed-el:jar:10.1.43:compile (version managed from 10.1.43)
+[INFO] |  \- org.hibernate.validator:hibernate-validator:jar:8.0.2.Final:compile (version managed from 8.0.2.Final)
+[INFO] |     +- jakarta.validation:jakarta.validation-api:jar:3.0.2:compile (version managed from 3.0.2)
+[INFO] |     +- org.jboss.logging:jboss-logging:jar:3.6.1.Final:compile (version managed from 3.4.3.Final)
+[INFO] |     \- com.fasterxml:classmate:jar:1.7.0:compile (version managed from 1.5.1)
+[INFO] +- org.springframework.boot:spring-boot-starter-actuator:jar:3.5.4:compile
+[INFO] |  +- (org.springframework.boot:spring-boot-starter:jar:3.5.4:compile - version managed from 3.5.4; omitted for duplicate)
+[INFO] |  +- org.springframework.boot:spring-boot-actuator-autoconfigure:jar:3.5.4:compile (version managed from 3.5.4)
+[INFO] |  |  +- (org.springframework.boot:spring-boot:jar:3.5.4:compile - version managed from 3.5.4; omitted for duplicate)
+[INFO] |  |  +- org.springframework.boot:spring-boot-actuator:jar:3.5.4:compile (version managed from 3.5.4)
+[INFO] |  |  |  \- (org.springframework.boot:spring-boot:jar:3.5.4:compile - version managed from 3.5.4; omitted for duplicate)
+[INFO] |  |  +- (org.springframework.boot:spring-boot-autoconfigure:jar:3.5.4:compile - version managed from 3.5.4; omitted for duplicate)
+[INFO] |  |  +- com.fasterxml.jackson.core:jackson-databind:jar:2.19.2:compile (version managed from 2.19.2)
+[INFO] |  |  |  +- com.fasterxml.jackson.core:jackson-annotations:jar:2.19.2:compile (version managed from 2.19.2)
+[INFO] |  |  |  \- (com.fasterxml.jackson.core:jackson-core:jar:2.19.2:compile - version managed from 2.19.2; omitted for duplicate)
+[INFO] |  |  \- com.fasterxml.jackson.datatype:jackson-datatype-jsr310:jar:2.19.2:runtime (version managed from 2.19.2)
+[INFO] |  |     +- (com.fasterxml.jackson.core:jackson-annotations:jar:2.19.2:runtime - version managed from 2.19.2; omitted for duplicate)
+[INFO] |  |     +- (com.fasterxml.jackson.core:jackson-core:jar:2.19.2:runtime - version managed from 2.19.2; omitted for duplicate)
+[INFO] |  |     \- (com.fasterxml.jackson.core:jackson-databind:jar:2.19.2:runtime - version managed from 2.19.2; omitted for duplicate)
+[INFO] |  +- io.micrometer:micrometer-observation:jar:1.15.2:compile (version managed from 1.15.2; scope not updated to compile)
+[INFO] |  |  \- io.micrometer:micrometer-commons:jar:1.15.2:compile (version managed from 1.15.2)
+[INFO] |  \- io.micrometer:micrometer-jakarta9:jar:1.15.2:compile (version managed from 1.15.2)
+[INFO] |     +- io.micrometer:micrometer-core:jar:1.15.2:compile (version managed from 1.15.2)
+[INFO] |     |  +- (io.micrometer:micrometer-commons:jar:1.15.2:compile - version managed from 1.15.2; omitted for duplicate)
+[INFO] |     |  +- (io.micrometer:micrometer-observation:jar:1.15.2:compile - version managed from 1.15.2; omitted for duplicate)
+[INFO] |     |  +- org.hdrhistogram:HdrHistogram:jar:2.2.2:runtime
+[INFO] |     |  \- org.latencyutils:LatencyUtils:jar:2.0.3:runtime
+[INFO] |     +- (io.micrometer:micrometer-commons:jar:1.15.2:compile - version managed from 1.15.2; omitted for duplicate)
+[INFO] |     \- (io.micrometer:micrometer-observation:jar:1.15.2:compile - version managed from 1.15.2; omitted for duplicate)
+[INFO] +- org.springframework.boot:spring-boot-starter-data-elasticsearch:jar:3.5.4:compile
+[INFO] |  +- (org.springframework.boot:spring-boot-starter:jar:3.5.4:compile - version managed from 3.5.4; omitted for duplicate)
+[INFO] |  +- org.springframework.data:spring-data-elasticsearch:jar:5.5.2:compile (version managed from 5.5.2)
+[INFO] |  |  +- org.springframework:spring-context:jar:6.2.9:compile (version managed from 6.2.9)
+[INFO] |  |  |  +- (org.springframework:spring-aop:jar:6.2.9:compile - version managed from 6.2.9; omitted for duplicate)
+[INFO] |  |  |  +- (org.springframework:spring-beans:jar:6.2.9:compile - version managed from 6.2.9; omitted for duplicate)
+[INFO] |  |  |  +- (org.springframework:spring-core:jar:6.2.9:compile - version managed from 6.2.9; omitted for duplicate)
+[INFO] |  |  |  +- org.springframework:spring-expression:jar:6.2.9:compile (version managed from 6.2.9)
+[INFO] |  |  |  |  \- (org.springframework:spring-core:jar:6.2.9:compile - version managed from 6.2.9; omitted for duplicate)
+[INFO] |  |  |  \- (io.micrometer:micrometer-observation:jar:1.15.2:compile - version managed from 1.14.9; omitted for duplicate)
+[INFO] |  |  +- (org.springframework:spring-tx:jar:6.2.9:compile - version managed from 6.2.9; omitted for duplicate)
+[INFO] |  |  +- org.springframework.data:spring-data-commons:jar:3.5.2:compile (version managed from 3.5.2)
+[INFO] |  |  |  +- (org.springframework:spring-core:jar:6.2.9:compile - version managed from 6.2.9; omitted for duplicate)
+[INFO] |  |  |  +- (org.springframework:spring-beans:jar:6.2.9:compile - version managed from 6.2.9; omitted for duplicate)
+[INFO] |  |  |  \- (org.slf4j:slf4j-api:jar:2.0.17:compile - version managed from 2.0.2; omitted for duplicate)
+[INFO] |  |  +- co.elastic.clients:elasticsearch-java:jar:8.18.1:compile (version managed from 8.18.1)
+[INFO] |  |  |  +- (org.elasticsearch.client:elasticsearch-rest-client:jar:8.18.1:compile - version managed from 8.18.0; omitted for duplicate)
+[INFO] |  |  |  +- com.google.code.findbugs:jsr305:jar:3.0.2:compile
+[INFO] |  |  |  +- jakarta.json:jakarta.json-api:jar:2.1.3:compile (version managed from 2.0.1)
+[INFO] |  |  |  +- org.eclipse.parsson:parsson:jar:1.0.5:compile
+[INFO] |  |  |  |  \- (jakarta.json:jakarta.json-api:jar:2.1.3:compile - version managed from 2.0.2; omitted for duplicate)
+[INFO] |  |  |  \- io.opentelemetry:opentelemetry-api:jar:1.49.0:runtime (version managed from 1.29.0)
+[INFO] |  |  |     \- io.opentelemetry:opentelemetry-context:jar:1.49.0:runtime (version managed from 1.49.0)
+[INFO] |  |  +- org.elasticsearch.client:elasticsearch-rest-client:jar:8.18.1:compile (version managed from 8.18.1)
+[INFO] |  |  |  +- org.apache.httpcomponents:httpclient:jar:4.5.14:compile
+[INFO] |  |  |  +- org.apache.httpcomponents:httpcore:jar:4.4.16:compile (version managed from 4.4.16)
+[INFO] |  |  |  +- org.apache.httpcomponents:httpasyncclient:jar:4.1.5:compile (version managed from 4.1.5)
+[INFO] |  |  |  +- org.apache.httpcomponents:httpcore-nio:jar:4.4.16:compile (version managed from 4.4.16)
+[INFO] |  |  |  \- (commons-codec:commons-codec:jar:1.16.1:compile - version managed from 1.15; omitted for duplicate)
+[INFO] |  |  +- com.fasterxml.jackson.core:jackson-core:jar:2.19.2:compile (version managed from 2.19.0)
+[INFO] |  |  +- (com.fasterxml.jackson.core:jackson-databind:jar:2.19.2:compile - version managed from 2.19.0; omitted for duplicate)
+[INFO] |  |  \- (org.slf4j:slf4j-api:jar:2.0.17:compile - version managed from 2.0.2; omitted for duplicate)
+[INFO] |  \- org.springframework.boot:spring-boot-starter-json:jar:3.5.4:runtime (version managed from 3.5.4)
+[INFO] |     +- (org.springframework.boot:spring-boot-starter:jar:3.5.4:runtime - version managed from 3.5.4; omitted for duplicate)
+[INFO] |     +- org.springframework:spring-web:jar:6.2.9:runtime (version managed from 6.2.9)
+[INFO] |     |  +- (org.springframework:spring-beans:jar:6.2.9:runtime - version managed from 6.2.9; omitted for duplicate)
+[INFO] |     |  +- (org.springframework:spring-core:jar:6.2.9:runtime - version managed from 6.2.9; omitted for duplicate)
+[INFO] |     |  \- (io.micrometer:micrometer-observation:jar:1.15.2:runtime - version managed from 1.14.9; omitted for duplicate)
+[INFO] |     +- (com.fasterxml.jackson.core:jackson-databind:jar:2.19.2:runtime - version managed from 2.19.2; omitted for duplicate)
+[INFO] |     +- com.fasterxml.jackson.datatype:jackson-datatype-jdk8:jar:2.19.2:runtime (version managed from 2.19.2)
+[INFO] |     |  +- (com.fasterxml.jackson.core:jackson-core:jar:2.19.2:runtime - version managed from 2.19.2; omitted for duplicate)
+[INFO] |     |  \- (com.fasterxml.jackson.core:jackson-databind:jar:2.19.2:runtime - version managed from 2.19.2; omitted for duplicate)
+[INFO] |     +- (com.fasterxml.jackson.datatype:jackson-datatype-jsr310:jar:2.19.2:runtime - version managed from 2.19.2; omitted for duplicate)
+[INFO] |     \- com.fasterxml.jackson.module:jackson-module-parameter-names:jar:2.19.2:runtime (version managed from 2.19.2)
+[INFO] |        +- (com.fasterxml.jackson.core:jackson-core:jar:2.19.2:runtime - version managed from 2.19.2; omitted for duplicate)
+[INFO] |        \- (com.fasterxml.jackson.core:jackson-databind:jar:2.19.2:runtime - version managed from 2.19.2; omitted for duplicate)
+[INFO] +- org.mybatis.spring.boot:mybatis-spring-boot-starter:jar:4.0.1:compile
+[INFO] |  +- (org.springframework.boot:spring-boot-starter:jar:3.5.4:compile - version managed from 4.0.1; omitted for duplicate)
+[INFO] |  +- org.springframework.boot:spring-boot-starter-jdbc:jar:3.5.4:compile (version managed from 4.0.1)
+[INFO] |  |  +- (org.springframework.boot:spring-boot-starter:jar:3.5.4:compile - version managed from 3.5.4; omitted for duplicate)
+[INFO] |  |  +- com.zaxxer:HikariCP:jar:6.3.1:compile (version managed from 6.3.1)
+[INFO] |  |  |  \- (org.slf4j:slf4j-api:jar:2.0.17:compile - version managed from 1.7.36; omitted for duplicate)
+[INFO] |  |  \- org.springframework:spring-jdbc:jar:6.2.9:compile (version managed from 6.2.9)
+[INFO] |  |     +- (org.springframework:spring-beans:jar:6.2.9:compile - version managed from 6.2.9; omitted for duplicate)
+[INFO] |  |     +- (org.springframework:spring-core:jar:6.2.9:compile - version managed from 6.2.9; omitted for duplicate)
+[INFO] |  |     \- (org.springframework:spring-tx:jar:6.2.9:compile - version managed from 6.2.9; omitted for duplicate)
+[INFO] |  +- org.mybatis.spring.boot:mybatis-spring-boot-autoconfigure:jar:4.0.1:compile
+[INFO] |  |  +- (org.springframework.boot:spring-boot-autoconfigure:jar:3.5.4:compile - version managed from 4.0.1; omitted for duplicate)
+[INFO] |  |  \- org.springframework.boot:spring-boot-jdbc:jar:4.0.1:compile
+[INFO] |  |     +- (org.springframework.boot:spring-boot:jar:3.5.4:compile - version managed from 4.0.1; omitted for duplicate)
+[INFO] |  |     +- org.springframework.boot:spring-boot-sql:jar:4.0.1:compile
+[INFO] |  |     |  \- (org.springframework.boot:spring-boot:jar:3.5.4:compile - version managed from 4.0.1; omitted for duplicate)
+[INFO] |  |     +- org.springframework.boot:spring-boot-transaction:jar:4.0.1:compile
+[INFO] |  |     |  +- (org.springframework.boot:spring-boot:jar:3.5.4:compile - version managed from 4.0.1; omitted for duplicate)
+[INFO] |  |     |  +- org.springframework.boot:spring-boot-persistence:jar:4.0.1:compile
+[INFO] |  |     |  |  +- (org.springframework.boot:spring-boot:jar:3.5.4:compile - version managed from 4.0.1; omitted for duplicate)
+[INFO] |  |     |  |  \- (org.springframework:spring-tx:jar:6.2.9:compile - version managed from 7.0.2; omitted for duplicate)
+[INFO] |  |     |  \- (org.springframework:spring-tx:jar:6.2.9:compile - version managed from 7.0.2; omitted for duplicate)
+[INFO] |  |     \- (org.springframework:spring-jdbc:jar:6.2.9:compile - version managed from 7.0.2; omitted for duplicate)
+[INFO] |  +- org.mybatis:mybatis:jar:3.5.19:compile
+[INFO] |  \- org.mybatis:mybatis-spring:jar:4.0.0:compile
+[INFO] +- com.mysql:mysql-connector-j:jar:8.3.0:runtime
+[INFO] +- ch.qos.logback:logback-classic:jar:1.5.20:compile
+[INFO] |  +- (ch.qos.logback:logback-core:jar:1.5.20:compile - version managed from 1.5.20; omitted for duplicate)
+[INFO] |  \- org.slf4j:slf4j-api:jar:2.0.17:compile (version managed from 2.0.17)
+[INFO] +- ch.qos.logback:logback-core:jar:1.5.20:compile
+[INFO] +- org.projectlombok:lombok:jar:1.18.38:provided
+[INFO] +- com.alibaba.fastjson2:fastjson2:jar:2.0.58:compile
+[INFO] +- com.squareup.okhttp3:okhttp:jar:4.12.0:compile
+[INFO] |  +- com.squareup.okio:okio:jar:3.6.0:compile
+[INFO] |  |  \- com.squareup.okio:okio-jvm:jar:3.6.0:compile
+[INFO] |  |     +- (org.jetbrains.kotlin:kotlin-stdlib-jdk8:jar:1.9.25:compile - version managed from 1.9.10; omitted for duplicate)
+[INFO] |  |     \- org.jetbrains.kotlin:kotlin-stdlib-common:jar:1.9.25:compile (version managed from 1.9.10)
+[INFO] |  \- org.jetbrains.kotlin:kotlin-stdlib-jdk8:jar:1.9.25:compile (version managed from 1.8.21)
+[INFO] |     +- org.jetbrains.kotlin:kotlin-stdlib:jar:1.9.25:compile (version managed from 1.9.25)
+[INFO] |     |  \- org.jetbrains:annotations:jar:13.0:compile
+[INFO] |     \- org.jetbrains.kotlin:kotlin-stdlib-jdk7:jar:1.9.25:compile (version managed from 1.9.25)
+[INFO] |        \- (org.jetbrains.kotlin:kotlin-stdlib:jar:1.9.25:compile - version managed from 1.9.25; omitted for duplicate)
+[INFO] +- org.apache.commons:commons-lang3:jar:3.14.0:compile
+[INFO] +- commons-codec:commons-codec:jar:1.16.1:compile (scope not updated to compile)
+[INFO] +- commons-io:commons-io:jar:2.11.0:compile
+[INFO] +- com.github.whvcse:easy-captcha:jar:1.6.2:compile
+[INFO] +- io.netty:netty-all:jar:4.1.123.Final:compile
+[INFO] |  +- io.netty:netty-buffer:jar:4.1.123.Final:compile (version managed from 4.1.123.Final; scope not updated to compile)
+[INFO] |  +- io.netty:netty-codec:jar:4.1.123.Final:compile (version managed from 4.1.123.Final)
+[INFO] |  +- io.netty:netty-codec-dns:jar:4.1.123.Final:compile (version managed from 4.1.123.Final)
+[INFO] |  +- io.netty:netty-codec-haproxy:jar:4.1.123.Final:compile (version managed from 4.1.123.Final)
+[INFO] |  +- io.netty:netty-codec-http:jar:4.1.123.Final:compile (version managed from 4.1.123.Final)
+[INFO] |  +- io.netty:netty-codec-http2:jar:4.1.123.Final:compile (version managed from 4.1.123.Final)
+[INFO] |  +- io.netty:netty-codec-memcache:jar:4.1.123.Final:compile (version managed from 4.1.123.Final)
+[INFO] |  +- io.netty:netty-codec-mqtt:jar:4.1.123.Final:compile (version managed from 4.1.123.Final)
+[INFO] |  +- io.netty:netty-codec-redis:jar:4.1.123.Final:compile (version managed from 4.1.123.Final)
+[INFO] |  +- io.netty:netty-codec-smtp:jar:4.1.123.Final:compile (version managed from 4.1.123.Final)
+[INFO] |  +- io.netty:netty-codec-socks:jar:4.1.123.Final:compile (version managed from 4.1.123.Final)
+[INFO] |  +- io.netty:netty-codec-stomp:jar:4.1.123.Final:compile (version managed from 4.1.123.Final)
+[INFO] |  +- io.netty:netty-codec-xml:jar:4.1.123.Final:compile (version managed from 4.1.123.Final)
+[INFO] |  +- io.netty:netty-common:jar:4.1.123.Final:compile (version managed from 4.1.123.Final; scope not updated to compile)
+[INFO] |  +- io.netty:netty-handler:jar:4.1.123.Final:compile (version managed from 4.1.123.Final)
+[INFO] |  +- io.netty:netty-transport-native-unix-common:jar:4.1.123.Final:compile (version managed from 4.1.123.Final; scope not updated to compile)
+[INFO] |  +- io.netty:netty-handler-proxy:jar:4.1.123.Final:compile (version managed from 4.1.123.Final)
+[INFO] |  +- io.netty:netty-handler-ssl-ocsp:jar:4.1.123.Final:compile (version managed from 4.1.123.Final)
+[INFO] |  +- io.netty:netty-resolver:jar:4.1.123.Final:compile (version managed from 4.1.123.Final)
+[INFO] |  +- io.netty:netty-resolver-dns:jar:4.1.123.Final:compile (version managed from 4.1.123.Final)
+[INFO] |  +- io.netty:netty-transport:jar:4.1.123.Final:compile (version managed from 4.1.123.Final)
+[INFO] |  +- io.netty:netty-transport-rxtx:jar:4.1.123.Final:compile (version managed from 4.1.123.Final)
+[INFO] |  +- io.netty:netty-transport-sctp:jar:4.1.123.Final:compile (version managed from 4.1.123.Final)
+[INFO] |  +- io.netty:netty-transport-udt:jar:4.1.123.Final:compile (version managed from 4.1.123.Final)
+[INFO] |  +- io.netty:netty-transport-classes-epoll:jar:4.1.123.Final:compile (version managed from 4.1.123.Final; scope not updated to compile)
+[INFO] |  +- io.netty:netty-transport-classes-kqueue:jar:4.1.123.Final:compile (version managed from 4.1.123.Final; scope not updated to compile)
+[INFO] |  +- io.netty:netty-resolver-dns-classes-macos:jar:4.1.123.Final:compile (version managed from 4.1.123.Final; scope not updated to compile)
+[INFO] |  +- io.netty:netty-transport-native-epoll:jar:linux-x86_64:4.1.123.Final:runtime (version managed from 4.1.123.Final)
+[INFO] |  |  +- (io.netty:netty-common:jar:4.1.123.Final:runtime - version managed from 4.1.123.Final; omitted for duplicate)
+[INFO] |  |  +- (io.netty:netty-buffer:jar:4.1.123.Final:runtime - version managed from 4.1.123.Final; omitted for duplicate)
+[INFO] |  |  +- (io.netty:netty-transport:jar:4.1.123.Final:runtime - version managed from 4.1.123.Final; omitted for duplicate)
+[INFO] |  |  +- (io.netty:netty-transport-native-unix-common:jar:4.1.123.Final:runtime - version managed from 4.1.123.Final; omitted for duplicate)
+[INFO] |  |  \- (io.netty:netty-transport-classes-epoll:jar:4.1.123.Final:runtime - version managed from 4.1.123.Final; omitted for duplicate)
+[INFO] |  +- io.netty:netty-transport-native-epoll:jar:linux-aarch_64:4.1.123.Final:runtime (version managed from 4.1.123.Final)
+[INFO] |  |  +- (io.netty:netty-common:jar:4.1.123.Final:runtime - version managed from 4.1.123.Final; omitted for duplicate)
+[INFO] |  |  +- (io.netty:netty-buffer:jar:4.1.123.Final:runtime - version managed from 4.1.123.Final; omitted for duplicate)
+[INFO] |  |  +- (io.netty:netty-transport:jar:4.1.123.Final:runtime - version managed from 4.1.123.Final; omitted for duplicate)
+[INFO] |  |  +- (io.netty:netty-transport-native-unix-common:jar:4.1.123.Final:runtime - version managed from 4.1.123.Final; omitted for duplicate)
+[INFO] |  |  \- (io.netty:netty-transport-classes-epoll:jar:4.1.123.Final:runtime - version managed from 4.1.123.Final; omitted for duplicate)
+[INFO] |  +- io.netty:netty-transport-native-epoll:jar:linux-riscv64:4.1.123.Final:runtime (version managed from 4.1.123.Final)
+[INFO] |  |  +- (io.netty:netty-common:jar:4.1.123.Final:runtime - version managed from 4.1.123.Final; omitted for duplicate)
+[INFO] |  |  +- (io.netty:netty-buffer:jar:4.1.123.Final:runtime - version managed from 4.1.123.Final; omitted for duplicate)
+[INFO] |  |  +- (io.netty:netty-transport:jar:4.1.123.Final:runtime - version managed from 4.1.123.Final; omitted for duplicate)
+[INFO] |  |  +- (io.netty:netty-transport-native-unix-common:jar:4.1.123.Final:runtime - version managed from 4.1.123.Final; omitted for duplicate)
+[INFO] |  |  \- (io.netty:netty-transport-classes-epoll:jar:4.1.123.Final:runtime - version managed from 4.1.123.Final; omitted for duplicate)
+[INFO] |  +- io.netty:netty-transport-native-kqueue:jar:osx-x86_64:4.1.123.Final:runtime (version managed from 4.1.123.Final)
+[INFO] |  |  +- (io.netty:netty-common:jar:4.1.123.Final:runtime - version managed from 4.1.123.Final; omitted for duplicate)
+[INFO] |  |  +- (io.netty:netty-buffer:jar:4.1.123.Final:runtime - version managed from 4.1.123.Final; omitted for duplicate)
+[INFO] |  |  +- (io.netty:netty-transport:jar:4.1.123.Final:runtime - version managed from 4.1.123.Final; omitted for duplicate)
+[INFO] |  |  +- (io.netty:netty-transport-native-unix-common:jar:4.1.123.Final:runtime - version managed from 4.1.123.Final; omitted for duplicate)
+[INFO] |  |  \- (io.netty:netty-transport-classes-kqueue:jar:4.1.123.Final:runtime - version managed from 4.1.123.Final; omitted for duplicate)
+[INFO] |  +- io.netty:netty-transport-native-kqueue:jar:osx-aarch_64:4.1.123.Final:runtime (version managed from 4.1.123.Final)
+[INFO] |  |  +- (io.netty:netty-common:jar:4.1.123.Final:runtime - version managed from 4.1.123.Final; omitted for duplicate)
+[INFO] |  |  +- (io.netty:netty-buffer:jar:4.1.123.Final:runtime - version managed from 4.1.123.Final; omitted for duplicate)
+[INFO] |  |  +- (io.netty:netty-transport:jar:4.1.123.Final:runtime - version managed from 4.1.123.Final; omitted for duplicate)
+[INFO] |  |  +- (io.netty:netty-transport-native-unix-common:jar:4.1.123.Final:runtime - version managed from 4.1.123.Final; omitted for duplicate)
+[INFO] |  |  \- (io.netty:netty-transport-classes-kqueue:jar:4.1.123.Final:runtime - version managed from 4.1.123.Final; omitted for duplicate)
+[INFO] |  +- io.netty:netty-resolver-dns-native-macos:jar:osx-x86_64:4.1.123.Final:runtime (version managed from 4.1.123.Final)
+[INFO] |  |  \- (io.netty:netty-resolver-dns-classes-macos:jar:4.1.123.Final:runtime - version managed from 4.1.123.Final; omitted for duplicate)
+[INFO] |  \- io.netty:netty-resolver-dns-native-macos:jar:osx-aarch_64:4.1.123.Final:runtime (version managed from 4.1.123.Final)
+[INFO] |     \- (io.netty:netty-resolver-dns-classes-macos:jar:4.1.123.Final:runtime - version managed from 4.1.123.Final; omitted for duplicate)
+[INFO] +- org.redisson:redisson:jar:4.0.0:compile
+[INFO] |  +- (io.netty:netty-common:jar:4.1.123.Final:compile - version managed from 4.2.9.Final; omitted for duplicate)
+[INFO] |  +- (io.netty:netty-codec:jar:4.1.123.Final:compile - version managed from 4.2.9.Final; omitted for duplicate)
+[INFO] |  +- (io.netty:netty-buffer:jar:4.1.123.Final:compile - version managed from 4.2.9.Final; omitted for duplicate)
+[INFO] |  +- (io.netty:netty-transport:jar:4.1.123.Final:compile - version managed from 4.2.9.Final; omitted for duplicate)
+[INFO] |  +- (io.netty:netty-resolver:jar:4.1.123.Final:compile - version managed from 4.2.9.Final; omitted for duplicate)
+[INFO] |  +- (io.netty:netty-resolver-dns:jar:4.1.123.Final:compile - version managed from 4.2.9.Final; omitted for duplicate)
+[INFO] |  +- (io.netty:netty-handler:jar:4.1.123.Final:compile - version managed from 4.2.9.Final; omitted for duplicate)
+[INFO] |  +- javax.cache:cache-api:jar:1.1.1:compile (version managed from 1.1.1)
+[INFO] |  +- io.projectreactor:reactor-core:jar:3.7.8:compile (version managed from 3.6.2)
+[INFO] |  |  \- (org.reactivestreams:reactive-streams:jar:1.0.4:compile - version managed from 1.0.4; omitted for duplicate)
+[INFO] |  +- org.reactivestreams:reactive-streams:jar:1.0.4:compile (version managed from 1.0.4)
+[INFO] |  +- io.reactivex.rxjava3:rxjava:jar:3.1.11:compile (version managed from 3.1.8)
+[INFO] |  |  \- (org.reactivestreams:reactive-streams:jar:1.0.4:compile - version managed from 1.0.4; omitted for duplicate)
+[INFO] |  +- com.esotericsoftware:kryo:jar:5.6.2:compile
+[INFO] |  |  +- com.esotericsoftware:reflectasm:jar:1.11.9:compile
+[INFO] |  |  +- org.objenesis:objenesis:jar:3.4:compile
+[INFO] |  |  \- com.esotericsoftware:minlog:jar:1.3.1:compile
+[INFO] |  +- (org.slf4j:slf4j-api:jar:2.0.17:compile - version managed from 2.0.17; omitted for duplicate)
+[INFO] |  +- org.yaml:snakeyaml:jar:2.4:compile (version managed from 2.5)
+[INFO] |  +- net.bytebuddy:byte-buddy:jar:1.17.6:compile (version managed from 1.18.2)
+[INFO] |  \- org.jodd:jodd-util:jar:6.3.0:compile
+[INFO] \- com.alipay.sdk:alipay-sdk-java:jar:4.40.576.ALL:compile
+[INFO]    +- commons-logging:commons-logging:jar:1.1.1:compile
+[INFO]    +- com.alibaba:fastjson:jar:1.2.83_noneautotype:compile
+[INFO]    +- org.bouncycastle:bcprov-jdk15on:jar:1.62:compile
+[INFO]    +- dom4j:dom4j:jar:1.6.1:compile
+[INFO]    |  \- xml-apis:xml-apis:jar:1.0.b2:compile
+[INFO]    \- (com.squareup.okhttp3:okhttp:jar:3.12.13:compile - omitted for conflict with 4.12.0)
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  21.509 s
+[INFO] Finished at: 2026-02-14T14:47:55+08:00
+[INFO] ------------------------------------------------------------------------

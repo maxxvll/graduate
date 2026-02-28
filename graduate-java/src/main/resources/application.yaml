@@ -1,0 +1,200 @@
+# 应用服务 WEB 访问端口
+server:
+  port: 5050
+  servlet:
+    context-path: /api
+    session:
+      timeout: PT60M  # session过期时间 60M 一个小时
+  tomcat:  # 提升Tomcat并发能力
+    max-threads: 200
+    min-spare-threads: 20
+
+# Spring核心配置
+spring:
+  application:
+    name: wx-chat
+    server-id: ${SERVER_ID:default-server}
+  servlet:
+    multipart:
+      max-file-size: 15MB
+      max-request-size: 15MB
+  mvc:
+    favicon:
+      enabled: false
+    throw-exception-if-no-handler-found: true
+  web:
+    resources:
+      add-mappings: false
+
+  # ========== MySQL 配置（匹配Docker Compose） ==========
+  datasource:
+    # 注意：数据库名改为了graduateChat，需先在MySQL中创建该库
+    url: jdbc:mysql://192.168.164.128:3306/chat?serverTimezone=GMT%2B8&useUnicode=true&characterEncoding=utf8&autoReconnect=true&allowMultiQueries=true&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: root123  # 匹配Docker的MySQL root密码
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      pool-name: HikariCPDatasource
+      minimum-idle: 5
+      idle-timeout: 180000
+      maximum-pool-size: 10
+      auto-commit: true
+      max-lifetime: 1800000
+      connection-timeout: 30000
+      connection-test-query: SELECT 1
+
+  # ========== Redis 配置（匹配Docker Compose） ==========
+  data:
+    redis:
+      database: 0
+      host: 192.168.164.128
+      port: 6379
+      password: 123456  # 匹配Docker的Redis密码
+      timeout: 5000
+      lettuce:
+        pool:
+          max-active: 50
+          max-wait: -1ms
+          max-idle: 20
+          min-idle: 5
+          shutdown-timeout: 100ms
+
+  # ========== 【核心修改】Kafka 配置：使用JSON序列化器 ==========
+  kafka:
+    # Kafka 服务器地址（和你原有配置保持一致）
+    bootstrap-servers: 192.168.164.128:9092
+    # 生产者配置
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      # 核心：使用Spring自带JSON序列化器，自动将对象转为JSON
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      retries: 3
+      acks: 1
+      batch-size: 16384
+      buffer-memory: 33554432
+      properties:
+        spring:
+          json:
+            type:
+              mapping: "event:com.maxxvll.common.event.LoginEvent"
+    # 消费者配置
+    consumer:
+      # 【核心修复】用错误处理包装器，避免反序列化失败导致消费者无限崩溃
+      key-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      # 消费者核心配置
+      properties:
+        # 内层真实的反序列化器
+        spring.deserializer.key.delegate.class: org.apache.kafka.common.serialization.StringDeserializer
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+        # 彻底解决信任包问题（生产环境可改为你的专属包：com.maxxvll.common.event）
+        spring.json.trusted.packages: "*"
+        # 默认反序列化的目标类，匹配你的LoginEvent全路径
+        spring.json.value.default.type: com.maxxvll.common.event.LoginEvent
+        # 和生产者保持一致的类型映射
+        spring.json.type.mapping: "event:com.maxxvll.common.event.LoginEvent"
+      # 【必须和你的@KafkaListener保持一致】报错里的消费者组是login-log-group
+      group-id: login-log-group
+      # 【关键修复】跳过Kafka里已有的坏消息，从最新的消息开始消费
+      auto-offset-reset: latest
+      enable-auto-commit: true
+      auto-commit-interval: 5000
+    # 监听器配置
+    listener:
+      type: single
+      concurrency: 1
+      ack-mode: batch
+
+# ========== 注释RabbitMQ配置 ==========
+# spring:
+#   rabbitmq:
+#     host: 192.168.164.128
+#     port: 5672
+#     username: root
+#     password: wx782057yingluom
+#     publisher-confirm-type: correlated
+#     publisher-returns: true
+#     template:
+#       mandatory: true
+
+# ========== ES配置 ==========
+elasticsearch:
+  host: 192.168.164.128
+  port: 9200
+  scheme: http
+
+# ========== MinIO 配置 ==========
+minio:
+  endpoint: http://192.168.164.128:9000
+  access-key: minioadmin
+  secret-key: minioadmin
+  default-bucket: file-storage-bucket
+  upload:
+    chunk-size: 5242880
+    max-file-size: 104857600
+    allowed-types:
+      - image/jpeg
+      - image/png
+      - image/gif
+      - image/bmp
+      - image/webp
+      - application/pdf
+      - text/plain
+      - application/msword
+      - application/vnd.openxmlformats-officedocument.wordprocessingml.document
+      - application/vnd.ms-excel
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      - application/vnd.ms-powerpoint
+      - application/vnd.openxmlformats-officedocument.presentationml.presentation
+      - video/mp4
+      - video/avi
+      - video/mov
+      - audio/mp3
+      - audio/wav
+
+# ========== 健康检查配置 ==========
+management:
+  health:
+    elasticsearch:
+      enabled: false
+    rabbitmq:
+      enabled: false
+    kafka:
+      enabled: true
+  endpoints:
+    health:
+      show-details: never
+
+# ========== 日志配置 ==========
+logging:
+  level:
+    root: info
+    org.springframework.jdbc: info
+    org.springframework.data.redis: info
+    org.springframework.kafka: info
+    com.mysql.cj: warn
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
+
+app:
+  file:
+    upload-path: /uploads
+    access-url:
+
+# DeepSeek API配置
+deepseek:
+  api:
+    url: https://api.deepseek.com/v1/chat/completions
+    key: sk-911b43fc1a07434f8ee8d96e0685d5b4
+sa-token:
+  token-name: satoken
+  timeout: 2592000
+  active-timeout: -1
+  is-concurrent: true
+  is-share: false
+  token-style: uuid
+  is-log: true
+  jwt-secret-key: asdasdasifhwdsaavuihdfjskljfvbgwenkdvzhirzcxcfnijkxfnuskhjtmflkjvnjhksuejhfbh548~~~urfewbfjsdafjk
+# WebSocket端口配置
+ws:
+  port: 5051
