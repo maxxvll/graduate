@@ -1,5 +1,6 @@
 package com.maxxvll.controller;
 
+import com.maxxvll.common.BaseController;
 import com.maxxvll.common.Result;
 import com.maxxvll.common.dto.FileUploadChunkDTO;
 import com.maxxvll.common.vo.FileUploadCheckVO;
@@ -13,7 +14,7 @@ import java.util.List;
 @Slf4j
 @RestController
 @RequestMapping("/chat/file")
-public class FileUploadController {
+public class FileUploadController extends BaseController {
 
     @Resource
     private MinioUtil minioUtil;

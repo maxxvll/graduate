@@ -17,12 +17,12 @@ import com.maxxvll.common.vo.UserInfoVO;
 import com.maxxvll.domain.ChatUser;
 import com.maxxvll.service.ChatUserService;
 import com.maxxvll.mapper.ChatUserMapper;
+import com.maxxvll.utils.BeanConvertUtil;
 import com.maxxvll.utils.RedissonCacheUtil;
 import com.maxxvll.utils.UserContextUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import com.maxxvll.common.util.BeanConvertUtil;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -197,6 +197,27 @@ public class ChatUserServiceImpl extends ServiceImpl<ChatUserMapper, ChatUser>
                         .eq(ChatUser::getUsername, username)
         );
         return count > 0;
+    }
+
+    @Override
+    public UserInfoVO searchUser(String keyword) {
+        if (StrUtil.isBlank(keyword)) {
+            return null;
+        }
+        // 屏蔽当前用户自己
+        String currentUserId = UserContextUtil.getCurrentUserId();
+        ChatUser user = chatUserMapper.selectOne(
+                new LambdaQueryWrapper<ChatUser>()
+                        .and(w -> w.eq(ChatUser::getUsername, keyword)
+                                .or()
+                                .eq(ChatUser::getPhone, keyword))
+                        .ne(ChatUser::getId, currentUserId)
+                        .eq(ChatUser::getStatus, 1)
+        );
+        if (user == null) {
+            return null;
+        }
+        return BeanConvertUtil.convert(user, UserInfoVO.class);
     }
     private void handleLoginFail(String username) {
         String failKey = redissonCacheUtils.getLoginFailKey(username);

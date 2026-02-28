@@ -154,6 +154,15 @@ public class UserController extends BaseController {
         return Result.success(exist ? "用户名已存在" : "用户名可用", exist);
     }
 
+    @GetMapping("/search")
+    public Result<UserInfoVO> searchUser(@RequestParam String keyword) {
+        UserInfoVO user = chatUserService.searchUser(keyword);
+        if (user != null && StrUtil.isNotBlank(user.getAvatar()) && !user.getAvatar().startsWith("http")) {
+            user.setAvatar(minioUtil.getAvatarUrl(user.getAvatar()));
+        }
+        return Result.success("搜索成功", user);
+    }
+
     // ==================== 头像上传（核心修改：返回短路径+预览URL） ====================
     @SneakyThrows
     @PostMapping("/avatar/upload")

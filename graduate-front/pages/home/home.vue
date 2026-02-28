@@ -28,6 +28,7 @@
           @click.stop="switchSidebarTab('contact')"
         >
           <text class="icon">👥</text>
+          <view class="red-dot" v-if="pendingNotifyCount > 0">{{ pendingNotifyCount }}</view>
         </view>
         <view class="sidebar-item">
           <text class="icon">📁</text>
@@ -79,7 +80,24 @@
           v-model="sidebarSearchText"
           @keyup.enter="performSessionSearch"
         />
-        <text class="add-icon">➕</text>
+        <!-- ➕ 按钮 + 下拉菜单 -->
+        <view class="add-btn-wrapper" @click.stop="togglePlusMenu">
+          <text class="add-icon" :class="{ 'add-icon-active': showPlusMenu }">➕</text>
+          <view class="plus-dropdown" v-if="showPlusMenu" @click.stop>
+            <view class="plus-dropdown-item" @click="openAddFriend">
+              <text class="plus-dropdown-icon">🧑‍🤝‍🧑</text>
+              <text class="plus-dropdown-text">添加朋友</text>
+            </view>
+            <view class="plus-dropdown-item" @click="openJoinGroup">
+              <text class="plus-dropdown-icon">🔎</text>
+              <text class="plus-dropdown-text">加入群聊</text>
+            </view>
+            <view class="plus-dropdown-item" @click="openCreateGroup">
+              <text class="plus-dropdown-icon">👥</text>
+              <text class="plus-dropdown-text">发起群聊</text>
+            </view>
+          </view>
+        </view>
       </view>
       <view class="session-scroll">
         <view
@@ -124,16 +142,24 @@
         <view
           class="tab-item"
           :class="{ active: selectedFriendTab === 'friends' }"
-          @click="selectedFriendTab = 'friends'"
+          @click="switchContactTab('friends')"
         >
           <text>好友</text>
         </view>
         <view
           class="tab-item"
           :class="{ active: selectedFriendTab === 'groups' }"
-          @click="selectedFriendTab = 'groups'"
+          @click="switchContactTab('groups')"
         >
           <text>群聊</text>
+        </view>
+        <view
+          class="tab-item notify-tab-item"
+          :class="{ active: selectedFriendTab === 'notify' }"
+          @click="switchContactTab('notify')"
+        >
+          <text>通知</text>
+          <view class="tab-notify-badge" v-if="pendingNotifyCount > 0">{{ pendingNotifyCount }}</view>
         </view>
       </view>
       <view class="contact-scroll">
@@ -169,7 +195,7 @@
             @click="selectGroup(group)"
           >
             <image
-              :src="group.groupAvatar"
+              :src="group.groupAvatar || defaultAvatar"
               class="person-avatar"
               mode="aspectFill"
             ></image>
@@ -181,81 +207,286 @@
               <text class="chat-icon">💬</text>
             </view>
           </view>
+          <view class="contact-empty" v-if="filteredGroups.length === 0">
+            <text class="contact-empty-text">暂无群聊</text>
+          </view>
+        </view>
+
+        <!-- 通知列表 -->
+        <view v-else-if="selectedFriendTab === 'notify'">
+          <view class="notify-loading" v-if="notifyLoading">
+            <text>加载中...</text>
+          </view>
+          <template v-else>
+            <!-- 好友申请 -->
+            <view class="notify-section" v-if="notifications.friendApplies.length > 0">
+              <view class="notify-section-title">好友申请</view>
+              <view
+                class="notify-item"
+                v-for="apply in notifications.friendApplies"
+                :key="'friend_' + apply.id"
+              >
+                <image
+                  :src="apply.applicantAvatar || defaultAvatar"
+                  class="notify-avatar"
+                  mode="aspectFill"
+                />
+                <view class="notify-info">
+                  <text class="notify-name">{{ apply.applicantNickname }}</text>
+                  <text class="notify-time">{{ formatMessageTime(apply.createTime) }}</text>
+                </view>
+                <view class="notify-actions" v-if="apply.status === 0">
+                  <button class="notify-btn accept-btn" @click.stop="handleFriendApply(apply.id, 1)">接受</button>
+                  <button class="notify-btn reject-btn" @click.stop="handleFriendApply(apply.id, 2)">拒绝</button>
+                </view>
+                <text class="notify-status-tag" :class="apply.status === 1 ? 'tag-accepted' : 'tag-rejected'" v-else>
+                  {{ apply.status === 1 ? '已接受' : '已拒绝' }}
+                </text>
+              </view>
+            </view>
+
+            <!-- 群聊申请（作为群主/管理员收到的） -->
+            <view class="notify-section" v-if="notifications.groupApplies.length > 0">
+              <view class="notify-section-title">群聊申请</view>
+              <view
+                class="notify-item"
+                v-for="apply in notifications.groupApplies"
+                :key="'group_' + apply.id"
+              >
+                <image
+                  :src="apply.applicantAvatar || defaultAvatar"
+                  class="notify-avatar"
+                  mode="aspectFill"
+                />
+                <view class="notify-info">
+                  <text class="notify-name">{{ apply.applicantNickname }}</text>
+                  <text class="notify-group-name">申请加入 「{{ apply.groupName }}」</text>
+                  <text class="notify-time">{{ formatMessageTime(apply.createTime) }}</text>
+                </view>
+                <view class="notify-actions">
+                  <button class="notify-btn accept-btn" @click.stop="handleGroupApply(apply.id, 1)">同意</button>
+                  <button class="notify-btn reject-btn" @click.stop="handleGroupApply(apply.id, 2)">拒绝</button>
+                </view>
+              </view>
+            </view>
+
+            <!-- 空状态 -->
+            <view
+              class="notify-empty"
+              v-if="!notifications.friendApplies.length && !notifications.groupApplies.length"
+            >
+              <text class="notify-empty-icon">🔔</text>
+              <text class="notify-empty-text">暂无新通知</text>
+            </view>
+          </template>
         </view>
       </view>
     </view>
 
-    <!-- 个人主页 -->
+    <!-- 个人主页（PC端：左导航 + 右内容双栏设置页） -->
     <view class="profile-area" v-else-if="currentSidebarTab === 'profile'">
-      <view class="profile-header-card">
-        <image
-          :src="userInfo.avatar || defaultAvatar"
-          class="profile-avatar"
-          mode="aspectFill"
-        ></image>
-        <view class="profile-base-info">
-          <text class="profile-nickname">{{ userInfo.nickname }}</text>
-          <view class="wechat-id-row" @click.stop="openEditProfile">
-            <text class="profile-wechat-id"
-              >微信号：{{ userInfo.wechatId }}</text
-            >
-            <text class="edit-icon">✏️</text>
+      <!-- 左侧分类导航 -->
+      <view class="settings-nav">
+        <view class="settings-user-brief" @click="profileSettingsTab = 'info'">
+          <image :src="userInfo.avatar || defaultAvatar" class="settings-brief-avatar" mode="aspectFill" />
+          <view class="settings-brief-info">
+            <text class="settings-brief-name">{{ userInfo.nickname }}</text>
+            <text class="settings-brief-id">ID: {{ userInfo.wechatId }}</text>
           </view>
-          <view class="qrcode-row">
-            <text class="qrcode-text">我的二维码</text>
-            <text class="qrcode-icon">📱</text>
+        </view>
+        <view class="settings-nav-group">
+          <view class="settings-nav-item" :class="{ active: profileSettingsTab === 'info' }" @click="profileSettingsTab = 'info'">
+            <text class="settings-nav-icon">👤</text>
+            <text class="settings-nav-label">个人信息</text>
+          </view>
+          <view class="settings-nav-item" :class="{ active: profileSettingsTab === 'security' }" @click="profileSettingsTab = 'security'">
+            <text class="settings-nav-icon">🔒</text>
+            <text class="settings-nav-label">账号与安全</text>
+          </view>
+          <view class="settings-nav-item" :class="{ active: profileSettingsTab === 'notify' }" @click="profileSettingsTab = 'notify'">
+            <text class="settings-nav-icon">🔔</text>
+            <text class="settings-nav-label">消息通知</text>
+          </view>
+          <view class="settings-nav-item" :class="{ active: profileSettingsTab === 'privacy' }" @click="profileSettingsTab = 'privacy'">
+            <text class="settings-nav-icon">🛡️</text>
+            <text class="settings-nav-label">隐私设置</text>
+          </view>
+          <view class="settings-nav-item" :class="{ active: profileSettingsTab === 'general' }" @click="profileSettingsTab = 'general'">
+            <text class="settings-nav-icon">⚙️</text>
+            <text class="settings-nav-label">通用设置</text>
           </view>
         </view>
       </view>
 
-      <view class="profile-content">
-        <view class="profile-card">
-          <view class="profile-item" @click="openEditProfile">
-            <text class="item-label">昵称</text>
-            <text class="item-value">{{ userInfo.nickname }}</text>
-            <text class="arrow-icon">></text>
+      <!-- 右侧内容区 -->
+      <view class="settings-content">
+        <!-- 个人信息 -->
+        <template v-if="profileSettingsTab === 'info'">
+          <view class="settings-panel-header">
+            <text class="settings-panel-title">个人信息</text>
+            <text class="settings-panel-subtitle">管理你的个人资料和展示信息</text>
           </view>
-          <view class="profile-item" @click="openEditProfile">
-            <text class="item-label">头像</text>
-            <image
-              :src="userInfo.avatar || defaultAvatar"
-              class="item-avatar"
-              mode="aspectFill"
-            ></image>
-            <text class="arrow-icon">></text>
+          <view class="settings-body">
+            <!-- 头像 -->
+            <view class="settings-section">
+              <text class="section-label">头像</text>
+              <view class="avatar-edit-block">
+                <image :src="userInfo.avatar || defaultAvatar" class="settings-avatar-preview" mode="aspectFill" />
+                <view class="avatar-edit-meta">
+                  <text class="avatar-tip">建议使用清晰的正面照，支持 JPG / PNG 格式</text>
+                  <button class="settings-action-btn" @click="openEditProfile">更换头像</button>
+                </view>
+              </view>
+            </view>
+            <!-- 基本资料 -->
+            <view class="settings-section">
+              <text class="section-label">基本资料</text>
+              <view class="settings-form">
+                <view class="form-row">
+                  <text class="form-field-label">昵称</text>
+                  <text class="form-field-value">{{ userInfo.nickname }}</text>
+                  <text class="form-field-action" @click="openEditProfile">编辑</text>
+                </view>
+                <view class="form-row">
+                  <text class="form-field-label">账号 ID</text>
+                  <text class="form-field-value mono">{{ userInfo.wechatId }}</text>
+                </view>
+                <view class="form-row">
+                  <text class="form-field-label">个性签名</text>
+                  <text class="form-field-value muted">{{ userInfo.signature || '未填写' }}</text>
+                  <text class="form-field-action" @click="openEditProfile">编辑</text>
+                </view>
+                <view class="form-row no-border">
+                  <text class="form-field-label">所在地区</text>
+                  <text class="form-field-value muted">{{ userInfo.region || '未设置' }}</text>
+                  <text class="form-field-action" @click="openEditProfile">编辑</text>
+                </view>
+              </view>
+            </view>
+            <!-- 二维码 -->
+            <view class="settings-section">
+              <text class="section-label">我的二维码</text>
+              <view class="qrcode-card">
+                <view class="qrcode-placeholder-box">
+                  <text class="qrcode-placeholder-icon">📱</text>
+                </view>
+                <view class="qrcode-card-info">
+                  <text class="qrcode-card-title">扫码添加好友</text>
+                  <text class="qrcode-card-desc">将此二维码分享给朋友，让他们扫码添加你</text>
+                  <button class="settings-action-btn">查看二维码</button>
+                </view>
+              </view>
+            </view>
           </view>
-          <view class="profile-item" @click="openEditProfile">
-            <text class="item-label">个性签名</text>
-            <text class="item-value">{{
-              userInfo.signature || '这个人很懒，什么都没写'
-            }}</text>
-            <text class="arrow-icon">></text>
-          </view>
-          <view class="profile-item" @click="openEditProfile">
-            <text class="item-label">地区</text>
-            <text class="item-value">{{ userInfo.region || '未设置' }}</text>
-            <text class="arrow-icon">></text>
-          </view>
-        </view>
+        </template>
 
-        <view class="profile-card">
-          <view class="profile-item">
-            <text class="item-label">我的账号与安全</text>
-            <text class="arrow-icon">></text>
+        <!-- 账号与安全 -->
+        <template v-else-if="profileSettingsTab === 'security'">
+          <view class="settings-panel-header">
+            <text class="settings-panel-title">账号与安全</text>
+            <text class="settings-panel-subtitle">管理你的登录凭证和绑定信息</text>
           </view>
-          <view class="profile-item">
-            <text class="item-label">新消息通知</text>
-            <text class="arrow-icon">></text>
+          <view class="settings-body">
+            <view class="settings-section">
+              <text class="section-label">登录凭证</text>
+              <view class="settings-option-list">
+                <view class="settings-option-row">
+                  <view class="option-row-left">
+                    <text class="option-row-title">登录密码</text>
+                    <text class="option-row-desc">定期更换密码有助于保护账号安全</text>
+                  </view>
+                  <button class="settings-action-btn">修改密码</button>
+                </view>
+                <view class="settings-option-row no-border">
+                  <view class="option-row-left">
+                    <text class="option-row-title">手机号码</text>
+                    <text class="option-row-desc">{{ userInfo.phone || '暂未绑定' }}</text>
+                  </view>
+                  <button class="settings-action-btn">{{ userInfo.phone ? '更换' : '绑定' }}</button>
+                </view>
+              </view>
+            </view>
           </view>
-          <view class="profile-item">
-            <text class="item-label">隐私设置</text>
-            <text class="arrow-icon">></text>
+        </template>
+
+        <!-- 消息通知 -->
+        <template v-else-if="profileSettingsTab === 'notify'">
+          <view class="settings-panel-header">
+            <text class="settings-panel-title">消息通知</text>
+            <text class="settings-panel-subtitle">设置你希望接收通知的方式</text>
           </view>
-          <view class="profile-item">
-            <text class="item-label">通用设置</text>
-            <text class="arrow-icon">></text>
+          <view class="settings-body">
+            <view class="settings-section">
+              <text class="section-label">通知偏好</text>
+              <view class="settings-option-list">
+                <view class="settings-option-row">
+                  <view class="option-row-left">
+                    <text class="option-row-title">新消息提醒</text>
+                    <text class="option-row-desc">收到新消息时在桌面显示通知</text>
+                  </view>
+                  <view class="toggle-switch" :class="{ on: notifySettings.newMessage }" @click="notifySettings.newMessage = !notifySettings.newMessage">
+                    <view class="toggle-thumb"></view>
+                  </view>
+                </view>
+                <view class="settings-option-row no-border">
+                  <view class="option-row-left">
+                    <text class="option-row-title">消息提示音</text>
+                    <text class="option-row-desc">收到消息时播放提示音效</text>
+                  </view>
+                  <view class="toggle-switch" :class="{ on: notifySettings.sound }" @click="notifySettings.sound = !notifySettings.sound">
+                    <view class="toggle-thumb"></view>
+                  </view>
+                </view>
+              </view>
+            </view>
           </view>
-        </view>
+        </template>
+
+        <!-- 隐私设置 -->
+        <template v-else-if="profileSettingsTab === 'privacy'">
+          <view class="settings-panel-header">
+            <text class="settings-panel-title">隐私设置</text>
+            <text class="settings-panel-subtitle">控制谁可以联系你和查看你的信息</text>
+          </view>
+          <view class="settings-body">
+            <view class="settings-section">
+              <text class="section-label">好友管理</text>
+              <view class="settings-option-list">
+                <view class="settings-option-row no-border">
+                  <view class="option-row-left">
+                    <text class="option-row-title">添加好友需要验证</text>
+                    <text class="option-row-desc">开启后，他人添加你时需通过验证</text>
+                  </view>
+                  <view class="toggle-switch" :class="{ on: privacySettings.friendVerify }" @click="privacySettings.friendVerify = !privacySettings.friendVerify">
+                    <view class="toggle-thumb"></view>
+                  </view>
+                </view>
+              </view>
+            </view>
+          </view>
+        </template>
+
+        <!-- 通用设置 -->
+        <template v-else-if="profileSettingsTab === 'general'">
+          <view class="settings-panel-header">
+            <text class="settings-panel-title">通用设置</text>
+            <text class="settings-panel-subtitle">应用全局功能配置</text>
+          </view>
+          <view class="settings-body">
+            <view class="settings-section">
+              <text class="section-label">账号操作</text>
+              <view class="settings-option-list">
+                <view class="settings-option-row danger-row no-border" @click="handleLogout">
+                  <view class="option-row-left">
+                    <text class="option-row-title danger">退出登录</text>
+                    <text class="option-row-desc">退出后需重新登录才能继续使用</text>
+                  </view>
+                  <text class="option-row-arrow">›</text>
+                </view>
+              </view>
+            </view>
+          </view>
+        </template>
       </view>
     </view>
 
@@ -648,6 +879,141 @@
       @close="showEditProfile = false"
       @update:userInfo="handleUserInfoUpdate"
     />
+
+    <!-- 添加朋友弹窗 -->
+    <view v-if="showAddFriendModal" class="add-friend-mask" @click.self="closeAddFriend">
+      <view class="add-friend-modal" @click.stop>
+        <view class="add-friend-header">
+          <text class="add-friend-title">添加朋友</text>
+          <text class="add-friend-close" @click="closeAddFriend">✕</text>
+        </view>
+        <view class="add-friend-search-bar">
+          <view class="add-friend-input-wrap">
+            <text class="add-friend-search-icon">🔍</text>
+            <input
+              v-model="addFriendKeyword"
+              class="add-friend-input"
+              placeholder="搜索用户名或手机号"
+              @keyup.enter="searchUserForAdd"
+              :disabled="isSearchingUser"
+            />
+            <text v-if="addFriendKeyword" class="add-friend-clear" @click="clearAddFriendSearch">✕</text>
+          </view>
+          <button
+            class="add-friend-search-btn"
+            :disabled="!addFriendKeyword.trim() || isSearchingUser"
+            @click="searchUserForAdd"
+          >{{ isSearchingUser ? '搜索中...' : '搜索' }}</button>
+        </view>
+        <view class="add-friend-body">
+          <view v-if="!addFriendSearched" class="add-friend-hint">
+            <text class="hint-icon">👤</text>
+            <text class="hint-text">输入用户名或手机号，搜索添加新朋友</text>
+          </view>
+          <view v-else-if="isSearchingUser" class="add-friend-loading">
+            <text class="loading-text">搜索中...</text>
+          </view>
+          <view v-else-if="addFriendResult === null" class="add-friend-empty">
+            <text class="empty-icon">🔍</text>
+            <text class="empty-text">未找到该用户，请确认用户名是否正确</text>
+          </view>
+          <view v-else class="add-friend-result">
+            <image :src="addFriendResult.avatar || defaultAvatar" class="result-avatar" mode="aspectFill" />
+            <view class="result-info">
+              <text class="result-nickname">{{ addFriendResult.nickname }}</text>
+              <text class="result-username">用户名：{{ addFriendResult.username }}</text>
+              <text class="result-signature" v-if="addFriendResult.signature">{{ addFriendResult.signature }}</text>
+            </view>
+            <view class="result-action">
+              <button v-if="addFriendResult.isFriend" class="result-btn result-btn-already" disabled>已是好友</button>
+              <button v-else-if="addFriendResult.isApplied" class="result-btn result-btn-applied" disabled>已申请</button>
+              <button v-else class="result-btn result-btn-add" :disabled="isSendingApply" @click="sendFriendApply">
+                {{ isSendingApply ? '发送中...' : '+加好友' }}
+              </button>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 加入群聊弹窗 -->
+    <view v-if="showJoinGroupModal" class="add-friend-mask" @click.self="closeJoinGroup">
+      <view class="add-friend-modal" @click.stop>
+        <view class="add-friend-header">
+          <text class="add-friend-title">加入群聊</text>
+          <text class="add-friend-close" @click="closeJoinGroup">✕</text>
+        </view>
+        <view class="add-friend-search-bar">
+          <view class="add-friend-input-wrap">
+            <text class="add-friend-search-icon">🔍</text>
+            <input
+              v-model="joinGroupKeyword"
+              class="add-friend-input"
+              placeholder="输入群名称搜索"
+              @keyup.enter="searchGroupForJoin"
+              :disabled="isSearchingGroup"
+            />
+            <text v-if="joinGroupKeyword" class="add-friend-clear" @click="clearJoinGroupSearch">✕</text>
+          </view>
+          <button
+            class="add-friend-search-btn"
+            :disabled="!joinGroupKeyword.trim() || isSearchingGroup"
+            @click="searchGroupForJoin"
+          >{{ isSearchingGroup ? '搜索中...' : '搜索' }}</button>
+        </view>
+        <view class="add-friend-body">
+          <view v-if="!joinGroupSearched" class="add-friend-hint">
+            <text class="hint-icon">👥</text>
+            <text class="hint-text">输入群名称，搜索并申请加入群聊</text>
+          </view>
+          <view v-else-if="isSearchingGroup" class="add-friend-loading">
+            <text class="loading-text">搜索中...</text>
+          </view>
+          <view v-else-if="!joinGroupResults || joinGroupResults.length === 0" class="add-friend-empty">
+            <text class="empty-icon">🔍</text>
+            <text class="empty-text">未找到相关群聊</text>
+          </view>
+          <view v-else class="join-group-result-list">
+            <view
+              class="join-group-item"
+              v-for="group in joinGroupResults"
+              :key="group.id"
+            >
+              <image :src="group.groupAvatar || defaultAvatar" class="result-avatar" mode="aspectFill" />
+              <view class="result-info">
+                <text class="result-nickname">{{ group.groupName }}</text>
+                <text class="result-username">{{ group.currentMemberCount }}/{{ group.maxMember }} 人</text>
+                <text class="result-signature">
+                  {{ group.joinType === 2 ? '免审核加入' : group.joinType === 3 ? '仅邀请加入' : '需审核加入' }}
+                </text>
+              </view>
+              <view class="result-action">
+                <button
+                  v-if="group.applyStatus === 'member'"
+                  class="result-btn result-btn-already" disabled
+                >已加入</button>
+                <button
+                  v-else-if="group.applyStatus === 'pending'"
+                  class="result-btn result-btn-applied" disabled
+                >已申请</button>
+                <button
+                  v-else-if="group.joinType === 3"
+                  class="result-btn result-btn-already" disabled
+                >仅邀请</button>
+                <button
+                  v-else
+                  class="result-btn result-btn-add"
+                  :disabled="isApplyingGroup"
+                  @click="applyJoinGroupFn(group)"
+                >
+                  {{ isApplyingGroup ? '申请中...' : '申请加入' }}
+                </button>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
     <!-- 个人资料模态（从聊天信息面板或头像点击打开） -->
     <view
       v-if="showProfileModal"
@@ -1317,7 +1683,7 @@ const handleUserInfoUpdate = (newInfo) => {
 }
 
 // 核心配置
-const CURRENT_USER_ID = '1'
+const CURRENT_USER_ID = ref(null) // 动态从 /user/info 获取，初始为 null
 const selfAvatar =
   'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNjY2NjY2MiLz48L3N2Zz4='
 const defaultAvatar = selfAvatar
@@ -1359,15 +1725,22 @@ const cleanupDeviceDetection = () => {
 }
 // #endif
 
-// 【修复1：用户信息持久化初始化】
+// 【修奢1：用户信息持久化初始化】
 const userInfo = ref({
-  id: CURRENT_USER_ID,
+  id: '',
   nickname: '我的昵称',
   avatar: selfAvatar,
-  wechatId: 'wx_12345678',
-  region: '中国 福建',
-  signature: '这个人很懒，什么都没写',
+  wechatId: '',
+  region: '',
+  signature: '',
 })
+
+// 个人主页设置页 tab
+const profileSettingsTab = ref('info')
+// 通知设置（本地状态，可后续对接接口）
+const notifySettings = ref({ newMessage: true, sound: true })
+// 隐私设置（本地状态，可后续对接接口）
+const privacySettings = ref({ friendVerify: true })
 
 // 状态
 const currentSidebarTab = ref('chat')
@@ -1414,6 +1787,24 @@ const showProfileModal = ref(false)
 // 头像右侧小弹出层
 const showProfilePopover = ref(false)
 const showMoreMenu = ref(false)
+const showPlusMenu = ref(false) // 搜索栏旁的 + 下拉菜单
+// 添加朋友弹窗相关状态
+const showAddFriendModal = ref(false)
+const addFriendKeyword = ref('')
+const addFriendResult = ref(undefined) // undefined=未搜索, null=无结果, object=结果
+const addFriendSearched = ref(false)
+const isSearchingUser = ref(false)
+const isSendingApply = ref(false)
+// 加入群聊弹窗相关状态
+const showJoinGroupModal = ref(false)
+const joinGroupKeyword = ref('')
+const joinGroupSearched = ref(false)
+const isSearchingGroup = ref(false)
+const isApplyingGroup = ref(false)
+const joinGroupResults = ref([])
+// 通知相关状态
+const notifications = ref({ friendApplies: [], groupApplies: [] })
+const notifyLoading = ref(false)
 const isRecording = ref(false)
 const recordingDuration = ref(0)
 // 弹出层定位样式（用于把 profile popover 渲染到 body 并根据头像位置定位）
@@ -1442,112 +1833,10 @@ watch(showProfilePopover, (visible) => {
   }
 })
 
-// 好友和群聊模拟数据
-const friends = ref([
-  {
-    userId: '2',
-    nickname: '李四',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=James',
-    wechatId: 'wx_22222',
-    signature: '一个开心的人',
-    status: 1,
-    isFriend: true,
-  },
-  {
-    userId: '3',
-    nickname: '王五',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
-    wechatId: 'wx_33333',
-    signature: '前端开发工程师',
-    status: 1,
-    isFriend: true,
-  },
-  {
-    userId: '4',
-    nickname: '赵六',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sophie',
-    wechatId: 'wx_44444',
-    signature: '喜欢编程和音乐',
-    status: 1,
-    isFriend: true,
-  },
-  {
-    userId: '5',
-    nickname: '张三',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Susan',
-    wechatId: 'wx_55555',
-    signature: '后端开发工程师',
-    status: 1,
-    isFriend: true,
-  },
-  {
-    userId: '6',
-    nickname: '陈七',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Frank',
-    wechatId: 'wx_66666',
-    signature: '产品经理',
-    status: 1,
-    isFriend: true,
-  },
-  {
-    userId: '7',
-    nickname: '刘八',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Kate',
-    wechatId: 'wx_77777',
-    signature: '设计师',
-    status: 1,
-    isFriend: true,
-  },
-])
+// 好友和群聊（从后端 API 加载，初始为空）
+const friends = ref([])
 
-const groups = ref([
-  {
-    groupId: 'g1',
-    groupName: '开发团队',
-    groupAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Group1',
-    creatorId: '1',
-    memberCount: 8,
-    members: [
-      { userId: '1', nickname: '我', role: 1 },
-      { userId: '2', nickname: '李四', role: 2 },
-      { userId: '3', nickname: '王五', role: 3 },
-      { userId: '4', nickname: '赵六', role: 3 },
-      { userId: '5', nickname: '张三', role: 3 },
-    ],
-    status: 1,
-  },
-  {
-    groupId: 'g2',
-    groupName: '设计小组',
-    groupAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Group2',
-    creatorId: '3',
-    memberCount: 5,
-    members: [
-      { userId: '1', nickname: '我', role: 3 },
-      { userId: '3', nickname: '王五', role: 1 },
-      { userId: '6', nickname: '陈七', role: 3 },
-      { userId: '7', nickname: '刘八', role: 3 },
-    ],
-    status: 1,
-  },
-  {
-    groupId: 'g3',
-    groupName: '项目讨论组',
-    groupAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Group3',
-    creatorId: '2',
-    memberCount: 12,
-    members: [
-      { userId: '1', nickname: '我', role: 3 },
-      { userId: '2', nickname: '李四', role: 1 },
-      { userId: '3', nickname: '王五', role: 3 },
-      { userId: '4', nickname: '赵六', role: 3 },
-      { userId: '5', nickname: '张三', role: 3 },
-      { userId: '6', nickname: '陈七', role: 3 },
-      { userId: '7', nickname: '刘八', role: 3 },
-    ],
-    status: 1,
-  },
-])
+const groups = ref([])
 
 const selectedFriendTab = ref('friends') // 'friends' | 'groups'
 
@@ -1567,6 +1856,13 @@ let msgIdCounter = 0
 // 计算属性
 const totalUnread = computed(() => {
   return sessions.value.reduce((sum, item) => sum + (item.unreadCount || 0), 0)
+})
+
+// 待处理通知数
+const pendingNotifyCount = computed(() => {
+  const fCount = notifications.value.friendApplies.filter(a => a.status === 0).length
+  const gCount = notifications.value.groupApplies.length
+  return fCount + gCount
 })
 
 const messagesWithTime = computed(() => {
@@ -1653,7 +1949,7 @@ const isMyMessage = (msg) => {
   const msgSenderId = String(
     msg.sender_id || msg.senderId || msg.sender || '',
   ).trim()
-  const currentUserId = String(CURRENT_USER_ID).trim()
+  const currentUserId = String(CURRENT_USER_ID.value || '').trim()
   return msgSenderId === currentUserId && msgSenderId !== ''
 }
 
@@ -1666,7 +1962,7 @@ const cleanMessage = (rawMsg, defaultContent = '', forceMessageType = null) => {
   const rawSenderId = rawMsg.senderId || rawMsg.sender_id || ''
   const senderId = rawSenderId.trim()
     ? String(rawSenderId).trim()
-    : String(CURRENT_USER_ID).trim()
+    : String(CURRENT_USER_ID.value || '').trim()
   const senderName = rawMsg.senderName || rawMsg.sender_name || ''
 
   const sendTime =
@@ -1993,6 +2289,7 @@ const toggleMoreMenu = () => {
 }
 const closeMoreMenu = () => {
   showMoreMenu.value = false
+  showPlusMenu.value = false
   // 优先关闭头像弹出层
   if (showProfilePopover.value) {
     showProfilePopover.value = false
@@ -2001,6 +2298,270 @@ const closeMoreMenu = () => {
   // 关闭聊天相关面板
   showChatMenu.value = false
   showChatInfoPanel.value = false
+}
+
+// ➕ 下拉菜单控制
+const togglePlusMenu = () => {
+  showPlusMenu.value = !showPlusMenu.value
+  showMoreMenu.value = false
+}
+
+// 打开添加朋友弹窗
+const openAddFriend = () => {
+  showPlusMenu.value = false
+  addFriendKeyword.value = ''
+  addFriendResult.value = undefined
+  addFriendSearched.value = false
+  isSearchingUser.value = false
+  isSendingApply.value = false
+  showAddFriendModal.value = true
+}
+
+// 关闭添加朋友弹窗
+const closeAddFriend = () => {
+  showAddFriendModal.value = false
+  addFriendKeyword.value = ''
+  addFriendResult.value = undefined
+  addFriendSearched.value = false
+}
+
+// 清除搜索输入
+const clearAddFriendSearch = () => {
+  addFriendKeyword.value = ''
+  addFriendResult.value = undefined
+  addFriendSearched.value = false
+}
+
+// 搜索用户
+const searchUserForAdd = async () => {
+  const keyword = addFriendKeyword.value.trim()
+  if (!keyword) return
+  isSearchingUser.value = true
+  addFriendSearched.value = true
+  addFriendResult.value = undefined
+  try {
+    const res = await service.get('/user/search', { params: { keyword } })
+    const user = res.data
+    if (!user) {
+      addFriendResult.value = null
+      return
+    }
+    // 检查是否已是好友
+    const alreadyFriend = friends.value.some((f) => f.userId === String(user.id))
+    addFriendResult.value = {
+      userId: String(user.id),
+      username: user.username,
+      nickname: user.nickname || user.username,
+      avatar: user.avatar || '',
+      signature: user.signature || '',
+      isFriend: alreadyFriend,
+      isApplied: false,
+    }
+  } catch (e) {
+    // 搜索失败列为未找到
+    addFriendResult.value = null
+    console.warn('搜索用户失败', e)
+  } finally {
+    isSearchingUser.value = false
+  }
+}
+
+// 发送好友申请
+const sendFriendApply = async () => {
+  if (!addFriendResult.value || isSendingApply.value) return
+  isSendingApply.value = true
+  try {
+    await service.post('/friend/apply', {
+      targetId: addFriendResult.value.userId,
+      remark: '',
+    })
+    addFriendResult.value = { ...addFriendResult.value, isApplied: true }
+    uni.showToast({ title: '好友申请已发送', icon: 'success' })
+  } catch (e) {
+    console.warn('发送好友申请失败', e)
+  } finally {
+    isSendingApply.value = false
+  }
+}
+
+const openCreateGroup = () => {
+  showPlusMenu.value = false
+  uni.showToast({ title: '发起群聊功能开发中', icon: 'none' })
+}
+
+// 切换通讯录 tab（切到通知时自动刷新）
+const switchContactTab = (tab) => {
+  selectedFriendTab.value = tab
+  if (tab === 'notify') {
+    loadNotifications()
+  } else if (tab === 'friends') {
+    loadFriends()
+  } else if (tab === 'groups') {
+    loadGroups()
+  }
+}
+
+// 加载好友列表
+const loadFriends = async () => {
+  try {
+    const res = await service.get('/friend/list')
+    if (res.code === 200 && Array.isArray(res.data)) {
+      friends.value = res.data.map(f => ({
+        userId: String(f.applicantId),
+        nickname: f.applicantNickname || f.applicantId,
+        avatar: f.applicantAvatar || '',
+        signature: f.remark || '',
+        status: 1,
+        isFriend: true,
+      }))
+    }
+  } catch (e) {
+    console.error('加载好友列表失败', e)
+  }
+}
+
+// 加载群聊列表
+const loadGroups = async () => {
+  try {
+    const res = await service.get('/group/list')
+    if (res.code === 200 && Array.isArray(res.data)) {
+      groups.value = res.data.map(g => ({
+        groupId: g.id,
+        groupName: g.groupName,
+        groupAvatar: g.groupAvatar || '',
+        memberCount: g.currentMemberCount || 0,
+        creatorId: g.creatorId,
+        myRole: g.myRole,
+        status: 1,
+      }))
+    }
+  } catch (e) {
+    console.error('加载群聊列表失败', e)
+  }
+}
+
+// 加载通知（好友申请 + 群聊申请）
+const loadNotifications = async () => {
+  notifyLoading.value = true
+  try {
+    const [friendRes, groupRes] = await Promise.all([
+      service.get('/friend/apply/received'),
+      service.get('/group/apply/received'),
+    ])
+    notifications.value.friendApplies = (friendRes.code === 200 && Array.isArray(friendRes.data))
+      ? friendRes.data
+      : []
+    notifications.value.groupApplies = (groupRes.code === 200 && Array.isArray(groupRes.data))
+      ? groupRes.data
+      : []
+  } catch (e) {
+    console.error('加载通知失败', e)
+  } finally {
+    notifyLoading.value = false
+  }
+}
+
+// 处理好友申请
+const handleFriendApply = async (applyId, status) => {
+  try {
+    await service.post('/friend/apply/handle', { applyId, status, rejectReason: '' })
+    // 就地更新状态
+    const idx = notifications.value.friendApplies.findIndex(a => a.id === applyId)
+    if (idx !== -1) {
+      notifications.value.friendApplies[idx] = {
+        ...notifications.value.friendApplies[idx],
+        status,
+      }
+    }
+    uni.showToast({ title: status === 1 ? '已接受好友申请' : '已拒绝', icon: 'success' })
+    // 接受后刷新好友列表
+    if (status === 1) loadFriends()
+  } catch (e) {
+    uni.showToast({ title: '操作失败', icon: 'none' })
+    console.error('处理好友申请失败', e)
+  }
+}
+
+// 处理群聊申请
+const handleGroupApply = async (applyId, status) => {
+  try {
+    await service.post('/group/apply/handle', { applyId, status, rejectReason: '' })
+    // 就地移除已处理的申请
+    notifications.value.groupApplies = notifications.value.groupApplies.filter(a => a.id !== applyId)
+    uni.showToast({ title: status === 1 ? '已同意入群' : '已拒绝', icon: 'success' })
+    if (status === 1) loadGroups()
+  } catch (e) {
+    uni.showToast({ title: '操作失败', icon: 'none' })
+    console.error('处理群聊申请失败', e)
+  }
+}
+
+// 加入群聊弹窗相关
+const openJoinGroup = () => {
+  showPlusMenu.value = false
+  joinGroupKeyword.value = ''
+  joinGroupResults.value = []
+  joinGroupSearched.value = false
+  isSearchingGroup.value = false
+  isApplyingGroup.value = false
+  showJoinGroupModal.value = true
+}
+
+const closeJoinGroup = () => {
+  showJoinGroupModal.value = false
+  joinGroupKeyword.value = ''
+  joinGroupResults.value = []
+  joinGroupSearched.value = false
+}
+
+const clearJoinGroupSearch = () => {
+  joinGroupKeyword.value = ''
+  joinGroupResults.value = []
+  joinGroupSearched.value = false
+}
+
+const searchGroupForJoin = async () => {
+  const keyword = joinGroupKeyword.value.trim()
+  if (!keyword) return
+  isSearchingGroup.value = true
+  joinGroupSearched.value = true
+  joinGroupResults.value = []
+  try {
+    const res = await service.get('/group/search', { params: { keyword } })
+    if (res.code === 200 && Array.isArray(res.data)) {
+      joinGroupResults.value = res.data
+    }
+  } catch (e) {
+    console.warn('搜索群聊失败', e)
+  } finally {
+    isSearchingGroup.value = false
+  }
+}
+
+const applyJoinGroupFn = async (group) => {
+  if (isApplyingGroup.value) return
+  isApplyingGroup.value = true
+  try {
+    await service.post('/group/apply', { groupId: group.id, remark: '' })
+    // 更新该群在结果列表中的状态
+    const idx = joinGroupResults.value.findIndex(g => g.id === group.id)
+    if (idx !== -1) {
+      joinGroupResults.value[idx] = { ...joinGroupResults.value[idx], applyStatus: 'pending' }
+    }
+    uni.showToast({
+      title: group.joinType === 2 ? '已入群！' : '申请已提交，请等待审核',
+      icon: group.joinType === 2 ? 'success' : 'none',
+    })
+    if (group.joinType === 2) {
+      // 免审核直接加入，刷新群聊列表
+      loadGroups()
+    }
+  } catch (e) {
+    uni.showToast({ title: '申请失败', icon: 'none' })
+    console.warn('申请加入群聊失败', e)
+  } finally {
+    isApplyingGroup.value = false
+  }
 }
 
 const openChatFiles = () => {
@@ -2020,6 +2581,18 @@ const openFeedback = () => {
 }
 const openSettings = () => {
   uni.showToast({ title: '功能开发中', icon: 'none' })
+}
+
+// 退出登录
+const handleLogout = async () => {
+  try {
+    await service.post('/user/logout')
+  } catch (e) {
+    console.warn('退出登录接口异常', e)
+  } finally {
+    uni.removeStorageSync('token')
+    uni.redirectTo({ url: '/pages/index/index' })
+  }
 }
 const switchSidebarTab = (tab) => {
   currentSidebarTab.value = tab
@@ -2056,7 +2629,8 @@ const selectGroup = (group) => {
 }
 
 const chatWithFriend = (friend) => {
-  const sessionId = `${Math.min(CURRENT_USER_ID, friend.userId)}_${Math.max(CURRENT_USER_ID, friend.userId)}`
+  const myId = CURRENT_USER_ID.value || ''
+  const sessionId = `${Math.min(Number(myId), Number(friend.userId))}_${Math.max(Number(myId), Number(friend.userId))}`
   let session = sessions.value.find((s) => s.sessionId === sessionId)
   if (!session) {
     session = {
@@ -2128,72 +2702,37 @@ const switchSession = async (item) => {
   loadMessages(item.sessionId)
 }
 
+// 加载当前登录用户信息
+const loadCurrentUser = async () => {
+  try {
+    const res = await service.get('/user/info')
+    if (res.code === 200 && res.data) {
+      const info = res.data
+      CURRENT_USER_ID.value = info.id
+      userInfo.value = {
+        id: info.id,
+        nickname: info.nickname || '',
+        avatar: info.avatar || selfAvatar,
+        wechatId: info.username || '',
+        region: info.region || '',
+        signature: info.signature || '',
+      }
+      saveUserInfoToStorage(userInfo.value)
+    }
+  } catch (e) {
+    console.error('加载用户信息失败', e)
+  }
+}
+
 // 数据加载
 const loadSessionList = async () => {
   try {
-    // 使用假数据初始化会话列表（混合单聊和群聊）
-    const mockSessions = [
-      {
-        sessionId: '1_2',
-        sessionName: '李四',
-        sessionAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=James',
-        lastMessageContent: '好的，没问题',
-        lastMessageTime: new Date(Date.now() - 5 * 60000).toISOString(),
-        unreadCount: 2,
-        targetType: 'person',
-        targetId: '2',
-        sessionType: SESSION_TYPE.SINGLE,
-      },
-      {
-        sessionId: 'group_g1',
-        sessionName: '开发团队',
-        sessionAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Group1',
-        lastMessageContent: '张三：我会准时参加会议',
-        lastMessageTime: new Date(Date.now() - 15 * 60000).toISOString(),
-        unreadCount: 0,
-        targetType: 'group',
-        targetId: 'g1',
-        sessionType: SESSION_TYPE.GROUP,
-      },
-      {
-        sessionId: '1_3',
-        sessionName: '王五',
-        sessionAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
-        lastMessageContent: '图片',
-        lastMessageTime: new Date(Date.now() - 30 * 60000).toISOString(),
-        unreadCount: 1,
-        targetType: 'person',
-        targetId: '3',
-        sessionType: SESSION_TYPE.SINGLE,
-      },
-      {
-        sessionId: 'group_g2',
-        sessionName: '设计小组',
-        sessionAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Group2',
-        lastMessageContent: '刘八：设计稿已上传',
-        lastMessageTime: new Date(Date.now() - 2 * 3600000).toISOString(),
-        unreadCount: 0,
-        targetType: 'group',
-        targetId: 'g2',
-        sessionType: SESSION_TYPE.GROUP,
-      },
-      {
-        sessionId: '1_5',
-        sessionName: '张三',
-        sessionAvatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Susan',
-        lastMessageContent: '稍后再聊',
-        lastMessageTime: new Date(Date.now() - 1 * 3600000).toISOString(),
-        unreadCount: 0,
-        targetType: 'person',
-        targetId: '5',
-        sessionType: SESSION_TYPE.SINGLE,
-      },
-    ]
-
-    sessions.value = mockSessions.sort(
-      (a, b) => new Date(b.lastMessageTime) - new Date(a.lastMessageTime),
-    )
-
+    const res = await service.get('/session/list')
+    if (res.code === 200 && Array.isArray(res.data)) {
+      sessions.value = res.data
+    } else {
+      sessions.value = []
+    }
     if (!currentSession.value && sessions.value.length > 0) {
       currentSession.value = sessions.value[0]
       loadMessages(currentSession.value.sessionId)
@@ -2213,7 +2752,7 @@ const updateSessionLastMsg = (sessionId, content, sendTime) => {
       ...sessions.value[idx],
       lastMessageContent: content,
       lastMessageTime: sendTime,
-      lastMessageSenderId: CURRENT_USER_ID,
+      lastMessageSenderId: CURRENT_USER_ID.value,
     }
     sessions.value.splice(idx, 1, updatedSession)
     // 重新排序
@@ -2227,23 +2766,29 @@ const updateSessionLastMsg = (sessionId, content, sendTime) => {
 const loadMessages = async (sessionId) => {
   if (!sessionId) return
   try {
-    let msgList = []
+    // 《第一步》优先读取本地缓存，实现即时渲染，无散头的加载空白
+    const localMsgs = await ChatStorage.queryMessages(sessionId)
+    if (localMsgs.length > 0) {
+      messages.value = localMsgs.map((item) => cleanMessage(item))
+      await nextTick()
+      scrollToBottom()
+    }
+
+    // 《第二步》后台拉取服务端数据（以服务端为权威来源）
     const res = await service.get('/chat/message/list', {
       params: { sessionId },
     })
-    if (res.code === 200 && Array.isArray(res.data)) {
-      msgList = res.data
-      await ChatStorage.insertMessages(sessionId, msgList)
-    } else {
-      msgList = await ChatStorage.queryMessages(sessionId)
+    if (res.code === 200 && Array.isArray(res.data) && res.data.length > 0) {
+      // 《第三步》将服务端数据写入本地缓存
+      await ChatStorage.insertMessages(sessionId, res.data)
+      // 《第四步》用服务端最新数据更新视图
+      const cleanedList = res.data.map((item) => cleanMessage(item))
+      messages.value = cleanedList
+      autoDownloadFiles(cleanedList)
     }
-    const cleanedList = msgList.map((item) => cleanMessage(item))
-    messages.value = cleanedList
-    autoDownloadFiles(cleanedList)
   } catch (e) {
     console.error('加载消息失败', e)
-    const localMsgs = await ChatStorage.queryMessages(sessionId)
-    messages.value = localMsgs.map((item) => cleanMessage(item))
+    // 网络异常时，本地数据已在第一步展示，无需重复读取
   } finally {
     await nextTick()
     scrollToBottom()
@@ -2559,7 +3104,7 @@ const sendSingleMessageInternal = async (msgData) => {
     duration: msgData.duration,
     send_time: nowTime,
     send_status: SEND_STATUS.PENDING,
-    sender_id: CURRENT_USER_ID,
+    sender_id: CURRENT_USER_ID.value,
   })
 
   messages.value.push(localMsg)
@@ -2580,7 +3125,7 @@ const sendSingleMessageInternal = async (msgData) => {
           messageNo: localMsg.messageNo,
           sessionId,
           sessionType: currentSession.value.sessionType,
-          senderId: CURRENT_USER_ID,
+          senderId: CURRENT_USER_ID.value,
           receiverId:
             currentSession.value.sessionType === SESSION_TYPE.SINGLE
               ? currentSession.value.targetId
@@ -2671,7 +3216,7 @@ const sendSingleMessageInternal = async (msgData) => {
         messageNo: localMsg.messageNo,
         sessionId,
         sessionType: currentSession.value.sessionType,
-        senderId: CURRENT_USER_ID,
+        senderId: CURRENT_USER_ID.value,
         receiverId:
           currentSession.value.sessionType === SESSION_TYPE.SINGLE
             ? currentSession.value.targetId
@@ -2840,17 +3385,18 @@ const startMobileRecord = () => {
 // #endif
 
 // ========== 生命周期 ==========
-onMounted(() => {
+onMounted(async () => {
   // #ifdef H5
   initDeviceDetection()
   // #endif
 
-  // 【修复6：初始化时从本地存储读取用户信息】
-  const savedUserInfo = getUserInfoFromStorage()
-  if (savedUserInfo) {
-    userInfo.value = { ...userInfo.value, ...savedUserInfo }
-  }
+  // 先从后端加载当前登录用户信息，再加载会话列表
+  await loadCurrentUser()
   loadSessionList()
+  // 并行加载好友、群聊、通知
+  loadFriends()
+  loadGroups()
+  loadNotifications()
 })
 onUnmounted(() => {
   // #ifdef H5
@@ -2862,9 +3408,6 @@ onUnmounted(() => {
 })
 </script>
 <style scoped>
->>> uni-button::after {
-  content: '';
-}
 /* 全局布局 */
 .wechat-layout {
   display: flex;
@@ -3097,10 +3640,10 @@ onUnmounted(() => {
 .popover-dots,
 .popover-dots.tool-icon {
   cursor: pointer;
-  padding: 4px;
+  /* padding: 4px;
   font-size: 18px;
   line-height: 1;
-  font-weight: 400;
+  font-weight: 400; */
 }
 .popover-body {
   margin-top: 8px;
@@ -3144,11 +3687,13 @@ onUnmounted(() => {
   white-space: nowrap;
 }
 .popover-actions .primary-btn {
+  padding: 0;
   background: #07c160;
   color: #fff;
   border: none;
 }
 .popover-actions .default-btn {
+  padding: 0;
   background: #fff;
   color: #333;
   border: 1px solid #d9d9d9;
@@ -3436,107 +3981,292 @@ onUnmounted(() => {
   color: #666;
 }
 
-/* 个人主页 */
+/* ─── 个人主页（PC端设置页重设计）─── */
 .profile-area {
-  width: 260px;
-  background: #f5f5f5;
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  background: #f7f8fa;
+  height: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* 左侧导航栏 */
+.settings-nav {
+  width: 220px;
+  flex-shrink: 0;
+  background: #fff;
+  border-right: 1px solid #ebebeb;
   display: flex;
   flex-direction: column;
-  flex-shrink: 0;
   height: 100%;
-  border-right: 1px solid #e6e6e6;
   overflow-y: auto;
 }
-.profile-header-card {
+.settings-user-brief {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 30px 20px;
-  background: #fff;
-  margin-bottom: 10px;
+  gap: 12px;
+  padding: 24px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: background 0.15s;
 }
-.profile-avatar {
-  width: 80px;
-  height: 80px;
+.settings-user-brief:hover { background: #fafafa; }
+.settings-brief-avatar {
+  width: 44px;
+  height: 44px;
   border-radius: 8px;
-  background: #cccccc;
+  flex-shrink: 0;
+  background: #e6e6e6;
 }
-.profile-base-info {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.settings-brief-info {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
 }
-.profile-nickname {
-  font-size: 20px;
-  font-weight: 500;
-  color: #333;
+.settings-brief-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a1a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.profile-wechat-id {
-  font-size: 14px;
-  color: #999;
+.settings-brief-id {
+  font-size: 12px;
+  color: #bbb;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.qrcode-row {
+.settings-nav-group { padding: 10px 0; flex: 1; }
+.settings-nav-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-top: 4px;
-}
-.qrcode-text {
+  gap: 10px;
+  padding: 11px 20px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  color: #555;
   font-size: 14px;
-  color: #333;
+  user-select: none;
 }
-.qrcode-icon {
-  font-size: 16px;
-  color: #999;
+.settings-nav-item:hover { background: #f5f5f5; color: #333; }
+.settings-nav-item.active { background: #edf4ff; color: #1677ff; font-weight: 500; }
+.settings-nav-icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
+.settings-nav-label { font-size: 14px; }
+
+/* 右侧内容区 */
+.settings-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  overflow-y: auto;
+  background: #f7f8fa;
 }
-.profile-content {
+.settings-panel-header {
+  padding: 28px 40px 22px;
+  background: #fff;
+  border-bottom: 1px solid #ebebeb;
+  flex-shrink: 0;
+}
+.settings-panel-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #1a1a1a;
+  display: block;
+}
+.settings-panel-subtitle {
+  font-size: 13px;
+  color: #bbb;
+  margin-top: 5px;
+  display: block;
+}
+.settings-body {
+  padding: 28px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.settings-section {
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
-.profile-card {
-  background: #fff;
-  display: flex;
-  flex-direction: column;
+.section-label {
+  font-size: 11px;
+  color: #aaa;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  padding-left: 4px;
 }
-.profile-item {
-  height: 54px;
-  padding: 0 20px;
+
+/* 头像编辑区块 */
+.avatar-edit-block {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 24px;
+  padding: 20px 24px;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #ebebeb;
+}
+.settings-avatar-preview {
+  width: 72px;
+  height: 72px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  background: #e6e6e6;
+}
+.avatar-edit-meta { display: flex; flex-direction: column; gap: 10px; }
+.avatar-tip { font-size: 13px; color: #bbb; }
+
+/* 表单行 */
+.settings-form {
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #ebebeb;
+  overflow: hidden;
+}
+.form-row {
+  display: flex;
+  align-items: center;
+  padding: 15px 20px;
   border-bottom: 1px solid #f5f5f5;
-  cursor: pointer;
-  transition: background 0.2s;
+  gap: 12px;
 }
-.profile-item:hover {
-  background: #f5f5f5;
-}
-.profile-item:last-child {
-  border-bottom: none;
-}
-.profile-item .item-label {
+.form-row.no-border { border-bottom: none; }
+.form-field-label {
   font-size: 14px;
-  color: #333;
-  width: 80px;
+  color: #666;
+  width: 88px;
   flex-shrink: 0;
 }
-.profile-item .item-value {
+.form-field-value {
   flex: 1;
   font-size: 14px;
-  color: #999;
-  text-align: right;
-  margin-right: 8px;
+  color: #1a1a1a;
 }
-.item-avatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 4px;
-  margin-left: auto;
-  margin-right: 8px;
+.form-field-value.mono {
+  font-family: 'SF Mono', 'Consolas', monospace;
+  color: #555;
+  font-size: 13px;
 }
+.form-field-value.muted { color: #bbb; }
+.form-field-action {
+  font-size: 13px;
+  color: #1677ff;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 5px;
+  transition: background 0.15s;
+  flex-shrink: 0;
+  user-select: none;
+}
+.form-field-action:hover { background: #edf4ff; }
+
+/* 通用按鈕 */
+.settings-action-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 16px;
+  font-size: 13px;
+  color: #1677ff;
+  background: #edf4ff;
+  border: 1px solid #c7e0ff;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  line-height: 1.5;
+}
+.settings-action-btn:hover { background: #dceeff; border-color: #a8cefc; }
+
+/* 二维码卡片 */
+.qrcode-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 24px;
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #ebebeb;
+}
+.qrcode-placeholder-box {
+  width: 68px;
+  height: 68px;
+  background: #f5f5f5;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border: 1px dashed #ddd;
+}
+.qrcode-placeholder-icon { font-size: 26px; }
+.qrcode-card-info { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+.qrcode-card-title { font-size: 15px; font-weight: 500; color: #1a1a1a; }
+.qrcode-card-desc { font-size: 13px; color: #bbb; }
+
+/* 选项列表（账号安全/通知/隐私/通用） */
+.settings-option-list {
+  background: #fff;
+  border-radius: 10px;
+  border: 1px solid #ebebeb;
+  overflow: hidden;
+}
+.settings-option-row {
+  display: flex;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 1px solid #f5f5f5;
+  gap: 16px;
+}
+.settings-option-row.no-border { border-bottom: none; }
+.settings-option-row.danger-row { cursor: pointer; transition: background 0.15s; }
+.settings-option-row.danger-row:hover { background: #fff5f5; }
+.option-row-left {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.option-row-title { font-size: 14px; color: #1a1a1a; }
+.option-row-title.danger { color: #e53935; }
+.option-row-desc { font-size: 12px; color: #bbb; }
+.option-row-arrow { font-size: 22px; color: #ccc; line-height: 1; }
+
+/* Toggle 开关 */
+.toggle-switch {
+  width: 44px;
+  height: 24px;
+  background: #d9d9d9;
+  border-radius: 12px;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.25s;
+  flex-shrink: 0;
+}
+.toggle-switch.on { background: #1677ff; }
+.toggle-thumb {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border-radius: 50%;
+  top: 2px;
+  left: 2px;
+  transition: left 0.25s;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+}
+.toggle-switch.on .toggle-thumb { left: 22px; }
 
 /* 聊天区域 */
 .chat-area {
@@ -4485,7 +5215,453 @@ onUnmounted(() => {
   padding: 4px;
 }
 
-/* 移动端通讯录页面 */
+/* ===== ➕ 按钮与下拉菜单 ===== */
+.add-btn-wrapper {
+  position: relative;
+  flex-shrink: 0;
+}
+.add-icon {
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  user-select: none;
+  transition: background 0.15s;
+}
+.add-icon:hover {
+  background: #ebebeb;
+}
+.add-icon-active {
+  background: #dedede;
+}
+.plus-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  min-width: 130px;
+  z-index: 200;
+  overflow: hidden;
+}
+.plus-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #333;
+  transition: background 0.1s;
+}
+.plus-dropdown-item:hover {
+  background: #f5f5f5;
+}
+.plus-dropdown-icon {
+  font-size: 16px;
+}
+.plus-dropdown-text {
+  flex: 1;
+}
+
+/* ===== 添加朋友弹窗 ===== */
+.add-friend-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.add-friend-modal {
+  background: #fff;
+  border-radius: 8px;
+  width: 460px;
+  max-width: 94vw;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.add-friend-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.add-friend-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+.add-friend-close {
+  font-size: 16px;
+  color: #999;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  line-height: 1;
+  transition: color 0.15s;
+}
+.add-friend-close:hover {
+  color: #333;
+}
+.add-friend-search-bar {
+  padding: 16px 20px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  border-bottom: 1px solid #f0f0f0;
+}
+.add-friend-input-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: #f5f5f5;
+  border: 1px solid #e8e8e8;
+  border-radius: 6px;
+  padding: 0 10px;
+  gap: 6px;
+  transition: border-color 0.2s;
+}
+.add-friend-input-wrap:focus-within {
+  border-color: #07c160;
+}
+.add-friend-search-icon {
+  font-size: 14px;
+  color: #999;
+  flex-shrink: 0;
+}
+.add-friend-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 14px;
+  height: 36px;
+  color: #333;
+}
+.add-friend-clear {
+  font-size: 14px;
+  color: #bbb;
+  cursor: pointer;
+  flex-shrink: 0;
+  line-height: 1;
+  padding: 2px;
+}
+.add-friend-clear:hover {
+  color: #666;
+}
+.add-friend-search-btn {
+  height: 36px;
+  padding: 0 18px;
+  background: #07c160;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.add-friend-search-btn:hover {
+  background: #06ad56;
+}
+.add-friend-search-btn:disabled {
+  background: #b2dfca;
+  cursor: not-allowed;
+}
+.add-friend-body {
+  padding: 20px;
+  min-height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.add-friend-hint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: #aaa;
+}
+.hint-icon {
+  font-size: 40px;
+}
+.hint-text {
+  font-size: 13px;
+  text-align: center;
+  line-height: 1.5;
+}
+.add-friend-loading {
+  color: #07c160;
+  font-size: 14px;
+}
+.add-friend-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: #aaa;
+}
+.empty-icon {
+  font-size: 36px;
+}
+.empty-text {
+  font-size: 13px;
+  text-align: center;
+}
+.add-friend-result {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 6px 0;
+}
+.result-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  background: #eee;
+}
+.result-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.result-nickname {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a1a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.result-username {
+  font-size: 12px;
+  color: #888;
+}
+.result-signature {
+  font-size: 12px;
+  color: #aaa;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.result-action {
+  flex-shrink: 0;
+}
+.result-btn {
+  height: 34px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, opacity 0.15s;
+}
+.result-btn-add {
+  background: #07c160;
+  color: #fff;
+}
+.result-btn-add:hover {
+  background: #06ad56;
+}
+.result-btn-add:disabled {
+  background: #b2dfca;
+  cursor: not-allowed;
+}
+.result-btn-already {
+  background: #f5f5f5;
+  color: #aaa;
+  cursor: default;
+}
+.result-btn-applied {
+  background: #f0faf5;
+  color: #07c160;
+  cursor: default;
+}
+
+/* ===== 通知 tab ===== */
+.notify-tab-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.tab-notify-badge {
+  position: absolute;
+  top: 6px;
+  right: 4px;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  background: #ff3b30;
+  color: #fff;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  box-sizing: border-box;
+}
+.notify-section {
+  border-bottom: 6px solid #f5f5f5;
+}
+.notify-section-title {
+  padding: 10px 16px 6px;
+  font-size: 12px;
+  color: #999;
+  font-weight: 500;
+  background: #fafafa;
+  border-bottom: 1px solid #f0f0f0;
+}
+.notify-item {
+  display: flex;
+  align-items: center;
+  padding: 14px 12px;
+  border-bottom: 1px solid #f5f5f5;
+  gap: 12px;
+  background: #fff;
+}
+.notify-item:hover {
+  background: #fafafa;
+}
+.notify-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  background: #eee;
+}
+.notify-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.notify-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a1a;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.notify-group-name {
+  font-size: 12px;
+  color: #07c160;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.notify-time {
+  font-size: 11px;
+  color: #aaa;
+}
+.notify-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.notify-btn {
+  height: 30px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: opacity 0.15s;
+}
+.accept-btn {
+  background: #07c160;
+  color: #fff;
+}
+.accept-btn:hover {
+  background: #06ad56;
+}
+.reject-btn {
+  background: #f5f5f5;
+  color: #666;
+}
+.reject-btn:hover {
+  background: #ebebeb;
+}
+.notify-status-tag {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+.tag-accepted {
+  background: #f0faf5;
+  color: #07c160;
+}
+.tag-rejected {
+  background: #fff0f0;
+  color: #ff3b30;
+}
+.notify-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  gap: 12px;
+}
+.notify-empty-icon {
+  font-size: 40px;
+}
+.notify-empty-text {
+  font-size: 14px;
+  color: #aaa;
+}
+.notify-loading {
+  padding: 40px;
+  text-align: center;
+  color: #aaa;
+  font-size: 14px;
+}
+.contact-empty {
+  padding: 40px;
+  text-align: center;
+}
+.contact-empty-text {
+  font-size: 13px;
+  color: #bbb;
+}
+
+/* ===== 加入群聊搜索结果列表 ===== */
+.join-group-result-list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.join-group-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+.join-group-item:last-child {
+  border-bottom: none;
+}
+
+/* ===== 移动端页面 ===== */
 .mobile-contact-page {
   flex: 1;
   display: flex;

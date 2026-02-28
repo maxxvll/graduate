@@ -24,4 +24,11 @@ public interface ChatUserService extends IService<ChatUser> {
     SaTokenInfo refreshToken();
     void cancelAccount();
     boolean checkUsernameExist(String username);
+
+    /**
+     * 根据用户名或手机号搜索用户（用于添加好友）
+     * @param keyword 关键字（用户名或手机号）
+     * @return 用户信息，未找到返回null
+     */
+    UserInfoVO searchUser(String keyword);
 }

@@ -1,4 +1,4 @@
-package com.maxxvll.common.util;
+package com.maxxvll.utils;
 
 import org.springframework.beans.BeanUtils;
 import org.springframework.util.CollectionUtils;

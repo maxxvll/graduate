@@ -5,6 +5,8 @@ class ChatStorage {
     this.isApp = false
     // 统一使用一个 Storage Key，避免分 Key 导致的查询混乱
     this.UNIFIED_STORAGE_KEY = 'chat_unified_message_history'
+    // 每个会话最多缓存的消息条数，防止 Storage 超出 5MB 上限
+    this.MAX_MESSAGES_PER_SESSION = 200
     this.init()
   }
 
@@ -122,8 +124,11 @@ class ChatStorage {
 
         // H5/小程序端：统一存储，完整保存
         const allMessages = this._getAllStorageMessages()
-        // 去重
-        const existIndex = allMessages.findIndex(item => item.id === normalizedMsg.id || item.messageNo === normalizedMsg.messageNo)
+        // 去重：messageNo 为空时不参与匹配，防止空值误匹配
+        const existIndex = allMessages.findIndex(item =>
+          item.id === normalizedMsg.id ||
+          (normalizedMsg.messageNo && item.messageNo === normalizedMsg.messageNo)
+        )
         if (existIndex !== -1) {
           allMessages[existIndex] = { ...allMessages[existIndex], ...normalizedMsg }
         } else {
@@ -140,9 +145,30 @@ class ChatStorage {
     })
   }
 
-  // 2. 批量插入消息
+  // 2. 批量插入消息（H5 端 O(N) 单次读写优化，App 端沿用逐条 SQLite 插入）
   insertMessages(sessionId, msgs) {
-    return Promise.all(msgs.map(msg => this.insertMessage({ ...msg, session_id: sessionId })))
+    if (!msgs || msgs.length === 0) return Promise.resolve([])
+
+    // #ifdef APP-PLUS
+    if (this.isApp) {
+      return Promise.all(msgs.map(msg => this.insertMessage({ ...msg, session_id: sessionId })))
+    }
+    // #endif
+
+    // H5/小程序端：批量 upsert，全程只读写一次 Storage
+    return new Promise((resolve, reject) => {
+      try {
+        const normalizedList = msgs
+          .map(msg => this._normalizeMessage({ ...msg, session_id: sessionId }))
+          .filter(m => m && m.session_id)
+        if (normalizedList.length === 0) return resolve([])
+        this._batchUpsertStorage(normalizedList)
+        resolve(normalizedList)
+      } catch (err) {
+        console.error('ChatStorage: 批量插入失败', err)
+        reject(err)
+      }
+    })
   }
 
   // 3. 查询指定会话的所有消息（核心方法）
@@ -223,15 +249,124 @@ class ChatStorage {
     })
   }
 
-  // 内部方法：获取所有消息
+  // ─────────────────────────────────────────────────────────────
+  // 内部辅助方法
+  // ─────────────────────────────────────────────────────────────
+
+  // 获取所有消息（容错处理损坏的 JSON）
   _getAllStorageMessages() {
     try {
       const raw = uni.getStorageSync(this.UNIFIED_STORAGE_KEY)
-      return raw ? JSON.parse(raw) : []
+      if (!raw) return []
+      const parsed = JSON.parse(raw)
+      return Array.isArray(parsed) ? parsed : []
     } catch (e) {
-      console.error('ChatStorage: 读取Storage失败', e)
+      console.error('ChatStorage: 读取Storage失败，已重置缓存', e)
+      // JSON 损坏时清除防止持续报错
+      try { uni.removeStorageSync(this.UNIFIED_STORAGE_KEY) } catch (_) {}
       return []
     }
+  }
+
+  /**
+   * H5 端批量 upsert：用 Map 索引实现 O(1) 查找，全程只读写一次 Storage
+   * @param {Array} normalizedList - 已经过 _normalizeMessage 处理的消息列表
+   */
+  _batchUpsertStorage(normalizedList) {
+    if (!normalizedList || normalizedList.length === 0) return
+    const allMessages = this._getAllStorageMessages()
+
+    // 构建 id/messageNo 双索引，O(1) 查重
+    const idMap = new Map()
+    const msgNoMap = new Map()
+    allMessages.forEach((item, idx) => {
+      if (item.id) idMap.set(String(item.id), idx)
+      if (item.messageNo) msgNoMap.set(item.messageNo, idx)
+    })
+
+    for (const normalized of normalizedList) {
+      const byId = idMap.get(String(normalized.id))
+      const byMsgNo = normalized.messageNo ? msgNoMap.get(normalized.messageNo) : undefined
+      const existIdx = byId !== undefined ? byId : byMsgNo
+
+      if (existIdx !== undefined) {
+        // 更新已有消息
+        allMessages[existIdx] = { ...allMessages[existIdx], ...normalized }
+      } else {
+        // 追加新消息，并更新索引
+        const newIdx = allMessages.length
+        allMessages.push(normalized)
+        if (normalized.id) idMap.set(String(normalized.id), newIdx)
+        if (normalized.messageNo) msgNoMap.set(normalized.messageNo, newIdx)
+      }
+    }
+
+    const trimmed = this._trimOldMessages(allMessages)
+    uni.setStorageSync(this.UNIFIED_STORAGE_KEY, JSON.stringify(trimmed))
+    console.log(`ChatStorage: 批量写入完成，共 ${trimmed.length} 条`)
+  }
+
+  /**
+   * 按会话裁剪超出上限的旧消息，防止 Storage 无限增长
+   * 每个会话保留最新的 MAX_MESSAGES_PER_SESSION 条
+   */
+  _trimOldMessages(allMessages) {
+    // 按 session_id 分组
+    const sessionMap = new Map()
+    for (const msg of allMessages) {
+      const sid = String(msg.session_id)
+      if (!sessionMap.has(sid)) sessionMap.set(sid, [])
+      sessionMap.get(sid).push(msg)
+    }
+    const result = []
+    for (const [, msgs] of sessionMap) {
+      if (msgs.length <= this.MAX_MESSAGES_PER_SESSION) {
+        result.push(...msgs)
+      } else {
+        // 按时间升序后截取最新的 N 条
+        msgs.sort((a, b) => new Date(a.send_time) - new Date(b.send_time))
+        result.push(...msgs.slice(-this.MAX_MESSAGES_PER_SESSION))
+      }
+    }
+    return result
+  }
+
+  /**
+   * 获取指定会话本地缓存中最新一条消息的时间，用于增量同步
+   * @param {string|number} sessionId
+   * @returns {Promise<string|null>} ISO 时间字符串，无缓存时返回 null
+   */
+  getLatestMessageTime(sessionId) {
+    return new Promise((resolve) => {
+      try {
+        const targetSessionId = String(sessionId)
+
+        // #ifdef APP-PLUS
+        if (this.isApp) {
+          plus.sqlite.selectSql({
+            name: this.dbName,
+            sql: `SELECT MAX(send_time) AS latest FROM messages WHERE session_id = ?`,
+            args: [targetSessionId],
+            success: (res) => resolve(res.data?.[0]?.latest || null),
+            fail: () => resolve(null)
+          })
+          return
+        }
+        // #endif
+
+        const allMessages = this._getAllStorageMessages()
+        const sessionMsgs = allMessages.filter(m => String(m.session_id) === targetSessionId)
+        if (sessionMsgs.length === 0) return resolve(null)
+        const latest = sessionMsgs.reduce((max, m) =>
+          new Date(m.send_time) > new Date(max) ? m.send_time : max,
+          sessionMsgs[0].send_time
+        )
+        resolve(latest)
+      } catch (e) {
+        console.error('ChatStorage: getLatestMessageTime 异常', e)
+        resolve(null)
+      }
+    })
   }
 }
 
