@@ -283,545 +283,68 @@
       </view>
     </view>
 
-    <!-- 个人主页（PC端：左导航 + 右内容双栏设置页） -->
+    <!-- 个人主页设置页，提取为 SettingsPanel 独立组件，双栏布局维护性更好 -->
     <view class="profile-area" v-else-if="currentSidebarTab === 'profile'">
-      <!-- 左侧分类导航 -->
-      <view class="settings-nav">
-        <view class="settings-user-brief" @click="profileSettingsTab = 'info'">
-          <image :src="userInfo.avatar || defaultAvatar" class="settings-brief-avatar" mode="aspectFill" />
-          <view class="settings-brief-info">
-            <text class="settings-brief-name">{{ userInfo.nickname }}</text>
-            <text class="settings-brief-id">ID: {{ userInfo.wechatId }}</text>
-          </view>
-        </view>
-        <view class="settings-nav-group">
-          <view class="settings-nav-item" :class="{ active: profileSettingsTab === 'info' }" @click="profileSettingsTab = 'info'">
-            <text class="settings-nav-icon">👤</text>
-            <text class="settings-nav-label">个人信息</text>
-          </view>
-          <view class="settings-nav-item" :class="{ active: profileSettingsTab === 'security' }" @click="profileSettingsTab = 'security'">
-            <text class="settings-nav-icon">🔒</text>
-            <text class="settings-nav-label">账号与安全</text>
-          </view>
-          <view class="settings-nav-item" :class="{ active: profileSettingsTab === 'notify' }" @click="profileSettingsTab = 'notify'">
-            <text class="settings-nav-icon">🔔</text>
-            <text class="settings-nav-label">消息通知</text>
-          </view>
-          <view class="settings-nav-item" :class="{ active: profileSettingsTab === 'privacy' }" @click="profileSettingsTab = 'privacy'">
-            <text class="settings-nav-icon">🛡️</text>
-            <text class="settings-nav-label">隐私设置</text>
-          </view>
-          <view class="settings-nav-item" :class="{ active: profileSettingsTab === 'general' }" @click="profileSettingsTab = 'general'">
-            <text class="settings-nav-icon">⚙️</text>
-            <text class="settings-nav-label">通用设置</text>
-          </view>
-        </view>
-      </view>
-
-      <!-- 右侧内容区 -->
-      <view class="settings-content">
-        <!-- 个人信息 -->
-        <template v-if="profileSettingsTab === 'info'">
-          <view class="settings-panel-header">
-            <text class="settings-panel-title">个人信息</text>
-            <text class="settings-panel-subtitle">管理你的个人资料和展示信息</text>
-          </view>
-          <view class="settings-body">
-            <!-- 头像 -->
-            <view class="settings-section">
-              <text class="section-label">头像</text>
-              <view class="avatar-edit-block">
-                <image :src="userInfo.avatar || defaultAvatar" class="settings-avatar-preview" mode="aspectFill" />
-                <view class="avatar-edit-meta">
-                  <text class="avatar-tip">建议使用清晰的正面照，支持 JPG / PNG 格式</text>
-                  <button class="settings-action-btn" @click="openEditProfile">更换头像</button>
-                </view>
-              </view>
-            </view>
-            <!-- 基本资料 -->
-            <view class="settings-section">
-              <text class="section-label">基本资料</text>
-              <view class="settings-form">
-                <view class="form-row">
-                  <text class="form-field-label">昵称</text>
-                  <text class="form-field-value">{{ userInfo.nickname }}</text>
-                  <text class="form-field-action" @click="openEditProfile">编辑</text>
-                </view>
-                <view class="form-row">
-                  <text class="form-field-label">账号 ID</text>
-                  <text class="form-field-value mono">{{ userInfo.wechatId }}</text>
-                </view>
-                <view class="form-row">
-                  <text class="form-field-label">个性签名</text>
-                  <text class="form-field-value muted">{{ userInfo.signature || '未填写' }}</text>
-                  <text class="form-field-action" @click="openEditProfile">编辑</text>
-                </view>
-                <view class="form-row no-border">
-                  <text class="form-field-label">所在地区</text>
-                  <text class="form-field-value muted">{{ userInfo.region || '未设置' }}</text>
-                  <text class="form-field-action" @click="openEditProfile">编辑</text>
-                </view>
-              </view>
-            </view>
-            <!-- 二维码 -->
-            <view class="settings-section">
-              <text class="section-label">我的二维码</text>
-              <view class="qrcode-card">
-                <view class="qrcode-placeholder-box">
-                  <text class="qrcode-placeholder-icon">📱</text>
-                </view>
-                <view class="qrcode-card-info">
-                  <text class="qrcode-card-title">扫码添加好友</text>
-                  <text class="qrcode-card-desc">将此二维码分享给朋友，让他们扫码添加你</text>
-                  <button class="settings-action-btn">查看二维码</button>
-                </view>
-              </view>
-            </view>
-          </view>
-        </template>
-
-        <!-- 账号与安全 -->
-        <template v-else-if="profileSettingsTab === 'security'">
-          <view class="settings-panel-header">
-            <text class="settings-panel-title">账号与安全</text>
-            <text class="settings-panel-subtitle">管理你的登录凭证和绑定信息</text>
-          </view>
-          <view class="settings-body">
-            <view class="settings-section">
-              <text class="section-label">登录凭证</text>
-              <view class="settings-option-list">
-                <view class="settings-option-row">
-                  <view class="option-row-left">
-                    <text class="option-row-title">登录密码</text>
-                    <text class="option-row-desc">定期更换密码有助于保护账号安全</text>
-                  </view>
-                  <button class="settings-action-btn">修改密码</button>
-                </view>
-                <view class="settings-option-row no-border">
-                  <view class="option-row-left">
-                    <text class="option-row-title">手机号码</text>
-                    <text class="option-row-desc">{{ userInfo.phone || '暂未绑定' }}</text>
-                  </view>
-                  <button class="settings-action-btn">{{ userInfo.phone ? '更换' : '绑定' }}</button>
-                </view>
-              </view>
-            </view>
-          </view>
-        </template>
-
-        <!-- 消息通知 -->
-        <template v-else-if="profileSettingsTab === 'notify'">
-          <view class="settings-panel-header">
-            <text class="settings-panel-title">消息通知</text>
-            <text class="settings-panel-subtitle">设置你希望接收通知的方式</text>
-          </view>
-          <view class="settings-body">
-            <view class="settings-section">
-              <text class="section-label">通知偏好</text>
-              <view class="settings-option-list">
-                <view class="settings-option-row">
-                  <view class="option-row-left">
-                    <text class="option-row-title">新消息提醒</text>
-                    <text class="option-row-desc">收到新消息时在桌面显示通知</text>
-                  </view>
-                  <view class="toggle-switch" :class="{ on: notifySettings.newMessage }" @click="notifySettings.newMessage = !notifySettings.newMessage">
-                    <view class="toggle-thumb"></view>
-                  </view>
-                </view>
-                <view class="settings-option-row no-border">
-                  <view class="option-row-left">
-                    <text class="option-row-title">消息提示音</text>
-                    <text class="option-row-desc">收到消息时播放提示音效</text>
-                  </view>
-                  <view class="toggle-switch" :class="{ on: notifySettings.sound }" @click="notifySettings.sound = !notifySettings.sound">
-                    <view class="toggle-thumb"></view>
-                  </view>
-                </view>
-              </view>
-            </view>
-          </view>
-        </template>
-
-        <!-- 隐私设置 -->
-        <template v-else-if="profileSettingsTab === 'privacy'">
-          <view class="settings-panel-header">
-            <text class="settings-panel-title">隐私设置</text>
-            <text class="settings-panel-subtitle">控制谁可以联系你和查看你的信息</text>
-          </view>
-          <view class="settings-body">
-            <view class="settings-section">
-              <text class="section-label">好友管理</text>
-              <view class="settings-option-list">
-                <view class="settings-option-row no-border">
-                  <view class="option-row-left">
-                    <text class="option-row-title">添加好友需要验证</text>
-                    <text class="option-row-desc">开启后，他人添加你时需通过验证</text>
-                  </view>
-                  <view class="toggle-switch" :class="{ on: privacySettings.friendVerify }" @click="privacySettings.friendVerify = !privacySettings.friendVerify">
-                    <view class="toggle-thumb"></view>
-                  </view>
-                </view>
-              </view>
-            </view>
-          </view>
-        </template>
-
-        <!-- 通用设置 -->
-        <template v-else-if="profileSettingsTab === 'general'">
-          <view class="settings-panel-header">
-            <text class="settings-panel-title">通用设置</text>
-            <text class="settings-panel-subtitle">应用全局功能配置</text>
-          </view>
-          <view class="settings-body">
-            <view class="settings-section">
-              <text class="section-label">账号操作</text>
-              <view class="settings-option-list">
-                <view class="settings-option-row danger-row no-border" @click="handleLogout">
-                  <view class="option-row-left">
-                    <text class="option-row-title danger">退出登录</text>
-                    <text class="option-row-desc">退出后需重新登录才能继续使用</text>
-                  </view>
-                  <text class="option-row-arrow">›</text>
-                </view>
-              </view>
-            </view>
-          </view>
-        </template>
-      </view>
+      <SettingsPanel
+        :userInfo="userInfo"
+        :defaultAvatar="defaultAvatar"
+        @openEditProfile="openEditProfile"
+        @openQrCode="showQrCode = true"
+        @logout="handleLogout"
+      />
     </view>
 
-    <!-- 聊天区域 -->
-    <view
-      class="chat-area"
+    <!-- 聊天区域：输入/发送/录音/拖拽由 ChatArea 组件 + useSendMessage composable 统一管理 -->
+    <ChatArea
       v-if="currentSidebarTab === 'chat' && currentSession"
-    >
-      <view class="chat-header">
-        <text class="chat-name">{{ currentSession.sessionName }}</text>
-        <view class="header-tools">
-          <text class="tool-icon">📞</text>
-          <text class="tool-icon">📹</text>
-          <text class="tool-icon" @click.stop="toggleChatInfoPanel">···</text>
-        </view>
-        <!-- 菜单仅在头像弹出层内显示，头部不再渲染重复菜单 -->
-      </view>
-      <!-- 聊天信息面板（点击头部小点显示） -->
-      <view class="chat-info-panel" v-if="showChatInfoPanel" @click.stop>
-        <view class="chat-info-avatars">
-          <view
-            class="avatar-item"
-            v-if="getFriendForCurrentSession()"
-            @click.stop="
-              openProfileFromPanel(
-                $event,
-                getFriendForCurrentSession(),
-                getFriendForCurrentSession().userId,
-              )
-            "
-          >
-            <image
-              :id="'profile-avatar-' + getFriendForCurrentSession().userId"
-              :src="getFriendForCurrentSession().avatar || defaultAvatar"
-              class="info-avatar"
-              mode="aspectFill"
-              @click.stop="
-                openProfileFromPanel(
-                  $event,
-                  getFriendForCurrentSession(),
-                  getFriendForCurrentSession().userId,
-                )
-              "
-            />
-            <text
-              class="avatar-name"
-              @click.stop="
-                openProfileFromPanel(
-                  $event,
-                  getFriendForCurrentSession(),
-                  getFriendForCurrentSession().userId,
-                )
-              "
-              >{{ getFriendForCurrentSession().nickname }}</text
-            >
-            <!-- 头像弹出层已移出到顶级 Teleport 渲染，保持此处占位 -->
-          </view>
-          <view class="avatar-item add-avatar">
-            <text class="add-plus">+</text>
-            <text class="avatar-name">添加</text>
-          </view>
-        </view>
-        <view class="chat-info-options">
-          <view class="option-item" @click="findChatContent">查找聊天内容</view>
-          <view class="option-item toggle-row">
-            <text>消息免打扰</text>
-            <input
-              type="checkbox"
-              :checked="doNotDisturb"
-              @change="toggleDoNotDisturb"
-            />
-          </view>
-          <view class="option-item toggle-row">
-            <text>置顶聊天</text>
-            <input type="checkbox" :checked="pinned" @change="togglePinChat" />
-          </view>
-          <view class="option-item option-danger" @click="clearChatRecords"
-            >清空聊天记录</view
-          >
-        </view>
-      </view>
-
-      <scroll-view
-        class="chat-messages"
-        scroll-y="true"
-        :scroll-into-view="scrollToView"
-        :scroll-with-animation="true"
-        @scroll="onChatScroll"
-        ref="chatMessagesRef"
-      >
-        <view class="messages-inner-wrapper">
-          <view v-if="messagesWithTime.length === 0" class="empty-tip">
-            暂无消息，发送一条消息开始聊天吧
-          </view>
-
-          <template v-for="(item, index) in messagesWithTime" :key="index">
-            <view v-if="item.type === 'time'" class="time-separator">
-              {{ item.timeText }}
-            </view>
-
-            <view
-              v-else-if="item.type === 'msg'"
-              class="message-item"
-              :class="isMyMessage(item.msg) ? 'self' : 'other'"
-              :id="'msg-' + item.msg.id"
-            >
-              <image
-                :src="item.msg.avatar || defaultAvatar"
-                class="message-avatar"
-                mode="aspectFill"
-              ></image>
-
-              <view class="message-content-wrapper">
-                <view
-                  v-if="
-                    currentSession.sessionType === SESSION_TYPE.GROUP &&
-                    !isMyMessage(item.msg) &&
-                    item.msg.sender_name
-                  "
-                  class="message-sender"
-                >
-                  {{ item.msg.sender_name }}
-                </view>
-                <view
-                  v-if="
-                    item.msg.message_type === MESSAGE_TYPE.TEXT &&
-                    item.msg.content &&
-                    item.msg.content.trim()
-                  "
-                  class="message-content"
-                >
-                  {{ item.msg.content }}
-                </view>
-
-                <image
-                  v-else-if="
-                    item.msg.message_type === MESSAGE_TYPE.IMAGE &&
-                    item.msg.file_url
-                  "
-                  :src="item.msg.local_file_url || item.msg.file_url"
-                  class="message-image"
-                  @click="handleImageClick(item.msg)"
-                  mode="aspectFill"
-                  :lazy-load="true"
-                ></image>
-
-                <video
-                  v-else-if="
-                    item.msg.message_type === MESSAGE_TYPE.VIDEO &&
-                    item.msg.file_url
-                  "
-                  :src="item.msg.local_file_url || item.msg.file_url"
-                  class="message-video"
-                  controls
-                  show-center-play-btn
-                  @click="handleVideoClick(item.msg)"
-                ></video>
-
-                <view
-                  v-else-if="item.msg.message_type === MESSAGE_TYPE.AUDIO"
-                  class="message-voice"
-                  @click="handleVoiceClick(item.msg)"
-                >
-                  <text class="voice-icon">🔊</text>
-                  <text class="voice-duration"
-                    >{{ item.msg.duration || '1' }}''</text
-                  >
-                  <text v-if="item.msg.is_downloading" class="downloading-text"
-                    >下载中...</text
-                  >
-                </view>
-
-                <view
-                  v-else-if="
-                    item.msg.message_type === MESSAGE_TYPE.FILE &&
-                    item.msg.file_url
-                  "
-                  class="message-file"
-                  @click="handleFileClick(item.msg)"
-                >
-                  <text class="file-icon">📄</text>
-                  <view class="file-info">
-                    <text class="file-name">{{
-                      item.msg.file_name || '未知文件'
-                    }}</text>
-                    <text class="file-size">{{
-                      formatFileSize(item.msg.file_size)
-                    }}</text>
-                    <text
-                      v-if="item.msg.is_downloading"
-                      class="downloading-text"
-                      >下载中 {{ item.msg.download_progress || 0 }}%</text
-                    >
-                  </view>
-                </view>
-
-                <view v-else class="message-content">
-                  {{ item.msg.content_replaced || item.msg.content || '' }}
-                </view>
-              </view>
-            </view>
-          </template>
-        </view>
-      </scroll-view>
-
-      <view
-        v-if="showScrollToBottom"
-        class="scroll-to-bottom-btn"
-        @click="scrollToBottom"
-      >
-        <text class="scroll-icon">↓</text>
-      </view>
-
-      <view v-if="isRecording" class="recording-mask" @click.stop>
-        <view class="recording-modal">
-          <text class="recording-wave">🎙️</text>
-          <text class="recording-modal-text"
-            >正在录音... {{ recordingDuration }}s</text
-          >
-          <view class="recording-btns">
-            <button class="cancel-voice-btn" @click="cancelVoice">取消</button>
-            <button class="send-voice-btn" @click="stopAndSendVoice">
-              发送
-            </button>
-          </view>
-        </view>
-      </view>
-
-      <view class="chat-input-area">
-        <view v-if="pendingFiles.length > 0" class="pending-files">
-          <view
-            v-for="(file, index) in pendingFiles"
-            :key="index"
-            class="pending-file-item"
-          >
-            <image
-              v-if="file.message_type === MESSAGE_TYPE.IMAGE"
-              :src="file.file_url"
-              class="pending-file-image"
-              mode="aspectFill"
-            ></image>
-            <view
-              v-else-if="file.message_type === MESSAGE_TYPE.VIDEO"
-              class="pending-file-video"
-            >
-              <text class="video-icon">🎬</text>
-              <text class="file-name">{{ file.file_name }}</text>
-            </view>
-            <view v-else class="pending-file-doc">
-              <text class="doc-icon">📄</text>
-              <text class="file-name">{{ file.file_name }}</text>
-            </view>
-            <text class="remove-btn" @click="removePendingFile(index)">×</text>
-          </view>
-        </view>
-
-        <view class="input-tools">
-          <view class="tool-icon-wrapper" @click="toggleVoiceRecording">
-            <text v-if="!isRecording" class="tool-icon">🎤</text>
-            <view v-else class="recording-btn-active">
-              <text class="recording-pulse">🔴</text>
-            </view>
-          </view>
-
-          <view class="emoji-btn-wrapper" ref="emojiBtnRef">
-            <text class="tool-icon" @click="toggleEmojiPanel">😊</text>
-            <view class="emoji-panel" v-if="showEmojiPanel" @click.stop>
-              <view class="emoji-section" v-if="recentEmojis.length > 0">
-                <view class="emoji-title">最近使用</view>
-                <view class="emoji-grid">
-                  <text
-                    class="emoji-item"
-                    v-for="(emoji, index) in recentEmojis"
-                    :key="`recent-${index}`"
-                    @click="insertEmoji(emoji)"
-                    >{{ emoji }}</text
-                  >
-                </view>
-              </view>
-
-              <view class="emoji-section">
-                <view class="emoji-title">所有表情</view>
-                <scroll-view class="emoji-scroll" scroll-y="true">
-                  <view class="emoji-grid">
-                    <text
-                      class="emoji-item"
-                      v-for="(emoji, index) in allEmojis"
-                      :key="`all-${index}`"
-                      @click="insertEmoji(emoji)"
-                      >{{ emoji }}</text
-                    >
-                  </view>
-                </scroll-view>
-              </view>
-            </view>
-          </view>
-
-          <text class="tool-icon">📦</text>
-          <text class="tool-icon" @click="chooseFile">📁</text>
-          <text class="tool-icon" @click="chooseImage">🖼️</text>
-        </view>
-
-        <div
-          class="input-container"
-          @dragenter="onInputDragEnter"
-          @dragover="onInputDragOver"
-          @dragleave="onInputDragLeave"
-          @drop="onInputDrop"
-          :class="{ 'drag-over': isInputDragOver }"
-        >
-          <textarea
-            v-model="inputMsg"
-            placeholder="输入消息..."
-            class="chat-input"
-            @keydown.enter="handleEnterKey"
-            @keydown.ctrl.enter="handleCtrlEnter"
-            :auto-height="true"
-            :maxlength="-1"
-            ref="inputRef"
-          />
-
-          <view class="send-btn-wrapper">
-            <button
-              class="send-btn"
-              :disabled="
-                (!inputMsg.trim() && pendingFiles.length === 0) || isSending
-              "
-              @click="sendMessageWithFiles"
-            >
-              {{ isSending ? '发送中...' : '发送(S)' }}
-            </button>
-          </view>
-        </div>
-      </view>
-    </view>
+      :currentSession="currentSession"
+      :messagesWithTime="messagesWithTime"
+      :showChatInfoPanel="showChatInfoPanel"
+      :friendForSession="getFriendForCurrentSession()"
+      :doNotDisturb="doNotDisturb"
+      :pinned="pinned"
+      :scrollToView="scrollToView"
+      :showScrollToBottom="showScrollToBottom"
+      :isRecording="isRecording"
+      :recordingDuration="recordingDuration"
+      :pendingFiles="pendingFiles"
+      v-model:inputMsg="inputMsg"
+      :isSending="isSending"
+      :isInputDragOver="isInputDragOver"
+      :showEmojiPanel="showEmojiPanel"
+      :recentEmojis="recentEmojis"
+      :allEmojis="allEmojis"
+      :defaultAvatar="defaultAvatar"
+      :MESSAGE_TYPE="MESSAGE_TYPE"
+      :SESSION_TYPE="SESSION_TYPE"
+      :currentUserId="CURRENT_USER_ID"
+      @toggleChatInfo="toggleChatInfoPanel"
+      @openProfile="openProfileFromPanel"
+      @findContent="findChatContent"
+      @toggleDoNotDisturb="toggleDoNotDisturb"
+      @togglePin="togglePinChat"
+      @clearRecords="clearChatRecords"
+      @chatScroll="onChatScroll"
+      @scrollToBottom="scrollToBottom"
+      @imageClick="handleImageClick"
+      @voiceClick="handleVoiceClick"
+      @fileClick="handleFileClick"
+      @cancelVoice="cancelVoice"
+      @stopAndSendVoice="stopAndSendVoice"
+      @toggleVoice="toggleVoiceRecording"
+      @toggleEmoji="toggleEmojiPanel"
+      @insertEmoji="insertEmoji"
+      @chooseImage="chooseImage"
+      @chooseFile="chooseFile"
+      @removePendingFile="removePendingFile"
+      @dragEnter="onInputDragEnter"
+      @dragOver="onInputDragOver"
+      @dragLeave="onInputDragLeave"
+      @drop="onInputDrop"
+      @enterKey="handleEnterKey"
+      @ctrlEnter="handleCtrlEnter"
+      @send="sendMessageWithFiles"
+    />
 
     <!-- 通讯录详情 -->
     <view
@@ -880,140 +403,31 @@
       @update:userInfo="handleUserInfoUpdate"
     />
 
-    <!-- 添加朋友弹窗 -->
-    <view v-if="showAddFriendModal" class="add-friend-mask" @click.self="closeAddFriend">
-      <view class="add-friend-modal" @click.stop>
-        <view class="add-friend-header">
-          <text class="add-friend-title">添加朋友</text>
-          <text class="add-friend-close" @click="closeAddFriend">✕</text>
-        </view>
-        <view class="add-friend-search-bar">
-          <view class="add-friend-input-wrap">
-            <text class="add-friend-search-icon">🔍</text>
-            <input
-              v-model="addFriendKeyword"
-              class="add-friend-input"
-              placeholder="搜索用户名或手机号"
-              @keyup.enter="searchUserForAdd"
-              :disabled="isSearchingUser"
-            />
-            <text v-if="addFriendKeyword" class="add-friend-clear" @click="clearAddFriendSearch">✕</text>
-          </view>
-          <button
-            class="add-friend-search-btn"
-            :disabled="!addFriendKeyword.trim() || isSearchingUser"
-            @click="searchUserForAdd"
-          >{{ isSearchingUser ? '搜索中...' : '搜索' }}</button>
-        </view>
-        <view class="add-friend-body">
-          <view v-if="!addFriendSearched" class="add-friend-hint">
-            <text class="hint-icon">👤</text>
-            <text class="hint-text">输入用户名或手机号，搜索添加新朋友</text>
-          </view>
-          <view v-else-if="isSearchingUser" class="add-friend-loading">
-            <text class="loading-text">搜索中...</text>
-          </view>
-          <view v-else-if="addFriendResult === null" class="add-friend-empty">
-            <text class="empty-icon">🔍</text>
-            <text class="empty-text">未找到该用户，请确认用户名是否正确</text>
-          </view>
-          <view v-else class="add-friend-result">
-            <image :src="addFriendResult.avatar || defaultAvatar" class="result-avatar" mode="aspectFill" />
-            <view class="result-info">
-              <text class="result-nickname">{{ addFriendResult.nickname }}</text>
-              <text class="result-username">用户名：{{ addFriendResult.username }}</text>
-              <text class="result-signature" v-if="addFriendResult.signature">{{ addFriendResult.signature }}</text>
-            </view>
-            <view class="result-action">
-              <button v-if="addFriendResult.isFriend" class="result-btn result-btn-already" disabled>已是好友</button>
-              <button v-else-if="addFriendResult.isApplied" class="result-btn result-btn-applied" disabled>已申请</button>
-              <button v-else class="result-btn result-btn-add" :disabled="isSendingApply" @click="sendFriendApply">
-                {{ isSendingApply ? '发送中...' : '+加好友' }}
-              </button>
-            </view>
-          </view>
-        </view>
-      </view>
-    </view>
+    <!-- 添加好友弹窗：弹窗内部的搜索/申请状态完全由子组件自管理 -->
+    <AddFriendModal
+      :show="showAddFriendModal"
+      :defaultAvatar="defaultAvatar"
+      @close="showAddFriendModal = false"
+      @applied="loadNotifications"
+    />
 
-    <!-- 加入群聊弹窗 -->
-    <view v-if="showJoinGroupModal" class="add-friend-mask" @click.self="closeJoinGroup">
-      <view class="add-friend-modal" @click.stop>
-        <view class="add-friend-header">
-          <text class="add-friend-title">加入群聊</text>
-          <text class="add-friend-close" @click="closeJoinGroup">✕</text>
-        </view>
-        <view class="add-friend-search-bar">
-          <view class="add-friend-input-wrap">
-            <text class="add-friend-search-icon">🔍</text>
-            <input
-              v-model="joinGroupKeyword"
-              class="add-friend-input"
-              placeholder="输入群名称搜索"
-              @keyup.enter="searchGroupForJoin"
-              :disabled="isSearchingGroup"
-            />
-            <text v-if="joinGroupKeyword" class="add-friend-clear" @click="clearJoinGroupSearch">✕</text>
-          </view>
-          <button
-            class="add-friend-search-btn"
-            :disabled="!joinGroupKeyword.trim() || isSearchingGroup"
-            @click="searchGroupForJoin"
-          >{{ isSearchingGroup ? '搜索中...' : '搜索' }}</button>
-        </view>
-        <view class="add-friend-body">
-          <view v-if="!joinGroupSearched" class="add-friend-hint">
-            <text class="hint-icon">👥</text>
-            <text class="hint-text">输入群名称，搜索并申请加入群聊</text>
-          </view>
-          <view v-else-if="isSearchingGroup" class="add-friend-loading">
-            <text class="loading-text">搜索中...</text>
-          </view>
-          <view v-else-if="!joinGroupResults || joinGroupResults.length === 0" class="add-friend-empty">
-            <text class="empty-icon">🔍</text>
-            <text class="empty-text">未找到相关群聊</text>
-          </view>
-          <view v-else class="join-group-result-list">
-            <view
-              class="join-group-item"
-              v-for="group in joinGroupResults"
-              :key="group.id"
-            >
-              <image :src="group.groupAvatar || defaultAvatar" class="result-avatar" mode="aspectFill" />
-              <view class="result-info">
-                <text class="result-nickname">{{ group.groupName }}</text>
-                <text class="result-username">{{ group.currentMemberCount }}/{{ group.maxMember }} 人</text>
-                <text class="result-signature">
-                  {{ group.joinType === 2 ? '免审核加入' : group.joinType === 3 ? '仅邀请加入' : '需审核加入' }}
-                </text>
-              </view>
-              <view class="result-action">
-                <button
-                  v-if="group.applyStatus === 'member'"
-                  class="result-btn result-btn-already" disabled
-                >已加入</button>
-                <button
-                  v-else-if="group.applyStatus === 'pending'"
-                  class="result-btn result-btn-applied" disabled
-                >已申请</button>
-                <button
-                  v-else-if="group.joinType === 3"
-                  class="result-btn result-btn-already" disabled
-                >仅邀请</button>
-                <button
-                  v-else
-                  class="result-btn result-btn-add"
-                  :disabled="isApplyingGroup"
-                  @click="applyJoinGroupFn(group)"
-                >
-                  {{ isApplyingGroup ? '申请中...' : '申请加入' }}
-                </button>
-              </view>
-            </view>
-          </view>
-        </view>
-      </view>
-    </view>
+    <!-- 加入群聊弹窗：弹窗内部的搜索/申请状态完全由子组件自管理 -->
+    <JoinGroupModal
+      :show="showJoinGroupModal"
+      :currentUserId="CURRENT_USER_ID"
+      :defaultAvatar="defaultAvatar"
+      @close="showJoinGroupModal = false"
+      @joined="loadGroups"
+    />
+
+    <!-- 我的二维码弹窗：将 wechatId 编码为 QR 供他人扫码添加好友 -->
+    <QrCodeModal
+      :show="showQrCode"
+      :wechatId="userInfo.wechatId"
+      :nickname="userInfo.nickname"
+      :avatar="userInfo.avatar || defaultAvatar"
+      @close="showQrCode = false"
+    />
     <!-- 个人资料模态（从聊天信息面板或头像点击打开） -->
     <view
       v-if="showProfileModal"
@@ -1084,13 +498,31 @@
     <view
       v-if="mobileCurrentTab === 'chat' && !currentMobileChat"
       class="mobile-session-list"
+      @click="showMobilePlusMenu = false"
     >
       <!-- 顶部导航栏 -->
       <view class="mobile-navbar">
         <text class="mobile-title">微信</text>
         <view class="mobile-nav-icons">
-          <text class="mobile-icon" @click="toggleSearch">🔍</text>
-          <text class="mobile-icon">➕</text>
+          <text class="mobile-icon" @click.stop="toggleSearch">🔍</text>
+          <!-- ➕ 下拉菜单：添加朋友 / 加入群聊 -->
+          <view class="mobile-plus-wrapper" @click.stop>
+            <text
+              class="mobile-icon"
+              :class="{ 'mobile-icon-active': showMobilePlusMenu }"
+              @click="showMobilePlusMenu = !showMobilePlusMenu"
+            >➕</text>
+            <view v-if="showMobilePlusMenu" class="mobile-plus-dropdown">
+              <view class="mobile-plus-item" @click="openMobileAddFriend">
+                <text class="mobile-plus-icon">👤⁺</text>
+                <text class="mobile-plus-text">添加朋友</text>
+              </view>
+              <view class="mobile-plus-item" @click="openMobileJoinGroup">
+                <text class="mobile-plus-icon">👥</text>
+                <text class="mobile-plus-text">加入群聊</text>
+              </view>
+            </view>
+          </view>
         </view>
       </view>
 
@@ -1299,7 +731,7 @@
           @keyup.enter="performContactSearch"
         />
       </view>
-      <!-- 好友/群切换 -->
+      <!-- 好友/群聊/通知切换 -->
       <view class="mobile-contact-tab-bar">
         <view
           class="mobile-tab-item"
@@ -1315,8 +747,18 @@
         >
           <text>群聊</text>
         </view>
+        <!-- 通知 tab：待处理数量大于 0 时展示红点 -->
+        <view
+          class="mobile-tab-item mobile-notify-tab"
+          :class="{ 'mobile-active': selectedFriendTab === 'notify' }"
+          @click="selectedFriendTab = 'notify'"
+        >
+          <text>通知</text>
+          <view class="mobile-tab-badge" v-if="pendingNotifyCount > 0">{{ pendingNotifyCount }}</view>
+        </view>
       </view>
       <scroll-view scroll-y class="mobile-contacts-scroll">
+        <!-- 好友列表 -->
         <view v-if="selectedFriendTab === 'friends'">
           <view
             class="mobile-contact-item"
@@ -1335,7 +777,8 @@
             </view>
           </view>
         </view>
-        <view v-else>
+        <!-- 群聊列表 -->
+        <view v-else-if="selectedFriendTab === 'groups'">
           <view
             class="mobile-contact-item"
             v-for="group in filteredGroups"
@@ -1349,11 +792,79 @@
             />
             <view class="mobile-session-content">
               <text class="mobile-session-name">{{ group.groupName }}</text>
-              <text class="mobile-last-msg"
-                >{{ group.memberCount }} 个成员</text
-              >
+              <text class="mobile-last-msg">{{ group.memberCount }} 个成员</text>
             </view>
           </view>
+        </view>
+        <!-- 通知列表：复用与 PC 端相同的通知模板，接受处理函数也共用 -->
+        <view v-else-if="selectedFriendTab === 'notify'">
+          <view class="notify-loading" v-if="notifyLoading">
+            <text>加载中...</text>
+          </view>
+          <template v-else>
+            <!-- 好友申请 -->
+            <view class="notify-section" v-if="notifications.friendApplies.length > 0">
+              <view class="notify-section-title">好友申请</view>
+              <view
+                class="notify-item"
+                v-for="apply in notifications.friendApplies"
+                :key="'friend_' + apply.id"
+              >
+                <image
+                  :src="apply.applicantAvatar || defaultAvatar"
+                  class="notify-avatar"
+                  mode="aspectFill"
+                />
+                <view class="notify-info">
+                  <text class="notify-name">{{ apply.applicantNickname }}</text>
+                  <text class="notify-time">{{ formatMessageTime(apply.createTime) }}</text>
+                </view>
+                <view class="notify-actions" v-if="apply.status === 0">
+                  <button class="notify-btn accept-btn" @click.stop="handleFriendApply(apply.id, 1)">接受</button>
+                  <button class="notify-btn reject-btn" @click.stop="handleFriendApply(apply.id, 2)">拒绝</button>
+                </view>
+                <text
+                  class="notify-status-tag"
+                  :class="apply.status === 1 ? 'tag-accepted' : 'tag-rejected'"
+                  v-else
+                >
+                  {{ apply.status === 1 ? '已接受' : '已拒绝' }}
+                </text>
+              </view>
+            </view>
+            <!-- 群聊申请（作为群主/管理员收到的） -->
+            <view class="notify-section" v-if="notifications.groupApplies.length > 0">
+              <view class="notify-section-title">群聊申请</view>
+              <view
+                class="notify-item"
+                v-for="apply in notifications.groupApplies"
+                :key="'group_' + apply.id"
+              >
+                <image
+                  :src="apply.applicantAvatar || defaultAvatar"
+                  class="notify-avatar"
+                  mode="aspectFill"
+                />
+                <view class="notify-info">
+                  <text class="notify-name">{{ apply.applicantNickname }}</text>
+                  <text class="notify-group-name">申请加入 「{{ apply.groupName }}」</text>
+                  <text class="notify-time">{{ formatMessageTime(apply.createTime) }}</text>
+                </view>
+                <view class="notify-actions">
+                  <button class="notify-btn accept-btn" @click.stop="handleGroupApply(apply.id, 1)">同意</button>
+                  <button class="notify-btn reject-btn" @click.stop="handleGroupApply(apply.id, 2)">拒绝</button>
+                </view>
+              </view>
+            </view>
+            <!-- 空状态 -->
+            <view
+              class="notify-empty"
+              v-if="!notifications.friendApplies.length && !notifications.groupApplies.length"
+            >
+              <text class="notify-empty-icon">🔔</text>
+              <text class="notify-empty-text">暂无新通知</text>
+            </view>
+          </template>
         </view>
       </scroll-view>
     </view>
@@ -1446,13 +957,30 @@
   <view class="mobile-container">
     <!-- 使用相同的移动端布局，因为原生 APP 本身就是移动端 -->
     <!-- 会话列表页面 -->
-    <view v-if="!currentMobileChat" class="mobile-session-list">
+    <view v-if="!currentMobileChat" class="mobile-session-list" @click="showMobilePlusMenu = false">
       <!-- 顶部导航栏 -->
       <view class="mobile-navbar">
         <text class="mobile-title">微信</text>
         <view class="mobile-nav-icons">
-          <text class="mobile-icon" @click="toggleSearch">🔍</text>
-          <text class="mobile-icon">➕</text>
+          <text class="mobile-icon" @click.stop="toggleSearch">🔍</text>
+          <!-- ➕ 下拉菜单：添加朋友 / 加入群聊 -->
+          <view class="mobile-plus-wrapper" @click.stop>
+            <text
+              class="mobile-icon"
+              :class="{ 'mobile-icon-active': showMobilePlusMenu }"
+              @click="showMobilePlusMenu = !showMobilePlusMenu"
+            >➕</text>
+            <view v-if="showMobilePlusMenu" class="mobile-plus-dropdown">
+              <view class="mobile-plus-item" @click="openMobileAddFriend">
+                <text class="mobile-plus-icon">👤⁺</text>
+                <text class="mobile-plus-text">添加朋友</text>
+              </view>
+              <view class="mobile-plus-item" @click="openMobileJoinGroup">
+                <text class="mobile-plus-icon">👥</text>
+                <text class="mobile-plus-text">加入群聊</text>
+              </view>
+            </view>
+          </view>
         </view>
       </view>
 
@@ -1659,18 +1187,20 @@
 import { ref, computed, onMounted, nextTick, onUnmounted, watch } from 'vue'
 import ChatStorage from '@/utils/chat-storage'
 import service from '@/utils/request'
-import EditProfile from '@/components/EditProfile.vue'
-// 引入下载工具
+import EditProfile    from '@/components/EditProfile.vue'
+import QrCodeModal    from '@/components/home/QrCodeModal.vue'
+import AddFriendModal from '@/components/home/AddFriendModal.vue'
+import JoinGroupModal from '@/components/home/JoinGroupModal.vue'
+import SettingsPanel  from '@/components/home/SettingsPanel.vue'
+import ChatArea       from '@/components/home/ChatArea.vue'
+import { useNotifications } from '@/composables/useNotifications'
+import { useContacts }      from '@/composables/useContacts'
+import { useSendMessage }   from '@/composables/useSendMessage'
 import {
   handleMsgDownload,
-  FILE_SIZE_THRESHOLD,
   getUserInfoFromStorage,
   saveUserInfoToStorage,
 } from '@/utils/download-util'
-
-// #ifdef H5
-import SparkMD5 from 'spark-md5'
-// #endif
 
 // 编辑弹窗
 const showEditProfile = ref(false)
@@ -1695,14 +1225,13 @@ const SESSION_TYPE = { SINGLE: 1, GROUP: 2 }
 const SEND_STATUS = { PENDING: 'pending', SUCCESS: 'success', FAILED: 'failed' }
 const CHUNK_SIZE = 10 * 1024 * 1024
 
-// 【H5 设备检测】
+// H5 响应式布局：通过 UA 和窗口宽度动态判断是否为移动端
 // #ifdef H5
 const isMobileView = ref(false)
 
 const detectDevice = () => {
   if (typeof window !== 'undefined') {
     const ua = navigator.userAgent.toLowerCase()
-    // 检测 User-Agent 或窗口宽度
     const isMobileUA =
       /mobile|tablet|ios|android|iphone|ipad|windows phone/.test(ua)
     const isMobileWidth = window.innerWidth < 768
@@ -1710,7 +1239,6 @@ const detectDevice = () => {
   }
 }
 
-// 页面加载时检测
 const initDeviceDetection = () => {
   detectDevice()
   if (typeof window !== 'undefined') {
@@ -1725,7 +1253,7 @@ const cleanupDeviceDetection = () => {
 }
 // #endif
 
-// 【修奢1：用户信息持久化初始化】
+// 用户信息：启动时先尝试读取本地缓存，登录后由 loadCurrentUser 刷新
 const userInfo = ref({
   id: '',
   nickname: '我的昵称',
@@ -1734,13 +1262,6 @@ const userInfo = ref({
   region: '',
   signature: '',
 })
-
-// 个人主页设置页 tab
-const profileSettingsTab = ref('info')
-// 通知设置（本地状态，可后续对接接口）
-const notifySettings = ref({ newMessage: true, sound: true })
-// 隐私设置（本地状态，可后续对接接口）
-const privacySettings = ref({ friendVerify: true })
 
 // 状态
 const currentSidebarTab = ref('chat')
@@ -1753,28 +1274,10 @@ const sidebarSearchQuery = ref('')
 const contactSearchText = ref('')
 const contactSearchQuery = ref('')
 
-const inputMsg = ref('')
+// 消息列表、滚动定位状态由 home.vue 持有；输入区相关状态由 useSendMessage 提供
 const messages = ref([])
-const pendingFiles = ref([])
 const showScrollToBottom = ref(false)
 const scrollToView = ref('')
-const isInputDragOver = ref(false)
-const showEmojiPanel = ref(false)
-const recentEmojis = ref([])
-const allEmojis = ref([
-  '😀',
-  '😅',
-  '😍',
-  '😭',
-  '😊',
-  '😎',
-  '😢',
-  '😡',
-  '🥳',
-  '😱',
-  '🤔',
-  '👍',
-])
 // 聊天右上角菜单状态
 const showChatMenu = ref(false)
 // 黑名单（本地模拟）
@@ -1787,30 +1290,17 @@ const showProfileModal = ref(false)
 // 头像右侧小弹出层
 const showProfilePopover = ref(false)
 const showMoreMenu = ref(false)
-const showPlusMenu = ref(false) // 搜索栏旁的 + 下拉菜单
-// 添加朋友弹窗相关状态
+const showPlusMenu = ref(false)
+// 添加好友 / 加入群聊弹窗：展开关由父组件控制，弹窗内部状态由子组件自管理
 const showAddFriendModal = ref(false)
-const addFriendKeyword = ref('')
-const addFriendResult = ref(undefined) // undefined=未搜索, null=无结果, object=结果
-const addFriendSearched = ref(false)
-const isSearchingUser = ref(false)
-const isSendingApply = ref(false)
-// 加入群聊弹窗相关状态
 const showJoinGroupModal = ref(false)
-const joinGroupKeyword = ref('')
-const joinGroupSearched = ref(false)
-const isSearchingGroup = ref(false)
-const isApplyingGroup = ref(false)
-const joinGroupResults = ref([])
-// 通知相关状态
-const notifications = ref({ friendApplies: [], groupApplies: [] })
-const notifyLoading = ref(false)
-const isRecording = ref(false)
-const recordingDuration = ref(0)
-// 弹出层定位样式（用于把 profile popover 渲染到 body 并根据头像位置定位）
-const popoverStyle = ref({})
-// 弹出层当前所在侧：'right' 或 'left'
-const popoverSide = ref('right')
+// 我的二维码弹窗显隐
+const showQrCode = ref(false)
+// 通知状态：由 useNotifications composable 提供，包含好友申请 + 群聊申请
+const {
+  notifications, notifyLoading, pendingNotifyCount,
+  loadNotifications, handleFriendApply, handleGroupApply,
+} = useNotifications()
 
 // 文档级点击与键盘处理，用于关闭浮层
 const handleDocClick = (e) => {
@@ -1833,36 +1323,24 @@ watch(showProfilePopover, (visible) => {
   }
 })
 
-// 好友和群聊（从后端 API 加载，初始为空）
-const friends = ref([])
-
-const groups = ref([])
-
-const selectedFriendTab = ref('friends') // 'friends' | 'groups'
+// 好友和群聊列表、搜索、切换 Tab 由 useContacts composable 提供，在 switchSession 定义后初始化
 
 // 移动端状态
 const currentMobileChat = ref(null)
 const mobileCurrentTab = ref('chat') // 'chat' | 'contact' | 'profile'
+// 移动端聊天列表顶部 ➕ 下拉菜单状态
+const showMobilePlusMenu = ref(false)
 const showMobileSearch = ref(false)
 const mobileSearchText = ref('')
 const showEmojiMobile = ref(false)
 
-let mediaRecorder = null
-let audioStream = null
-let recordingTimer = null
-const isSending = ref(false)
+// msgIdCounter 由 cleanMessage/generateUniqueId 使用，需保留在 home.vue 范围内
 let msgIdCounter = 0
 
 // 计算属性
+// 会话列表所有未读数之和，用于侧边栏切换按鈕上的徽章数字
 const totalUnread = computed(() => {
   return sessions.value.reduce((sum, item) => sum + (item.unreadCount || 0), 0)
-})
-
-// 待处理通知数
-const pendingNotifyCount = computed(() => {
-  const fCount = notifications.value.friendApplies.filter(a => a.status === 0).length
-  const gCount = notifications.value.groupApplies.length
-  return fCount + gCount
 })
 
 const messagesWithTime = computed(() => {
@@ -1909,19 +1387,7 @@ const filteredSessions = computed(() => {
   return sessions.value.filter((s) => s.sessionName.toLowerCase().includes(q))
 })
 
-// 通讯录搜索结果（实时响应输入 `contactSearchText`）
-const filteredFriends = computed(() => {
-  if (!contactSearchText.value) return friends.value
-  const q = contactSearchText.value.toLowerCase()
-  return friends.value.filter((f) => f.nickname.toLowerCase().includes(q))
-})
-const filteredGroups = computed(() => {
-  if (!contactSearchText.value) return groups.value
-  const q = contactSearchText.value.toLowerCase()
-  return groups.value.filter((g) => g.groupName.toLowerCase().includes(q))
-})
 
-// 工具方法
 const formatMessageTime = (timeStr) => {
   if (!timeStr) return ''
   const msgTime = new Date(timeStr)
@@ -2264,10 +1730,10 @@ const closeProfileModal = () => {
   showProfileModal.value = false
 }
 
-// 【修复2：彻底移除自动下载逻辑，只保留空壳防止报错】
-const autoDownloadFiles = (msgList) => {
-  console.log('[Auto Download] 已关闭自动下载功能')
-}
+/**
+ * 自动下载功能已封却，空函数保d为占位备用。
+ */
+const autoDownloadFiles = (_msgList) => {}
 
 const formatFileSize = (bytes) => {
   if (!bytes) return '0B'
@@ -2306,82 +1772,13 @@ const togglePlusMenu = () => {
   showMoreMenu.value = false
 }
 
-// 打开添加朋友弹窗
+/**
+ * 开启添加朋友弹窗。
+ * 弹窗内部的搜索/申请状态由 AddFriendModal 组件完全自管理，父组件只需控制显隐。
+ */
 const openAddFriend = () => {
   showPlusMenu.value = false
-  addFriendKeyword.value = ''
-  addFriendResult.value = undefined
-  addFriendSearched.value = false
-  isSearchingUser.value = false
-  isSendingApply.value = false
   showAddFriendModal.value = true
-}
-
-// 关闭添加朋友弹窗
-const closeAddFriend = () => {
-  showAddFriendModal.value = false
-  addFriendKeyword.value = ''
-  addFriendResult.value = undefined
-  addFriendSearched.value = false
-}
-
-// 清除搜索输入
-const clearAddFriendSearch = () => {
-  addFriendKeyword.value = ''
-  addFriendResult.value = undefined
-  addFriendSearched.value = false
-}
-
-// 搜索用户
-const searchUserForAdd = async () => {
-  const keyword = addFriendKeyword.value.trim()
-  if (!keyword) return
-  isSearchingUser.value = true
-  addFriendSearched.value = true
-  addFriendResult.value = undefined
-  try {
-    const res = await service.get('/user/search', { params: { keyword } })
-    const user = res.data
-    if (!user) {
-      addFriendResult.value = null
-      return
-    }
-    // 检查是否已是好友
-    const alreadyFriend = friends.value.some((f) => f.userId === String(user.id))
-    addFriendResult.value = {
-      userId: String(user.id),
-      username: user.username,
-      nickname: user.nickname || user.username,
-      avatar: user.avatar || '',
-      signature: user.signature || '',
-      isFriend: alreadyFriend,
-      isApplied: false,
-    }
-  } catch (e) {
-    // 搜索失败列为未找到
-    addFriendResult.value = null
-    console.warn('搜索用户失败', e)
-  } finally {
-    isSearchingUser.value = false
-  }
-}
-
-// 发送好友申请
-const sendFriendApply = async () => {
-  if (!addFriendResult.value || isSendingApply.value) return
-  isSendingApply.value = true
-  try {
-    await service.post('/friend/apply', {
-      targetId: addFriendResult.value.userId,
-      remark: '',
-    })
-    addFriendResult.value = { ...addFriendResult.value, isApplied: true }
-    uni.showToast({ title: '好友申请已发送', icon: 'success' })
-  } catch (e) {
-    console.warn('发送好友申请失败', e)
-  } finally {
-    isSendingApply.value = false
-  }
 }
 
 const openCreateGroup = () => {
@@ -2389,201 +1786,20 @@ const openCreateGroup = () => {
   uni.showToast({ title: '发起群聊功能开发中', icon: 'none' })
 }
 
-// 切换通讯录 tab（切到通知时自动刷新）
-const switchContactTab = (tab) => {
-  selectedFriendTab.value = tab
-  if (tab === 'notify') {
-    loadNotifications()
-  } else if (tab === 'friends') {
-    loadFriends()
-  } else if (tab === 'groups') {
-    loadGroups()
-  }
-}
-
-// 加载好友列表
-const loadFriends = async () => {
-  try {
-    const res = await service.get('/friend/list')
-    if (res.code === 200 && Array.isArray(res.data)) {
-      friends.value = res.data.map(f => ({
-        userId: String(f.applicantId),
-        nickname: f.applicantNickname || f.applicantId,
-        avatar: f.applicantAvatar || '',
-        signature: f.remark || '',
-        status: 1,
-        isFriend: true,
-      }))
-    }
-  } catch (e) {
-    console.error('加载好友列表失败', e)
-  }
-}
-
-// 加载群聊列表
-const loadGroups = async () => {
-  try {
-    const res = await service.get('/group/list')
-    if (res.code === 200 && Array.isArray(res.data)) {
-      groups.value = res.data.map(g => ({
-        groupId: g.id,
-        groupName: g.groupName,
-        groupAvatar: g.groupAvatar || '',
-        memberCount: g.currentMemberCount || 0,
-        creatorId: g.creatorId,
-        myRole: g.myRole,
-        status: 1,
-      }))
-    }
-  } catch (e) {
-    console.error('加载群聊列表失败', e)
-  }
-}
-
-// 加载通知（好友申请 + 群聊申请）
-const loadNotifications = async () => {
-  notifyLoading.value = true
-  try {
-    const [friendRes, groupRes] = await Promise.all([
-      service.get('/friend/apply/received'),
-      service.get('/group/apply/received'),
-    ])
-    notifications.value.friendApplies = (friendRes.code === 200 && Array.isArray(friendRes.data))
-      ? friendRes.data
-      : []
-    notifications.value.groupApplies = (groupRes.code === 200 && Array.isArray(groupRes.data))
-      ? groupRes.data
-      : []
-  } catch (e) {
-    console.error('加载通知失败', e)
-  } finally {
-    notifyLoading.value = false
-  }
-}
-
-// 处理好友申请
-const handleFriendApply = async (applyId, status) => {
-  try {
-    await service.post('/friend/apply/handle', { applyId, status, rejectReason: '' })
-    // 就地更新状态
-    const idx = notifications.value.friendApplies.findIndex(a => a.id === applyId)
-    if (idx !== -1) {
-      notifications.value.friendApplies[idx] = {
-        ...notifications.value.friendApplies[idx],
-        status,
-      }
-    }
-    uni.showToast({ title: status === 1 ? '已接受好友申请' : '已拒绝', icon: 'success' })
-    // 接受后刷新好友列表
-    if (status === 1) loadFriends()
-  } catch (e) {
-    uni.showToast({ title: '操作失败', icon: 'none' })
-    console.error('处理好友申请失败', e)
-  }
-}
-
-// 处理群聊申请
-const handleGroupApply = async (applyId, status) => {
-  try {
-    await service.post('/group/apply/handle', { applyId, status, rejectReason: '' })
-    // 就地移除已处理的申请
-    notifications.value.groupApplies = notifications.value.groupApplies.filter(a => a.id !== applyId)
-    uni.showToast({ title: status === 1 ? '已同意入群' : '已拒绝', icon: 'success' })
-    if (status === 1) loadGroups()
-  } catch (e) {
-    uni.showToast({ title: '操作失败', icon: 'none' })
-    console.error('处理群聊申请失败', e)
-  }
-}
-
-// 加入群聊弹窗相关
+// 切换通讯录 tab—— useContacts 内部已处理各 tab 的数据刷新逗辑
 const openJoinGroup = () => {
   showPlusMenu.value = false
-  joinGroupKeyword.value = ''
-  joinGroupResults.value = []
-  joinGroupSearched.value = false
-  isSearchingGroup.value = false
-  isApplyingGroup.value = false
   showJoinGroupModal.value = true
 }
 
-const closeJoinGroup = () => {
-  showJoinGroupModal.value = false
-  joinGroupKeyword.value = ''
-  joinGroupResults.value = []
-  joinGroupSearched.value = false
-}
+const openChatFiles    = () => uni.showToast({ title: '功能开发中', icon: 'none' })
+const manageChatHistory = () => uni.showToast({ title: '功能开发中', icon: 'none' })
+const loadHistoryChat   = () => uni.showToast({ title: '功能开发中', icon: 'none' })
+const lockApp           = () => uni.showToast({ title: '功能开发中', icon: 'none' })
+const openFeedback      = () => uni.showToast({ title: '功能开发中', icon: 'none' })
+const openSettings      = () => uni.showToast({ title: '功能开发中', icon: 'none' })
 
-const clearJoinGroupSearch = () => {
-  joinGroupKeyword.value = ''
-  joinGroupResults.value = []
-  joinGroupSearched.value = false
-}
-
-const searchGroupForJoin = async () => {
-  const keyword = joinGroupKeyword.value.trim()
-  if (!keyword) return
-  isSearchingGroup.value = true
-  joinGroupSearched.value = true
-  joinGroupResults.value = []
-  try {
-    const res = await service.get('/group/search', { params: { keyword } })
-    if (res.code === 200 && Array.isArray(res.data)) {
-      joinGroupResults.value = res.data
-    }
-  } catch (e) {
-    console.warn('搜索群聊失败', e)
-  } finally {
-    isSearchingGroup.value = false
-  }
-}
-
-const applyJoinGroupFn = async (group) => {
-  if (isApplyingGroup.value) return
-  isApplyingGroup.value = true
-  try {
-    await service.post('/group/apply', { groupId: group.id, remark: '' })
-    // 更新该群在结果列表中的状态
-    const idx = joinGroupResults.value.findIndex(g => g.id === group.id)
-    if (idx !== -1) {
-      joinGroupResults.value[idx] = { ...joinGroupResults.value[idx], applyStatus: 'pending' }
-    }
-    uni.showToast({
-      title: group.joinType === 2 ? '已入群！' : '申请已提交，请等待审核',
-      icon: group.joinType === 2 ? 'success' : 'none',
-    })
-    if (group.joinType === 2) {
-      // 免审核直接加入，刷新群聊列表
-      loadGroups()
-    }
-  } catch (e) {
-    uni.showToast({ title: '申请失败', icon: 'none' })
-    console.warn('申请加入群聊失败', e)
-  } finally {
-    isApplyingGroup.value = false
-  }
-}
-
-const openChatFiles = () => {
-  uni.showToast({ title: '功能开发中', icon: 'none' })
-}
-const manageChatHistory = () => {
-  uni.showToast({ title: '功能开发中', icon: 'none' })
-}
-const loadHistoryChat = () => {
-  uni.showToast({ title: '功能开发中', icon: 'none' })
-}
-const lockApp = () => {
-  uni.showToast({ title: '功能开发中', icon: 'none' })
-}
-const openFeedback = () => {
-  uni.showToast({ title: '功能开发中', icon: 'none' })
-}
-const openSettings = () => {
-  uni.showToast({ title: '功能开发中', icon: 'none' })
-}
-
-// 退出登录
+// 退出登录：尝试调用后端接口并清除本地 token
 const handleLogout = async () => {
   try {
     await service.post('/user/logout')
@@ -2594,98 +1810,37 @@ const handleLogout = async () => {
     uni.redirectTo({ url: '/pages/index/index' })
   }
 }
+
 const switchSidebarTab = (tab) => {
   currentSidebarTab.value = tab
-  showMoreMenu.value = false
+  showMoreMenu.value   = false
   showEmojiPanel.value = false
 }
-const selectContact = (item) => {
-  currentContact.value = item
-}
-const toggleGroupExpand = (item) => {
-  item.expanded = !item.expanded
-}
 
-// 选择好友用于显示详情
+const selectContact    = (item) => { currentContact.value = item }
+const toggleGroupExpand = (item) => { item.expanded = !item.expanded }
+
+/**
+ * 展示好友详情（右侧面板）—— 仅更新当前联系人，不自行进入聊天
+ */
 const selectFriend = (friend) => {
   currentContact.value = {
     sessionName: friend.nickname,
-    avatar: friend.avatar,
-    type: 'person',
-    targetId: friend.userId,
-    desc: friend.signature,
+    avatar:      friend.avatar,
+    type:        'person',
+    targetId:    friend.userId,
+    desc:        friend.signature,
   }
 }
 
-// 选择群用于显示详情
+/** 展示群聊详情（右侧面板） */
 const selectGroup = (group) => {
   currentContact.value = {
     sessionName: group.groupName,
-    avatar: group.groupAvatar,
-    type: 'group',
-    targetId: group.groupId,
-    desc: `${group.memberCount} 个成员`,
-  }
-}
-
-const chatWithFriend = (friend) => {
-  const myId = CURRENT_USER_ID.value || ''
-  const sessionId = `${Math.min(Number(myId), Number(friend.userId))}_${Math.max(Number(myId), Number(friend.userId))}`
-  let session = sessions.value.find((s) => s.sessionId === sessionId)
-  if (!session) {
-    session = {
-      sessionId,
-      sessionName: friend.nickname,
-      sessionAvatar: friend.avatar,
-      targetType: 'person',
-      targetId: friend.userId,
-      lastMessageContent: '',
-      lastMessageTime: new Date().toISOString(),
-      unreadCount: 0,
-      sessionType: SESSION_TYPE.SINGLE,
-    }
-    sessions.value.unshift(session)
-  }
-  currentSidebarTab.value = 'chat'
-  switchSession(session)
-}
-
-const chatWithGroup = (group) => {
-  const sessionId = `group_${group.groupId}`
-  let session = sessions.value.find((s) => s.sessionId === sessionId)
-  if (!session) {
-    session = {
-      sessionId,
-      sessionName: group.groupName,
-      sessionAvatar: group.groupAvatar,
-      targetType: 'group',
-      targetId: group.groupId,
-      lastMessageContent: '',
-      lastMessageTime: new Date().toISOString(),
-      unreadCount: 0,
-      sessionType: SESSION_TYPE.GROUP,
-    }
-    sessions.value.unshift(session)
-  }
-  currentSidebarTab.value = 'chat'
-  switchSession(session)
-}
-
-// 通用详情页聊天按钮
-const chatWithContact = () => {
-  if (!currentContact.value) return
-  if (currentContact.value.type === 'person') {
-    chatWithFriend({
-      userId: currentContact.value.targetId,
-      nickname: currentContact.value.sessionName,
-      avatar: currentContact.value.avatar,
-    })
-  } else if (currentContact.value.type === 'group') {
-    chatWithGroup({
-      groupId: currentContact.value.targetId,
-      groupName: currentContact.value.sessionName,
-      groupAvatar: currentContact.value.avatar,
-    })
+    avatar:      group.groupAvatar,
+    type:        'group',
+    targetId:    group.groupId,
+    desc:        `${group.memberCount} 个成员`,
   }
 }
 const switchSession = async (item) => {
@@ -2700,6 +1855,45 @@ const switchSession = async (item) => {
     console.error('清除未读失败', e)
   }
   loadMessages(item.sessionId)
+}
+
+/**
+ * useContacts: 好友 / 群聊列表、搜索过滤、切换 Tab、进入聊天的完整封装。
+ * switchSession 必须先于此调用，作为回调传入。
+ */
+const {
+  friends, groups, selectedFriendTab,
+  filteredFriends, filteredGroups,
+  loadFriends, loadGroups, switchContactTab,
+  chatWithFriend, chatWithGroup,
+} = useContacts({
+  sessions,
+  currentSidebarTab,
+  CURRENT_USER_ID,
+  switchSession,
+  contactSearchText,
+  SESSION_TYPE,
+  onSwitchNotify: loadNotifications,
+})
+
+/**
+ * 通用「发消息」按鈕：根据当前联系人类型调用对应的 chatWith 方法
+ */
+const chatWithContact = () => {
+  if (!currentContact.value) return
+  if (currentContact.value.type === 'person') {
+    chatWithFriend({
+      userId:   currentContact.value.targetId,
+      nickname: currentContact.value.sessionName,
+      avatar:   currentContact.value.avatar,
+    })
+  } else if (currentContact.value.type === 'group') {
+    chatWithGroup({
+      groupId:     currentContact.value.targetId,
+      groupName:   currentContact.value.sessionName,
+      groupAvatar: currentContact.value.avatar,
+    })
+  }
 }
 
 // 加载当前登录用户信息
@@ -2743,19 +1937,20 @@ const loadSessionList = async () => {
   }
 }
 
-// 【修复3：确保会话列表响应式更新，直接修改原数组项】
+/**
+ * 更新会话列表中指定会话的最新消息，并按置顶优先、时间逆序重新排序。
+ * 发送消息后即时调用，确保会话列表实时显示最新状态。
+ */
 const updateSessionLastMsg = (sessionId, content, sendTime) => {
   const idx = sessions.value.findIndex((s) => s.sessionId === sessionId)
   if (idx !== -1) {
-    // 使用 Vue.set 或直接替换数组确保响应式
     const updatedSession = {
       ...sessions.value[idx],
-      lastMessageContent: content,
-      lastMessageTime: sendTime,
+      lastMessageContent:  content,
+      lastMessageTime:     sendTime,
       lastMessageSenderId: CURRENT_USER_ID.value,
     }
     sessions.value.splice(idx, 1, updatedSession)
-    // 重新排序
     sessions.value = [...sessions.value].sort((a, b) => {
       if (a.isTop !== b.isTop) return b.isTop - a.isTop
       return new Date(b.lastMessageTime) - new Date(a.lastMessageTime)
@@ -2763,10 +1958,15 @@ const updateSessionLastMsg = (sessionId, content, sendTime) => {
   }
 }
 
+/**
+ * 加载指定会话的消息列表，采用 Local-First 策略：
+ *  1. 先读本地缓存并立即渲染（避免空白页）
+ *  2. 再将服务端最新数据作为权威源刷新视图 + 回写缓存
+ *  3. 网络失败时本地数据已展示，无需重复读取
+ */
 const loadMessages = async (sessionId) => {
   if (!sessionId) return
   try {
-    // 《第一步》优先读取本地缓存，实现即时渲染，无散头的加载空白
     const localMsgs = await ChatStorage.queryMessages(sessionId)
     if (localMsgs.length > 0) {
       messages.value = localMsgs.map((item) => cleanMessage(item))
@@ -2774,21 +1974,13 @@ const loadMessages = async (sessionId) => {
       scrollToBottom()
     }
 
-    // 《第二步》后台拉取服务端数据（以服务端为权威来源）
-    const res = await service.get('/chat/message/list', {
-      params: { sessionId },
-    })
+    const res = await service.get('/chat/message/list', { params: { sessionId } })
     if (res.code === 200 && Array.isArray(res.data) && res.data.length > 0) {
-      // 《第三步》将服务端数据写入本地缓存
       await ChatStorage.insertMessages(sessionId, res.data)
-      // 《第四步》用服务端最新数据更新视图
-      const cleanedList = res.data.map((item) => cleanMessage(item))
-      messages.value = cleanedList
-      autoDownloadFiles(cleanedList)
+      messages.value = res.data.map((item) => cleanMessage(item))
     }
   } catch (e) {
     console.error('加载消息失败', e)
-    // 网络异常时，本地数据已在第一步展示，无需重复读取
   } finally {
     await nextTick()
     scrollToBottom()
@@ -2830,7 +2022,7 @@ const handleVoiceClick = (msg) => {
 }
 const handleFileClick = (msg) => {
   console.log('[Manual Click] 触发下载:', msg)
-  // 【修复4：手动点击下载，传入 false 表示非自动触发】
+  // 手动点击下载，非自动触发（传 false）
   handleMsgDownload(msg, updateMsgInList, false)
 }
 const playVoice = (msg) => {
@@ -2843,436 +2035,41 @@ const playVoice = (msg) => {
   // #endif
 }
 
-// 输入与表情
-const handleEnterKey = (e) => {
-  if (!e.ctrlKey) {
-    e.preventDefault()
-    sendMessageWithFiles()
-  }
-}
-const handleCtrlEnter = (e) => {
-  inputMsg.value += '\n'
-}
-const toggleEmojiPanel = () => {
-  showEmojiPanel.value = !showEmojiPanel.value
-  showMoreMenu.value = false
-}
-const insertEmoji = (emoji) => {
-  inputMsg.value += emoji
-  let list = recentEmojis.value.filter((e) => e !== emoji)
-  list.unshift(emoji)
-  recentEmojis.value = list.slice(0, 8)
-}
-
-// 文件选择
-const chooseImage = () => {
-  // #ifdef H5
-  const input = document.createElement('input')
-  input.type = 'file'
-  input.accept = 'image/*'
-  input.onchange = (e) => {
-    const file = e.target.files[0]
-    if (file) {
-      const fileUrl = URL.createObjectURL(file)
-      pendingFiles.value.push({
-        message_type: MESSAGE_TYPE.IMAGE,
-        content: '[图片]',
-        file_url: fileUrl,
-        file_name: file.name,
-        file_size: file.size,
-        originalFile: file,
-      })
-    }
-  }
-  input.click()
-  // #endif
-}
-const chooseFile = () => {
-  // #ifdef H5
-  const input = document.createElement('input')
-  input.type = 'file'
-  input.onchange = (e) => {
-    const file = e.target.files[0]
-    if (file) {
-      const fileUrl = URL.createObjectURL(file)
-      pendingFiles.value.push({
-        message_type: MESSAGE_TYPE.FILE,
-        content: '[文件]',
-        file_url: fileUrl,
-        file_name: file.name,
-        file_size: file.size,
-        originalFile: file,
-      })
-    }
-  }
-  input.click()
-  // #endif
-}
-const removePendingFile = (index) => {
-  pendingFiles.value.splice(index, 1)
-}
-const onInputDragEnter = (e) => {
-  e.preventDefault()
-  isInputDragOver.value = true
-}
-const onInputDragOver = (e) => {
-  e.preventDefault()
-  isInputDragOver.value = true
-}
-const onInputDragLeave = (e) => {
-  e.preventDefault()
-  isInputDragOver.value = false
-}
-const onInputDrop = (e) => {
-  e.preventDefault()
-  isInputDragOver.value = false
-  // #ifdef H5
-  const files = e.dataTransfer?.files
-  if (!files) return
-  Array.from(files).forEach((file) => {
-    const fileUrl = URL.createObjectURL(file)
-    let msgType = MESSAGE_TYPE.FILE
-    if (file.type.startsWith('image/')) msgType = MESSAGE_TYPE.IMAGE
-    else if (file.type.startsWith('video/')) msgType = MESSAGE_TYPE.VIDEO
-    pendingFiles.value.push({
-      message_type: msgType,
-      content: `[${msgType === MESSAGE_TYPE.IMAGE ? '图片' : msgType === MESSAGE_TYPE.VIDEO ? '视频' : '文件'}]`,
-      file_url: fileUrl,
-      file_name: file.name,
-      file_size: file.size,
-      originalFile: file,
-    })
-  })
-  // #endif
-}
-
-// 语音
-const toggleVoiceRecording = () => {
-  isRecording.value ? cancelVoice() : startVoiceRecording()
-}
-const startVoiceRecording = async () => {
-  // #ifdef H5
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    audioStream = stream
-    const chunks = []
-    mediaRecorder = new MediaRecorder(stream)
-    mediaRecorder.ondataavailable = (e) =>
-      e.data.size > 0 && chunks.push(e.data)
-    mediaRecorder.onstop = () => {
-      const audioBlob = new Blob(chunks, { type: 'audio/mpeg' })
-      const audioUrl = URL.createObjectURL(audioBlob)
-      processVoiceData(
-        audioUrl,
-        recordingDuration.value * 1000,
-        audioBlob.size,
-        audioBlob,
-      )
-    }
-    mediaRecorder.start()
-    startRecordingTimer()
-    isRecording.value = true
-  } catch (e) {
-    uni.showToast({ title: '请允许麦克风权限', icon: 'none' })
-  }
-  // #endif
-}
-const stopAndSendVoice = () => {
-  if (!isRecording.value) return
-  stopRecordingTimer()
-  isRecording.value = false
-  // #ifdef H5
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop()
-  if (audioStream) audioStream.getTracks().forEach((t) => t.stop())
-  // #endif
-}
-const cancelVoice = () => {
-  isRecording.value = false
-  stopRecordingTimer()
-  if (audioStream) audioStream.getTracks().forEach((t) => t.stop())
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop()
-}
-const startRecordingTimer = () => {
-  recordingDuration.value = 0
-  if (recordingTimer) clearInterval(recordingTimer)
-  recordingTimer = setInterval(() => recordingDuration.value++, 1000)
-}
-const stopRecordingTimer = () => {
-  if (recordingTimer) clearInterval(recordingTimer)
-}
-const processVoiceData = async (tempUrl, duration, fileSize, blob) => {
-  if (recordingDuration.value < 1) {
-    uni.showToast({ title: '录音时间太短', icon: 'none' })
-    return
-  }
-  const voiceFile = new File([blob], `voice_${Date.now()}.mp3`, {
-    type: 'audio/mpeg',
-  })
-  const voiceData = {
-    message_type: MESSAGE_TYPE.AUDIO,
-    content: '[语音]',
-    file_url: tempUrl,
-    file_name: voiceFile.name,
-    file_size: fileSize,
-    duration: Math.ceil(duration / 1000),
-    originalFile: voiceFile,
-  }
-  isSending.value = true
-  try {
-    await sendSingleMessageInternal(voiceData)
-  } finally {
-    isSending.value = false
-  }
-}
-
-// 发送消息
-const sendMessageWithFiles = async () => {
-  if (isSending.value || !currentSession.value) return
-  const hasText = inputMsg.value.trim()
-  const hasFiles = pendingFiles.value.length > 0
-  if (!hasText && !hasFiles) return
-  isSending.value = true
-  try {
-    if (hasText) {
-      await sendSingleMessageInternal({
-        message_type: MESSAGE_TYPE.TEXT,
-        content: inputMsg.value,
-        originalFile: null,
-      })
-      inputMsg.value = ''
-    }
-    for (const file of pendingFiles.value) {
-      await sendSingleMessageInternal(file)
-    }
-    pendingFiles.value = []
-  } catch (err) {
-    console.error('发送失败', err)
-    uni.showToast({ title: '发送失败', icon: 'none' })
-  } finally {
-    isSending.value = false
-  }
-}
-const unwrapData = (res) => {
-  let data = res
-  if (data && data.data) data = data.data
-  if (data && data.data) data = data.data
-  return data
-}
-const calculateFileMD5 = (file) => {
-  return new Promise((resolve, reject) => {
-    // #ifdef H5
-    if (!file) return reject('No file')
-    const reader = new FileReader()
-    const spark = new SparkMD5.ArrayBuffer()
-    const chunkSize = 2 * 1024 * 1024
-    const chunks = Math.ceil(file.size / chunkSize)
-    let currentChunk = 0
-    reader.onload = (e) => {
-      spark.append(e.target.result)
-      currentChunk++
-      if (currentChunk < chunks) loadNext()
-      else resolve(spark.end())
-    }
-    reader.onerror = () => reject(new Error('MD5 failed'))
-    const loadNext = () => {
-      const start = currentChunk * chunkSize
-      const end = Math.min(start + chunkSize, file.size)
-      reader.readAsArrayBuffer(file.slice(start, end))
-    }
-    loadNext()
-    // #endif
-    // #ifndef H5
-    resolve(`md5_${Date.now()}`)
-    // #endif
-  })
-}
-
-const sendSingleMessageInternal = async (msgData) => {
-  const sessionId = currentSession.value.sessionId
-  const newId = Date.now() + ++msgIdCounter
-  const nowTime = new Date().toISOString()
-
-  const localMsg = cleanMessage({
-    id: newId,
-    session_id: sessionId,
-    message_type: msgData.message_type,
-    content: msgData.content,
-    local_file_url: msgData.file_url,
-    file_url: msgData.file_url,
-    file_name: msgData.file_name,
-    file_size: msgData.file_size,
-    duration: msgData.duration,
-    send_time: nowTime,
-    send_status: SEND_STATUS.PENDING,
-    sender_id: CURRENT_USER_ID.value,
-  })
-
-  messages.value.push(localMsg)
-  // 【修复5：发送消息立即更新会话列表】
-  updateSessionLastMsg(sessionId, msgData.content, nowTime)
-  scrollToBottom()
-
-  try {
-    let finalFileUrl = null
-    let finalFileName = msgData.file_name
-    let finalFileSize = msgData.file_size
-
-    if (msgData.originalFile) {
-      const file = msgData.originalFile
-      if (file.size < 10 * 1024 * 1024) {
-        console.log('>> 直传模式')
-        const sendDTO = {
-          messageNo: localMsg.messageNo,
-          sessionId,
-          sessionType: currentSession.value.sessionType,
-          senderId: CURRENT_USER_ID.value,
-          receiverId:
-            currentSession.value.sessionType === SESSION_TYPE.SINGLE
-              ? currentSession.value.targetId
-              : null,
-          messageType: msgData.message_type,
-          content: msgData.content,
-          duration: msgData.duration,
-          fileUrl: null,
-          fileName: finalFileName,
-          fileSize: finalFileSize,
-        }
-        const formData = new FormData()
-        formData.append('sendDTO', JSON.stringify(sendDTO))
-        formData.append('files', file)
-        const res = await service({
-          url: '/chat/message/send',
-          method: 'post',
-          data: formData,
-        })
-        const data = unwrapData(res)
-        finalFileUrl = data?.fileUrl
-        finalFileName = file.name
-        finalFileSize = file.size
-      } else {
-        console.log('>> 切片模式')
-        const fileMD5 = await calculateFileMD5(file)
-        const totalChunks = Math.ceil(file.size / CHUNK_SIZE)
-        console.log('>> [1/4] 检查文件...')
-        const checkRes = await service({
-          url: '/chat/file/check',
-          method: 'post',
-          params: { md5: fileMD5, fileName: file.name },
-        })
-        const checkData = unwrapData(checkRes)
-        if (!checkData) throw new Error('检查接口返回数据异常')
-        if (!checkData.shouldUpload) {
-          finalFileUrl = checkData.fileUrl
-        } else {
-          console.log('>> [2/4] 上传切片...')
-          const uploadedChunks = checkData.uploadedChunks || []
-          for (let i = 0; i < totalChunks; i++) {
-            if (uploadedChunks.includes(i)) continue
-            const start = i * CHUNK_SIZE
-            const end = Math.min(start + CHUNK_SIZE, file.size)
-            const chunkBlob = file.slice(start, end)
-            const formData = new FormData()
-            formData.append('md5', fileMD5)
-            formData.append('chunkIndex', i)
-            formData.append('fileName', file.name)
-            formData.append('totalChunks', totalChunks)
-            formData.append('fileSize', file.size)
-            formData.append('file', chunkBlob)
-            await service({
-              url: '/chat/file/upload-chunk',
-              method: 'post',
-              data: formData,
-            })
-            console.log(`>> 切片 ${i + 1}/${totalChunks} 完成`)
-          }
-          console.log('>> [3/4] 合并文件...')
-          const mergeRes = await service({
-            url: '/chat/file/merge',
-            method: 'post',
-            params: {
-              md5: fileMD5,
-              fileName: file.name,
-              totalChunks,
-              isPublic: currentSession.value.sessionType === SESSION_TYPE.GROUP,
-            },
-          })
-          finalFileUrl = unwrapData(mergeRes)
-          if (finalFileUrl && typeof finalFileUrl === 'object') {
-            finalFileUrl =
-              finalFileUrl.url || finalFileUrl.fileUrl || finalFileUrl
-          }
-        }
-        finalFileName = file.name
-        finalFileSize = file.size
-      }
-    }
-
-    if (
-      !msgData.originalFile ||
-      (msgData.originalFile && msgData.originalFile.size >= 10 * 1024 * 1024)
-    ) {
-      console.log('>> [4/4] 发送消息通知...')
-      const sendDTO = {
-        messageNo: localMsg.messageNo,
-        sessionId,
-        sessionType: currentSession.value.sessionType,
-        senderId: CURRENT_USER_ID.value,
-        receiverId:
-          currentSession.value.sessionType === SESSION_TYPE.SINGLE
-            ? currentSession.value.targetId
-            : null,
-        messageType: msgData.message_type,
-        content: msgData.content,
-        duration: msgData.duration,
-        fileUrl: finalFileUrl,
-        fileName: finalFileName,
-        fileSize: finalFileSize,
-      }
-      const formData = new FormData()
-      formData.append('sendDTO', JSON.stringify(sendDTO))
-      const res = await service({
-        url: '/chat/message/send',
-        method: 'post',
-        data: formData,
-      })
-      const serverData = unwrapData(res)
-      if (serverData) Object.assign(localMsg, serverData)
-    }
-
-    const serverMsg = {
-      ...localMsg,
-      file_url: finalFileUrl,
-      send_status: SEND_STATUS.SUCCESS,
-    }
-    serverMsg.local_file_url = localMsg.local_file_url
-    const idx = messages.value.findIndex(
-      (m) => m.messageNo === localMsg.messageNo,
-    )
-    if (idx !== -1) {
-      messages.value[idx] = cleanMessage(serverMsg)
-      if (ChatStorage.insertMessage)
-        await ChatStorage.insertMessage(messages.value[idx])
-    }
-    console.log('>> 发送流程完成')
-  } catch (err) {
-    console.error('>> 发送异常:', err)
-    const idx = messages.value.findIndex((m) => m.id === newId)
-    if (idx !== -1) {
-      messages.value[idx].send_status = SEND_STATUS.FAILED
-      messages.value = [...messages.value]
-    }
-    uni.showToast({ title: err.message || '发送失败', icon: 'none' })
-  }
-}
-
 const performContactSearch = () => {
   contactSearchQuery.value = contactSearchText.value.trim()
-  console.log('联系人搜索：', contactSearchQuery.value)
 }
 const performSessionSearch = () => {
   sidebarSearchQuery.value = sidebarSearchText.value.trim()
-  console.log('会话搜索：', sidebarSearchQuery.value)
 }
+
+/**
+ * useSendMessage: 输入、发送、文件、语音、拖拽所有逻辑的完整封装。
+ * 依赖 currentSession / CURRENT_USER_ID / messages / cleanMessage 等父级状态，
+ * 展开后的全部输入区状态和操作函数由 ChatArea 组件通过 props/events 使用。
+ */
+const {
+  inputMsg, pendingFiles, isSending,
+  isRecording, recordingDuration,
+  isInputDragOver, showEmojiPanel, recentEmojis, allEmojis,
+  sendMessageWithFiles,
+  handleEnterKey, handleCtrlEnter,
+  toggleEmojiPanel, insertEmoji,
+  chooseImage, chooseFile, removePendingFile,
+  onInputDragEnter, onInputDragOver, onInputDragLeave, onInputDrop,
+  toggleVoiceRecording, stopAndSendVoice, cancelVoice,
+  cleanup: cleanupSendMessage,
+} = useSendMessage({
+  currentSession,
+  CURRENT_USER_ID,
+  messages,
+  cleanMessage,
+  scrollToBottom,
+  updateSessionLastMsg,
+  SESSION_TYPE,
+  MESSAGE_TYPE,
+  SEND_STATUS,
+  CHUNK_SIZE,
+})
 
 // 切换好友/群时重置搜索内容
 watch(selectedFriendTab, () => {
@@ -3295,10 +2092,21 @@ const toggleSearch = () => {
 
 // H5/Mobile 底部 tab 切换统一方法
 const setMobileTab = (tab) => {
+  showMobilePlusMenu.value = false
   mobileCurrentTab.value = tab
   if (tab === 'chat') {
     currentMobileChat.value = null
   }
+}
+
+// 移动端 ➕ 菜单操作：关闭菜单后复用 PC 端的弹窗函数
+const openMobileAddFriend = () => {
+  showMobilePlusMenu.value = false
+  openAddFriend()
+}
+const openMobileJoinGroup = () => {
+  showMobilePlusMenu.value = false
+  openJoinGroup()
 }
 
 // ========== 移动端方法 ==========
@@ -3403,8 +2211,7 @@ onUnmounted(() => {
   cleanupDeviceDetection()
   // #endif
 
-  if (audioStream) audioStream.getTracks().forEach((t) => t.stop())
-  if (recordingTimer) clearInterval(recordingTimer)
+  cleanupSendMessage()
 })
 </script>
 <style scoped>
@@ -3991,282 +2798,6 @@ onUnmounted(() => {
   min-width: 0;
   overflow: hidden;
 }
-
-/* 左侧导航栏 */
-.settings-nav {
-  width: 220px;
-  flex-shrink: 0;
-  background: #fff;
-  border-right: 1px solid #ebebeb;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow-y: auto;
-}
-.settings-user-brief {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 24px 20px;
-  border-bottom: 1px solid #f0f0f0;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.settings-user-brief:hover { background: #fafafa; }
-.settings-brief-avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 8px;
-  flex-shrink: 0;
-  background: #e6e6e6;
-}
-.settings-brief-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.settings-brief-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: #1a1a1a;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.settings-brief-id {
-  font-size: 12px;
-  color: #bbb;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.settings-nav-group { padding: 10px 0; flex: 1; }
-.settings-nav-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 11px 20px;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-  color: #555;
-  font-size: 14px;
-  user-select: none;
-}
-.settings-nav-item:hover { background: #f5f5f5; color: #333; }
-.settings-nav-item.active { background: #edf4ff; color: #1677ff; font-weight: 500; }
-.settings-nav-icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
-.settings-nav-label { font-size: 14px; }
-
-/* 右侧内容区 */
-.settings-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-width: 0;
-  overflow-y: auto;
-  background: #f7f8fa;
-}
-.settings-panel-header {
-  padding: 28px 40px 22px;
-  background: #fff;
-  border-bottom: 1px solid #ebebeb;
-  flex-shrink: 0;
-}
-.settings-panel-title {
-  font-size: 20px;
-  font-weight: 600;
-  color: #1a1a1a;
-  display: block;
-}
-.settings-panel-subtitle {
-  font-size: 13px;
-  color: #bbb;
-  margin-top: 5px;
-  display: block;
-}
-.settings-body {
-  padding: 28px 40px;
-  display: flex;
-  flex-direction: column;
-  gap: 28px;
-}
-.settings-section {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.section-label {
-  font-size: 11px;
-  color: #aaa;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  padding-left: 4px;
-}
-
-/* 头像编辑区块 */
-.avatar-edit-block {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-  padding: 20px 24px;
-  background: #fff;
-  border-radius: 10px;
-  border: 1px solid #ebebeb;
-}
-.settings-avatar-preview {
-  width: 72px;
-  height: 72px;
-  border-radius: 10px;
-  flex-shrink: 0;
-  background: #e6e6e6;
-}
-.avatar-edit-meta { display: flex; flex-direction: column; gap: 10px; }
-.avatar-tip { font-size: 13px; color: #bbb; }
-
-/* 表单行 */
-.settings-form {
-  background: #fff;
-  border-radius: 10px;
-  border: 1px solid #ebebeb;
-  overflow: hidden;
-}
-.form-row {
-  display: flex;
-  align-items: center;
-  padding: 15px 20px;
-  border-bottom: 1px solid #f5f5f5;
-  gap: 12px;
-}
-.form-row.no-border { border-bottom: none; }
-.form-field-label {
-  font-size: 14px;
-  color: #666;
-  width: 88px;
-  flex-shrink: 0;
-}
-.form-field-value {
-  flex: 1;
-  font-size: 14px;
-  color: #1a1a1a;
-}
-.form-field-value.mono {
-  font-family: 'SF Mono', 'Consolas', monospace;
-  color: #555;
-  font-size: 13px;
-}
-.form-field-value.muted { color: #bbb; }
-.form-field-action {
-  font-size: 13px;
-  color: #1677ff;
-  cursor: pointer;
-  padding: 4px 10px;
-  border-radius: 5px;
-  transition: background 0.15s;
-  flex-shrink: 0;
-  user-select: none;
-}
-.form-field-action:hover { background: #edf4ff; }
-
-/* 通用按鈕 */
-.settings-action-btn {
-  display: inline-flex;
-  align-items: center;
-  padding: 6px 16px;
-  font-size: 13px;
-  color: #1677ff;
-  background: #edf4ff;
-  border: 1px solid #c7e0ff;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
-  white-space: nowrap;
-  line-height: 1.5;
-}
-.settings-action-btn:hover { background: #dceeff; border-color: #a8cefc; }
-
-/* 二维码卡片 */
-.qrcode-card {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  padding: 20px 24px;
-  background: #fff;
-  border-radius: 10px;
-  border: 1px solid #ebebeb;
-}
-.qrcode-placeholder-box {
-  width: 68px;
-  height: 68px;
-  background: #f5f5f5;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  border: 1px dashed #ddd;
-}
-.qrcode-placeholder-icon { font-size: 26px; }
-.qrcode-card-info { flex: 1; display: flex; flex-direction: column; gap: 6px; }
-.qrcode-card-title { font-size: 15px; font-weight: 500; color: #1a1a1a; }
-.qrcode-card-desc { font-size: 13px; color: #bbb; }
-
-/* 选项列表（账号安全/通知/隐私/通用） */
-.settings-option-list {
-  background: #fff;
-  border-radius: 10px;
-  border: 1px solid #ebebeb;
-  overflow: hidden;
-}
-.settings-option-row {
-  display: flex;
-  align-items: center;
-  padding: 15px 20px;
-  border-bottom: 1px solid #f5f5f5;
-  gap: 16px;
-}
-.settings-option-row.no-border { border-bottom: none; }
-.settings-option-row.danger-row { cursor: pointer; transition: background 0.15s; }
-.settings-option-row.danger-row:hover { background: #fff5f5; }
-.option-row-left {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.option-row-title { font-size: 14px; color: #1a1a1a; }
-.option-row-title.danger { color: #e53935; }
-.option-row-desc { font-size: 12px; color: #bbb; }
-.option-row-arrow { font-size: 22px; color: #ccc; line-height: 1; }
-
-/* Toggle 开关 */
-.toggle-switch {
-  width: 44px;
-  height: 24px;
-  background: #d9d9d9;
-  border-radius: 12px;
-  position: relative;
-  cursor: pointer;
-  transition: background 0.25s;
-  flex-shrink: 0;
-}
-.toggle-switch.on { background: #1677ff; }
-.toggle-thumb {
-  position: absolute;
-  width: 20px;
-  height: 20px;
-  background: #fff;
-  border-radius: 50%;
-  top: 2px;
-  left: 2px;
-  transition: left 0.25s;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
-}
-.toggle-switch.on .toggle-thumb { left: 22px; }
 
 /* 聊天区域 */
 .chat-area {
@@ -5266,231 +3797,6 @@ onUnmounted(() => {
   flex: 1;
 }
 
-/* ===== 添加朋友弹窗 ===== */
-.add-friend-mask {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.4);
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.add-friend-modal {
-  background: #fff;
-  border-radius: 8px;
-  width: 460px;
-  max-width: 94vw;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.add-friend-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px 12px;
-  border-bottom: 1px solid #f0f0f0;
-}
-.add-friend-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #1a1a1a;
-}
-.add-friend-close {
-  font-size: 16px;
-  color: #999;
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  line-height: 1;
-  transition: color 0.15s;
-}
-.add-friend-close:hover {
-  color: #333;
-}
-.add-friend-search-bar {
-  padding: 16px 20px;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  border-bottom: 1px solid #f0f0f0;
-}
-.add-friend-input-wrap {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  background: #f5f5f5;
-  border: 1px solid #e8e8e8;
-  border-radius: 6px;
-  padding: 0 10px;
-  gap: 6px;
-  transition: border-color 0.2s;
-}
-.add-friend-input-wrap:focus-within {
-  border-color: #07c160;
-}
-.add-friend-search-icon {
-  font-size: 14px;
-  color: #999;
-  flex-shrink: 0;
-}
-.add-friend-input {
-  flex: 1;
-  border: none;
-  background: transparent;
-  outline: none;
-  font-size: 14px;
-  height: 36px;
-  color: #333;
-}
-.add-friend-clear {
-  font-size: 14px;
-  color: #bbb;
-  cursor: pointer;
-  flex-shrink: 0;
-  line-height: 1;
-  padding: 2px;
-}
-.add-friend-clear:hover {
-  color: #666;
-}
-.add-friend-search-btn {
-  height: 36px;
-  padding: 0 18px;
-  background: #07c160;
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.15s;
-  flex-shrink: 0;
-}
-.add-friend-search-btn:hover {
-  background: #06ad56;
-}
-.add-friend-search-btn:disabled {
-  background: #b2dfca;
-  cursor: not-allowed;
-}
-.add-friend-body {
-  padding: 20px;
-  min-height: 160px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.add-friend-hint {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  color: #aaa;
-}
-.hint-icon {
-  font-size: 40px;
-}
-.hint-text {
-  font-size: 13px;
-  text-align: center;
-  line-height: 1.5;
-}
-.add-friend-loading {
-  color: #07c160;
-  font-size: 14px;
-}
-.add-friend-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  color: #aaa;
-}
-.empty-icon {
-  font-size: 36px;
-}
-.empty-text {
-  font-size: 13px;
-  text-align: center;
-}
-.add-friend-result {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 6px 0;
-}
-.result-avatar {
-  width: 52px;
-  height: 52px;
-  border-radius: 6px;
-  flex-shrink: 0;
-  background: #eee;
-}
-.result-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.result-nickname {
-  font-size: 15px;
-  font-weight: 600;
-  color: #1a1a1a;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.result-username {
-  font-size: 12px;
-  color: #888;
-}
-.result-signature {
-  font-size: 12px;
-  color: #aaa;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.result-action {
-  flex-shrink: 0;
-}
-.result-btn {
-  height: 34px;
-  padding: 0 16px;
-  border: none;
-  border-radius: 6px;
-  font-size: 13px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.15s, opacity 0.15s;
-}
-.result-btn-add {
-  background: #07c160;
-  color: #fff;
-}
-.result-btn-add:hover {
-  background: #06ad56;
-}
-.result-btn-add:disabled {
-  background: #b2dfca;
-  cursor: not-allowed;
-}
-.result-btn-already {
-  background: #f5f5f5;
-  color: #aaa;
-  cursor: default;
-}
-.result-btn-applied {
-  background: #f0faf5;
-  color: #07c160;
-  cursor: default;
-}
-
 /* ===== 通知 tab ===== */
 .notify-tab-item {
   position: relative;
@@ -5643,24 +3949,61 @@ onUnmounted(() => {
   color: #bbb;
 }
 
-/* ===== 加入群聊搜索结果列表 ===== */
-.join-group-result-list {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
+/* 移动端 ➕ 下拉菜单：仿微信深色圆角风格 */
+.mobile-plus-wrapper {
+  position: relative;
+  flex-shrink: 0;
 }
-.join-group-item {
+.mobile-icon-active {
+  opacity: 0.6;
+}
+.mobile-plus-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: -4px;
+  background: #3a3a3a;
+  border-radius: 8px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  min-width: 150px;
+  z-index: 1000;
+  overflow: hidden;
+  /* 小三角指向按钮 */
+}
+.mobile-plus-dropdown::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  right: 12px;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 6px solid #3a3a3a;
+}
+.mobile-plus-item {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 12px 0;
-  border-bottom: 1px solid #f0f0f0;
+  gap: 12px;
+  padding: 14px 18px;
+  cursor: pointer;
+  transition: background 0.15s;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
-.join-group-item:last-child {
+.mobile-plus-item:last-child {
   border-bottom: none;
 }
-
+.mobile-plus-item:active {
+  background: rgba(255, 255, 255, 0.12);
+}
+.mobile-plus-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.mobile-plus-text {
+  font-size: 15px;
+  color: #fff;
+  flex: 1;
+}
 /* ===== 移动端页面 ===== */
 .mobile-contact-page {
   flex: 1;
@@ -5678,10 +4021,36 @@ onUnmounted(() => {
   text-align: center;
   padding: 10px 0;
   color: #666;
+  font-size: 14px;
+  cursor: pointer;
+  position: relative;
 }
 .mobile-contact-tab-bar .mobile-tab-item.mobile-active {
   color: #07c160;
   border-bottom: 2px solid #07c160;
+  font-weight: 500;
+}
+
+/* 通知 tab 红点徽标 */
+.mobile-notify-tab {
+  position: relative;
+}
+.mobile-tab-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  background: #ff3b30;
+  color: #fff;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+  box-sizing: border-box;
+  pointer-events: none;
 }
 .mobile-contacts-scroll {
   flex: 1;

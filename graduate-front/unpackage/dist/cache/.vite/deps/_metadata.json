@@ -1,31 +1,37 @@
 {
-  "hash": "823e0c9b",
+  "hash": "396405ca",
   "configHash": "4cfa1ea6",
-  "lockfileHash": "88a384b6",
-  "browserHash": "03933d93",
+  "lockfileHash": "549771e7",
+  "browserHash": "aa9f70fd",
   "optimized": {
     "uview-plus": {
       "src": "../../../../../node_modules/uview-plus/index.js",
       "file": "uview-plus.js",
-      "fileHash": "e35db032",
+      "fileHash": "591d6536",
       "needsInterop": false
     },
     "axios": {
       "src": "../../../../../node_modules/axios/index.js",
       "file": "axios.js",
-      "fileHash": "23c9acfe",
+      "fileHash": "2f44af9d",
       "needsInterop": false
     },
     "axios-adapter-uniapp": {
       "src": "../../../../../node_modules/axios-adapter-uniapp/index.js",
       "file": "axios-adapter-uniapp.js",
-      "fileHash": "aa450c84",
+      "fileHash": "9b5832b7",
       "needsInterop": true
     },
     "spark-md5": {
       "src": "../../../../../node_modules/spark-md5/spark-md5.js",
       "file": "spark-md5.js",
-      "fileHash": "3da862db",
+      "fileHash": "adb3aaa5",
+      "needsInterop": true
+    },
+    "qrcode": {
+      "src": "../../../../../node_modules/qrcode/lib/browser.js",
+      "file": "qrcode.js",
+      "fileHash": "4bb4968f",
       "needsInterop": true
     }
   },
