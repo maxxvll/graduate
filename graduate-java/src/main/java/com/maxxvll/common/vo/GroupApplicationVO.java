@@ -19,7 +19,7 @@ public class GroupApplicationVO {
     /**
      * 群ID
      */
-    private String groupId;
+    private Long groupId;
     
     /**
      * 群名称

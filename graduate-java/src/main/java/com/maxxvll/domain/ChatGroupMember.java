@@ -26,7 +26,7 @@ public class ChatGroupMember {
     /**
      * 群ID（关联chat_group.id）
      */
-    private String groupId;
+    private Long groupId;
 
     /**
      * 成员ID（关联chat_user.id）
@@ -90,34 +90,34 @@ public class ChatGroupMember {
             return false;
         }
         ChatGroupMember other = (ChatGroupMember) that;
-        return (this.getId() == null ? other.getId() == null : this.getId().equals(other.getId()))
-            && (this.getGroupId() == null ? other.getGroupId() == null : this.getGroupId().equals(other.getGroupId()))
-            && (this.getUserId() == null ? other.getUserId() == null : this.getUserId().equals(other.getUserId()))
-            && (this.getRole() == null ? other.getRole() == null : this.getRole().equals(other.getRole()))
-            && (this.getJoinTime() == null ? other.getJoinTime() == null : this.getJoinTime().equals(other.getJoinTime()))
-            && (this.getInviterId() == null ? other.getInviterId() == null : this.getInviterId().equals(other.getInviterId()))
-            && (this.getIsMute() == null ? other.getIsMute() == null : this.getIsMute().equals(other.getIsMute()))
-            && (this.getIsQuit() == null ? other.getIsQuit() == null : this.getIsQuit().equals(other.getIsQuit()))
-            && (this.getQuitTime() == null ? other.getQuitTime() == null : this.getQuitTime().equals(other.getQuitTime()))
-            && (this.getCreatedAt() == null ? other.getCreatedAt() == null : this.getCreatedAt().equals(other.getCreatedAt()))
-            && (this.getUpdatedAt() == null ? other.getUpdatedAt() == null : this.getUpdatedAt().equals(other.getUpdatedAt()));
+        return (this.id == null ? other.id == null : this.id.equals(other.id))
+            && (this.groupId == null ? other.groupId == null : this.groupId.equals(other.groupId))
+            && (this.userId == null ? other.userId == null : this.userId.equals(other.userId))
+            && (this.role == null ? other.role == null : this.role.equals(other.role))
+            && (this.joinTime == null ? other.joinTime == null : this.joinTime.equals(other.joinTime))
+            && (this.inviterId == null ? other.inviterId == null : this.inviterId.equals(other.inviterId))
+            && (this.isMute == null ? other.isMute == null : this.isMute.equals(other.isMute))
+            && (this.isQuit == null ? other.isQuit == null : this.isQuit.equals(other.isQuit))
+            && (this.quitTime == null ? other.quitTime == null : this.quitTime.equals(other.quitTime))
+            && (this.createdAt == null ? other.createdAt == null : this.createdAt.equals(other.createdAt))
+            && (this.updatedAt == null ? other.updatedAt == null : this.updatedAt.equals(other.updatedAt));
     }
 
     @Override
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + ((getId() == null) ? 0 : getId().hashCode());
-        result = prime * result + ((getGroupId() == null) ? 0 : getGroupId().hashCode());
-        result = prime * result + ((getUserId() == null) ? 0 : getUserId().hashCode());
-        result = prime * result + ((getRole() == null) ? 0 : getRole().hashCode());
-        result = prime * result + ((getJoinTime() == null) ? 0 : getJoinTime().hashCode());
-        result = prime * result + ((getInviterId() == null) ? 0 : getInviterId().hashCode());
-        result = prime * result + ((getIsMute() == null) ? 0 : getIsMute().hashCode());
-        result = prime * result + ((getIsQuit() == null) ? 0 : getIsQuit().hashCode());
-        result = prime * result + ((getQuitTime() == null) ? 0 : getQuitTime().hashCode());
-        result = prime * result + ((getCreatedAt() == null) ? 0 : getCreatedAt().hashCode());
-        result = prime * result + ((getUpdatedAt() == null) ? 0 : getUpdatedAt().hashCode());
+        result = prime * result + ((id == null) ? 0 : id.hashCode());
+        result = prime * result + ((groupId == null) ? 0 : groupId.hashCode());
+        result = prime * result + ((userId == null) ? 0 : userId.hashCode());
+        result = prime * result + ((role == null) ? 0 : role.hashCode());
+        result = prime * result + ((joinTime == null) ? 0 : joinTime.hashCode());
+        result = prime * result + ((inviterId == null) ? 0 : inviterId.hashCode());
+        result = prime * result + ((isMute == null) ? 0 : isMute.hashCode());
+        result = prime * result + ((isQuit == null) ? 0 : isQuit.hashCode());
+        result = prime * result + ((quitTime == null) ? 0 : quitTime.hashCode());
+        result = prime * result + ((createdAt == null) ? 0 : createdAt.hashCode());
+        result = prime * result + ((updatedAt == null) ? 0 : updatedAt.hashCode());
         return result;
     }
 

@@ -70,28 +70,28 @@ public class GroupApplication {
             return false;
         }
         GroupApplication other = (GroupApplication) that;
-        return (this.getId() == null ? other.getId() == null : this.getId().equals(other.getId()))
-            && (this.getApplicantId() == null ? other.getApplicantId() == null : this.getApplicantId().equals(other.getApplicantId()))
-            && (this.getGroupId() == null ? other.getGroupId() == null : this.getGroupId().equals(other.getGroupId()))
-            && (this.getStatus() == null ? other.getStatus() == null : this.getStatus().equals(other.getStatus()))
-            && (this.getRejectReason() == null ? other.getRejectReason() == null : this.getRejectReason().equals(other.getRejectReason()))
-            && (this.getOperatorId() == null ? other.getOperatorId() == null : this.getOperatorId().equals(other.getOperatorId()))
-            && (this.getCreateTime() == null ? other.getCreateTime() == null : this.getCreateTime().equals(other.getCreateTime()))
-            && (this.getUpdateTime() == null ? other.getUpdateTime() == null : this.getUpdateTime().equals(other.getUpdateTime()));
+        return (this.id == null ? other.id == null : this.id.equals(other.id))
+            && (this.applicantId == null ? other.applicantId == null : this.applicantId.equals(other.applicantId))
+            && (this.groupId == null ? other.groupId == null : this.groupId.equals(other.groupId))
+            && (this.status == null ? other.status == null : this.status.equals(other.status))
+            && (this.rejectReason == null ? other.rejectReason == null : this.rejectReason.equals(other.rejectReason))
+            && (this.operatorId == null ? other.operatorId == null : this.operatorId.equals(other.operatorId))
+            && (this.createTime == null ? other.createTime == null : this.createTime.equals(other.createTime))
+            && (this.updateTime == null ? other.updateTime == null : this.updateTime.equals(other.updateTime));
     }
 
     @Override
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + ((getId() == null) ? 0 : getId().hashCode());
-        result = prime * result + ((getApplicantId() == null) ? 0 : getApplicantId().hashCode());
-        result = prime * result + ((getGroupId() == null) ? 0 : getGroupId().hashCode());
-        result = prime * result + ((getStatus() == null) ? 0 : getStatus().hashCode());
-        result = prime * result + ((getRejectReason() == null) ? 0 : getRejectReason().hashCode());
-        result = prime * result + ((getOperatorId() == null) ? 0 : getOperatorId().hashCode());
-        result = prime * result + ((getCreateTime() == null) ? 0 : getCreateTime().hashCode());
-        result = prime * result + ((getUpdateTime() == null) ? 0 : getUpdateTime().hashCode());
+        result = prime * result + ((id == null) ? 0 : id.hashCode());
+        result = prime * result + ((applicantId == null) ? 0 : applicantId.hashCode());
+        result = prime * result + ((groupId == null) ? 0 : groupId.hashCode());
+        result = prime * result + ((status == null) ? 0 : status.hashCode());
+        result = prime * result + ((rejectReason == null) ? 0 : rejectReason.hashCode());
+        result = prime * result + ((operatorId == null) ? 0 : operatorId.hashCode());
+        result = prime * result + ((createTime == null) ? 0 : createTime.hashCode());
+        result = prime * result + ((updateTime == null) ? 0 : updateTime.hashCode());
         return result;
     }
 

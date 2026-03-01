@@ -1,10 +1,10 @@
 create table chat_group
 (
-    id           varchar(64)                            not null comment '群ID（主键，雪花ID/UUID，对应消息表receiver_id、会话表target_id）'
+    id           bigint unsigned                        not null comment '群ID（主键，雪花算法生成，对应消息表receiver_id、会话表target_id）'
         primary key,
     group_name   varchar(128)                           not null comment '群名称（聊天列表展示）',
     group_avatar varchar(256)                           null comment '群头像URL',
-    creator_id   varchar(64)                            not null comment '创建人ID（关联chat_user.id）',
+    creator_id   bigint unsigned                    not null comment '创建人ID（关联chat_user.id）',
     max_member   int unsigned default '200'             not null comment '群最大成员数（默认200，可调整）',
     join_type    tinyint      default 1                 not null comment '加群方式：1-需审核，2-免审核，3-仅邀请',
     notice       text                                   null comment '群公告',
@@ -28,7 +28,7 @@ create table chat_group_member
 (
     id         bigint unsigned auto_increment comment '主键ID'
         primary key,
-    group_id   varchar(64)                        not null comment '群ID（关联chat_group.id）',
+    group_id   bigint unsigned                    not null comment '群ID（关联chat_group.id）',
     user_id    varchar(64)                        not null comment '成员ID（关联chat_user.id）',
     role       tinyint  default 3                 not null comment '成员角色：1-群主，2-管理员，3-普通成员',
     join_time  datetime default CURRENT_TIMESTAMP not null comment '加入时间',

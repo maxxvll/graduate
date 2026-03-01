@@ -42,7 +42,7 @@ public interface ChatGroupMemberService extends IService<ChatGroupMember> {
      * @param groupId 群ID
      * @return 成员列表
      */
-    List<GroupMemberVO> getGroupMembers(String groupId);
+    List<GroupMemberVO> getGroupMembers(Long groupId);
 
     /**
      * 获取群成员详情
@@ -50,7 +50,7 @@ public interface ChatGroupMemberService extends IService<ChatGroupMember> {
      * @param userId 用户ID
      * @return 成员信息
      */
-    GroupMemberVO getMemberInfo(String groupId, String userId);
+    GroupMemberVO getMemberInfo(Long groupId, String userId);
 
     /**
      * 检查用户是否在群中
@@ -58,7 +58,7 @@ public interface ChatGroupMemberService extends IService<ChatGroupMember> {
      * @param userId 用户ID
      * @return 是否在群中
      */
-    boolean isGroupMember(String groupId, String userId);
+    boolean isGroupMember(Long groupId, String userId);
 
     /**
      * 获取用户在群中的角色
@@ -66,12 +66,12 @@ public interface ChatGroupMemberService extends IService<ChatGroupMember> {
      * @param userId 用户ID
      * @return 角色：1-群主，2-管理员，3-普通成员，null-不在群中
      */
-    Integer getUserRole(String groupId, String userId);
+    Integer getUserRole(Long groupId, String userId);
 
     /**
      * 获取群成员数量
      * @param groupId 群ID
      * @return 成员数量
      */
-    long getMemberCount(String groupId);
+    long getMemberCount(Long groupId);
 }

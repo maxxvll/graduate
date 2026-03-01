@@ -19,7 +19,7 @@ public class GroupMemberVO {
     /**
      * 群ID
      */
-    private String groupId;
+    private Long groupId;
     
     /**
      * 成员ID

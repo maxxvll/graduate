@@ -13,9 +13,10 @@
     <!-- 聊天信息侧栏（点击「···」展开），包含成员头像和配置选项 -->
     <view class="chat-info-panel" v-if="showChatInfoPanel" @click.stop>
       <view class="chat-info-avatars">
+        <!-- 单聊显示好友头像 -->
         <view
           class="avatar-item"
-          v-if="friendForSession"
+          v-if="friendForSession && currentSession.sessionType === SESSION_TYPE.SINGLE"
           @click.stop="$emit('openProfile', $event, friendForSession, friendForSession.userId)"
         >
           <image
@@ -26,6 +27,25 @@
           />
           <text class="avatar-name">{{ friendForSession.nickname }}</text>
         </view>
+        
+        <!-- 群聊显示群成员头像 -->
+        <view
+          class="avatar-item"
+          v-for="member in getSessionMembers()"
+          :key="member.userId"
+          v-if="currentSession.sessionType === SESSION_TYPE.GROUP"
+          @click.stop="$emit('openProfile', $event, member, member.userId)"
+        >
+          <image
+            :id="'profile-avatar-' + member.userId"
+            :src="member.avatar || defaultAvatar"
+            class="info-avatar"
+            mode="aspectFill"
+          />
+          <text class="avatar-name">{{ member.nickname }}</text>
+        </view>
+        
+        <!-- 添加成员按钮 -->
         <view class="avatar-item add-avatar" @click="$emit('addMember')">
           <view class="add-plus-wrap"><text class="add-plus">+</text></view>
           <text class="avatar-name">添加</text>
@@ -340,6 +360,8 @@ const props = defineProps({
   MESSAGE_TYPE:      { type: Object,  required: true },
   SESSION_TYPE:      { type: Object,  required: true },
   currentUserId:     { type: [String, Number], default: '' },
+  // 群成员列表（用于群聊显示）
+  groupMembers:      { type: Array,   default: () => [] },
 })
 
 const emit = defineEmits([
@@ -408,6 +430,23 @@ const doPcRevoke = () => {
   const msg = pcCtxMenu.value.msg
   closePcCtxMenu()
   if (msg) emit('revokeMsg', msg)
+}
+
+/**
+ * 获取当前会话的成员信息（单聊好友或群成员）
+ * 用于聊天信息面板显示
+ */
+const getSessionMembers = () => {
+  if (!props.currentSession) return []
+  
+  if (props.currentSession.sessionType === props.SESSION_TYPE.SINGLE) {
+    // 单聊：返回好友信息
+    return props.friendForSession ? [props.friendForSession] : []
+  } else if (props.currentSession.sessionType === props.SESSION_TYPE.GROUP) {
+    // 群聊：返回群成员列表
+    return props.groupMembers || []
+  }
+  return []
 }
 
 /** 格式化文件大小：自动选择 B/KB/MB/GB */

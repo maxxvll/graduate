@@ -1,7 +1,6 @@
 package com.maxxvll.common;
 
 import com.maxxvll.common.enums.ErrorCode;
-import lombok.Data;
 
 import java.io.Serializable;
 
@@ -9,7 +8,6 @@ import java.io.Serializable;
  * 全局统一返回结果
  * @param <T> data字段的泛型，支持任意数据类型
  */
-@Data
 public class Result<T> implements Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -107,4 +105,14 @@ public class Result<T> implements Serializable {
     public static <T> Result<T> fail(ErrorCode errorCode, String customMsg, T data) {
         return new Result<>(errorCode.getCode(), customMsg, data);
     }
+
+    // 手动添加getter/setter方法
+    public int getCode() { return code; }
+    public void setCode(int code) { this.code = code; }
+    
+    public String getMsg() { return msg; }
+    public void setMsg(String msg) { this.msg = msg; }
+    
+    public T getData() { return data; }
+    public void setData(T data) { this.data = data; }
 }

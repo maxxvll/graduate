@@ -70,26 +70,26 @@ public class FriendApplication {
             return false;
         }
         FriendApplication other = (FriendApplication) that;
-        return (this.getId() == null ? other.getId() == null : this.getId().equals(other.getId()))
-            && (this.getApplicantId() == null ? other.getApplicantId() == null : this.getApplicantId().equals(other.getApplicantId()))
-            && (this.getTargetUserId() == null ? other.getTargetUserId() == null : this.getTargetUserId().equals(other.getTargetUserId()))
-            && (this.getStatus() == null ? other.getStatus() == null : this.getStatus().equals(other.getStatus()))
-            && (this.getRejectReason() == null ? other.getRejectReason() == null : this.getRejectReason().equals(other.getRejectReason()))
-            && (this.getCreateTime() == null ? other.getCreateTime() == null : this.getCreateTime().equals(other.getCreateTime()))
-            && (this.getUpdateTime() == null ? other.getUpdateTime() == null : this.getUpdateTime().equals(other.getUpdateTime()));
+        return (this.id == null ? other.id == null : this.id.equals(other.id))
+            && (this.applicantId == null ? other.applicantId == null : this.applicantId.equals(other.applicantId))
+            && (this.targetUserId == null ? other.targetUserId == null : this.targetUserId.equals(other.targetUserId))
+            && (this.status == null ? other.status == null : this.status.equals(other.status))
+            && (this.rejectReason == null ? other.rejectReason == null : this.rejectReason.equals(other.rejectReason))
+            && (this.createTime == null ? other.createTime == null : this.createTime.equals(other.createTime))
+            && (this.updateTime == null ? other.updateTime == null : this.updateTime.equals(other.updateTime));
     }
 
     @Override
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + ((getId() == null) ? 0 : getId().hashCode());
-        result = prime * result + ((getApplicantId() == null) ? 0 : getApplicantId().hashCode());
-        result = prime * result + ((getTargetUserId() == null) ? 0 : getTargetUserId().hashCode());
-        result = prime * result + ((getStatus() == null) ? 0 : getStatus().hashCode());
-        result = prime * result + ((getRejectReason() == null) ? 0 : getRejectReason().hashCode());
-        result = prime * result + ((getCreateTime() == null) ? 0 : getCreateTime().hashCode());
-        result = prime * result + ((getUpdateTime() == null) ? 0 : getUpdateTime().hashCode());
+        result = prime * result + ((id == null) ? 0 : id.hashCode());
+        result = prime * result + ((applicantId == null) ? 0 : applicantId.hashCode());
+        result = prime * result + ((targetUserId == null) ? 0 : targetUserId.hashCode());
+        result = prime * result + ((status == null) ? 0 : status.hashCode());
+        result = prime * result + ((rejectReason == null) ? 0 : rejectReason.hashCode());
+        result = prime * result + ((createTime == null) ? 0 : createTime.hashCode());
+        result = prime * result + ((updateTime == null) ? 0 : updateTime.hashCode());
         return result;
     }
 

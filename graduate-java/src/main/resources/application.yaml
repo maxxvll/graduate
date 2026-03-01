@@ -21,10 +21,18 @@ spring:
   mvc:
     favicon:
       enabled: false
-    throw-exception-if-no-handler-found: true
+    throw-exception-if-no-handler-found: false
+    contentnegotiation:
+      favor-parameter: false
+      ignore-accept-header: false
+      default-content-type: application/json
+      media-types:
+        json: application/json
+        xml: application/xml
+        "*/*": application/json
   web:
     resources:
-      add-mappings: false
+      add-mappings: true
   mail:
     host: smtp.qq.com
     username: 2057044770@qq.com
@@ -66,6 +74,17 @@ spring:
           max-idle: 20
           min-idle: 5
           shutdown-timeout: 100ms
+        cluster:
+          refresh:
+            adaptive: true
+        client:
+          resources:
+            io-executor-threads: 4
+            computation-executor-threads: 4
+        client-name: graduate-app
+        shutdown:
+          quiet-period: 0
+          timeout: 2000
 
   # ========== 【核心修改】Kafka 配置：使用JSON序列化器 ==========
   kafka:

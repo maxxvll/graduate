@@ -17,4 +17,8 @@ public class DtoValidationException extends RuntimeException{
         super("DTO字段校验失败");
         this.errorMap = errorMap;
     }
+    
+    public Map<String, String> getErrorMap() {
+        return errorMap;
+    }
 }

@@ -120,48 +120,48 @@ public class ChatSession {
             return false;
         }
         ChatSession other = (ChatSession) that;
-        return (this.getId() == null ? other.getId() == null : this.getId().equals(other.getId()))
-            && (this.getSessionId() == null ? other.getSessionId() == null : this.getSessionId().equals(other.getSessionId()))
-            && (this.getSessionType() == null ? other.getSessionType() == null : this.getSessionType().equals(other.getSessionType()))
-            && (this.getUserId() == null ? other.getUserId() == null : this.getUserId().equals(other.getUserId()))
-            && (this.getTargetId() == null ? other.getTargetId() == null : this.getTargetId().equals(other.getTargetId()))
-            && (this.getSessionName() == null ? other.getSessionName() == null : this.getSessionName().equals(other.getSessionName()))
-            && (this.getSessionAvatar() == null ? other.getSessionAvatar() == null : this.getSessionAvatar().equals(other.getSessionAvatar()))
-            && (this.getLastMessageId() == null ? other.getLastMessageId() == null : this.getLastMessageId().equals(other.getLastMessageId()))
-            && (this.getLastMessageContent() == null ? other.getLastMessageContent() == null : this.getLastMessageContent().equals(other.getLastMessageContent()))
-            && (this.getLastMessageTime() == null ? other.getLastMessageTime() == null : this.getLastMessageTime().equals(other.getLastMessageTime()))
-            && (this.getLastMessageSenderId() == null ? other.getLastMessageSenderId() == null : this.getLastMessageSenderId().equals(other.getLastMessageSenderId()))
-            && (this.getUnreadCount() == null ? other.getUnreadCount() == null : this.getUnreadCount().equals(other.getUnreadCount()))
-            && (this.getIsTop() == null ? other.getIsTop() == null : this.getIsTop().equals(other.getIsTop()))
-            && (this.getIsMute() == null ? other.getIsMute() == null : this.getIsMute().equals(other.getIsMute()))
-            && (this.getIsHide() == null ? other.getIsHide() == null : this.getIsHide().equals(other.getIsHide()))
-            && (this.getIsDeleted() == null ? other.getIsDeleted() == null : this.getIsDeleted().equals(other.getIsDeleted()))
-            && (this.getCreatedAt() == null ? other.getCreatedAt() == null : this.getCreatedAt().equals(other.getCreatedAt()))
-            && (this.getUpdatedAt() == null ? other.getUpdatedAt() == null : this.getUpdatedAt().equals(other.getUpdatedAt()));
+        return (this.id == null ? other.id == null : this.id.equals(other.id))
+            && (this.sessionId == null ? other.sessionId == null : this.sessionId.equals(other.sessionId))
+            && (this.sessionType == null ? other.sessionType == null : this.sessionType.equals(other.sessionType))
+            && (this.userId == null ? other.userId == null : this.userId.equals(other.userId))
+            && (this.targetId == null ? other.targetId == null : this.targetId.equals(other.targetId))
+            && (this.sessionName == null ? other.sessionName == null : this.sessionName.equals(other.sessionName))
+            && (this.sessionAvatar == null ? other.sessionAvatar == null : this.sessionAvatar.equals(other.sessionAvatar))
+            && (this.lastMessageId == null ? other.lastMessageId == null : this.lastMessageId.equals(other.lastMessageId))
+            && (this.lastMessageContent == null ? other.lastMessageContent == null : this.lastMessageContent.equals(other.lastMessageContent))
+            && (this.lastMessageTime == null ? other.lastMessageTime == null : this.lastMessageTime.equals(other.lastMessageTime))
+            && (this.lastMessageSenderId == null ? other.lastMessageSenderId == null : this.lastMessageSenderId.equals(other.lastMessageSenderId))
+            && (this.unreadCount == null ? other.unreadCount == null : this.unreadCount.equals(other.unreadCount))
+            && (this.isTop == null ? other.isTop == null : this.isTop.equals(other.isTop))
+            && (this.isMute == null ? other.isMute == null : this.isMute.equals(other.isMute))
+            && (this.isHide == null ? other.isHide == null : this.isHide.equals(other.isHide))
+            && (this.isDeleted == null ? other.isDeleted == null : this.isDeleted.equals(other.isDeleted))
+            && (this.createdAt == null ? other.createdAt == null : this.createdAt.equals(other.createdAt))
+            && (this.updatedAt == null ? other.updatedAt == null : this.updatedAt.equals(other.updatedAt));
     }
 
     @Override
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + ((getId() == null) ? 0 : getId().hashCode());
-        result = prime * result + ((getSessionId() == null) ? 0 : getSessionId().hashCode());
-        result = prime * result + ((getSessionType() == null) ? 0 : getSessionType().hashCode());
-        result = prime * result + ((getUserId() == null) ? 0 : getUserId().hashCode());
-        result = prime * result + ((getTargetId() == null) ? 0 : getTargetId().hashCode());
-        result = prime * result + ((getSessionName() == null) ? 0 : getSessionName().hashCode());
-        result = prime * result + ((getSessionAvatar() == null) ? 0 : getSessionAvatar().hashCode());
-        result = prime * result + ((getLastMessageId() == null) ? 0 : getLastMessageId().hashCode());
-        result = prime * result + ((getLastMessageContent() == null) ? 0 : getLastMessageContent().hashCode());
-        result = prime * result + ((getLastMessageTime() == null) ? 0 : getLastMessageTime().hashCode());
-        result = prime * result + ((getLastMessageSenderId() == null) ? 0 : getLastMessageSenderId().hashCode());
-        result = prime * result + ((getUnreadCount() == null) ? 0 : getUnreadCount().hashCode());
-        result = prime * result + ((getIsTop() == null) ? 0 : getIsTop().hashCode());
-        result = prime * result + ((getIsMute() == null) ? 0 : getIsMute().hashCode());
-        result = prime * result + ((getIsHide() == null) ? 0 : getIsHide().hashCode());
-        result = prime * result + ((getIsDeleted() == null) ? 0 : getIsDeleted().hashCode());
-        result = prime * result + ((getCreatedAt() == null) ? 0 : getCreatedAt().hashCode());
-        result = prime * result + ((getUpdatedAt() == null) ? 0 : getUpdatedAt().hashCode());
+        result = prime * result + ((id == null) ? 0 : id.hashCode());
+        result = prime * result + ((sessionId == null) ? 0 : sessionId.hashCode());
+        result = prime * result + ((sessionType == null) ? 0 : sessionType.hashCode());
+        result = prime * result + ((userId == null) ? 0 : userId.hashCode());
+        result = prime * result + ((targetId == null) ? 0 : targetId.hashCode());
+        result = prime * result + ((sessionName == null) ? 0 : sessionName.hashCode());
+        result = prime * result + ((sessionAvatar == null) ? 0 : sessionAvatar.hashCode());
+        result = prime * result + ((lastMessageId == null) ? 0 : lastMessageId.hashCode());
+        result = prime * result + ((lastMessageContent == null) ? 0 : lastMessageContent.hashCode());
+        result = prime * result + ((lastMessageTime == null) ? 0 : lastMessageTime.hashCode());
+        result = prime * result + ((lastMessageSenderId == null) ? 0 : lastMessageSenderId.hashCode());
+        result = prime * result + ((unreadCount == null) ? 0 : unreadCount.hashCode());
+        result = prime * result + ((isTop == null) ? 0 : isTop.hashCode());
+        result = prime * result + ((isMute == null) ? 0 : isMute.hashCode());
+        result = prime * result + ((isHide == null) ? 0 : isHide.hashCode());
+        result = prime * result + ((isDeleted == null) ? 0 : isDeleted.hashCode());
+        result = prime * result + ((createdAt == null) ? 0 : createdAt.hashCode());
+        result = prime * result + ((updatedAt == null) ? 0 : updatedAt.hashCode());
         return result;
     }
 

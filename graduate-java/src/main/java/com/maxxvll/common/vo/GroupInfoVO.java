@@ -14,7 +14,7 @@ public class GroupInfoVO {
     /**
      * 群ID
      */
-    private String id;
+    private Long id;
     
     /**
      * 群名称
@@ -29,7 +29,7 @@ public class GroupInfoVO {
     /**
      * 创建人ID
      */
-    private String creatorId;
+    private Long creatorId;
     
     /**
      * 创建人昵称

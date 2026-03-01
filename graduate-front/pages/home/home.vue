@@ -500,6 +500,7 @@
       :messagesWithTime="messagesWithTime"
       :showChatInfoPanel="showChatInfoPanel"
       :friendForSession="getFriendForCurrentSession()"
+      :groupMembers="groupMembers"
       :doNotDisturb="doNotDisturb"
       :pinned="pinned"
       :scrollToView="scrollToView"
@@ -903,7 +904,7 @@
           >← {{ currentMobileChat.sessionName }}</text
         >
         <!-- ··· 直接进入全屏聊天信息页 -->
-        <text class="mobile-more-icon" @click="mobileChatInfoPage = true"
+        <text class="mobile-more-icon" @click="enterMobileChatInfo"
           >···</text
         >
       </view>
@@ -1076,6 +1077,7 @@
       <scroll-view scroll-y class="mobile-chat-info-scroll">
         <!-- 成员头像区 -->
         <view class="mobile-chat-info-members">
+          <!-- 当前会话头像 -->
           <view class="mobile-chat-info-member">
             <image
               :src="currentMobileChat.sessionAvatar || defaultAvatar"
@@ -1086,6 +1088,25 @@
               currentMobileChat.sessionName
             }}</text>
           </view>
+          
+          <!-- 群成员头像（仅群聊显示） -->
+          <template v-if="currentMobileChat?.sessionType === SESSION_TYPE.GROUP">
+            <view
+              class="mobile-chat-info-member"
+              v-for="member in groupMembers"
+              :key="member.userId"
+              @click="openProfileFromMobile(member)"
+            >
+              <image
+                :src="member.avatar || defaultAvatar"
+                class="mobile-info-member-avatar"
+                mode="aspectFill"
+              />
+              <text class="mobile-info-member-name">{{ member.nickname }}</text>
+            </view>
+          </template>
+          
+          <!-- 添加成员按钮 -->
           <view class="mobile-chat-info-member" @click="openAddMemberModal">
             <view class="mobile-chat-info-add">
               <text class="mobile-chat-info-add-icon">+</text>
@@ -1750,7 +1771,7 @@
           >← {{ currentMobileChat.sessionName }}</text
         >
         <!-- ··· 直接进入全屏聊天信息页 -->
-        <text class="mobile-more-icon" @click="mobileChatInfoPage = true"
+        <text class="mobile-more-icon" @click="enterMobileChatInfo"
           >···</text
         >
       </view>
@@ -2391,6 +2412,9 @@ const showChatInfoPanel = ref(false)
 const doNotDisturb = ref(false)
 const pinned = ref(false)
 const showProfileModal = ref(false)
+// 群成员列表
+const groupMembers = ref([])
+const loadingGroupMembers = ref(false)
 // 头像右侧小弹出层
 const showProfilePopover = ref(false)
 const showMoreMenu = ref(false)
@@ -2622,6 +2646,47 @@ const getFriendForCurrentSession = () => {
   )
 }
 
+/**
+ * 获取当前群聊的成员列表
+ * 用于群聊聊天信息面板显示群成员
+ */
+const loadGroupMembers = async (groupId) => {
+  if (!groupId || loadingGroupMembers.value) return
+  
+  loadingGroupMembers.value = true
+  try {
+    const res = await service.get(`/group/member/list/${groupId}`)
+    if (res.code === 200 && Array.isArray(res.data)) {
+      groupMembers.value = res.data
+    } else {
+      groupMembers.value = []
+    }
+  } catch (e) {
+    console.error('获取群成员列表失败', e)
+    groupMembers.value = []
+  } finally {
+    loadingGroupMembers.value = false
+  }
+}
+
+/**
+ * 获取当前会话的成员信息（单聊好友或群成员）
+ * 用于聊天信息面板显示
+ */
+const getSessionMembers = () => {
+  if (!currentSession.value) return []
+  
+  if (currentSession.value.sessionType === SESSION_TYPE.SINGLE) {
+    // 单聊：返回对方好友信息
+    const friend = getFriendForCurrentSession()
+    return friend ? [friend] : []
+  } else if (currentSession.value.sessionType === SESSION_TYPE.GROUP) {
+    // 群聊：返回群成员列表
+    return groupMembers.value
+  }
+  return []
+}
+
 const friendIsStarText = computed(() => {
   const f = getFriendForCurrentSession()
   if (!f) return '设为星标朋友'
@@ -2713,10 +2778,44 @@ const deleteContact = () => {
 }
 
 // 新增：聊天信息面板控制与操作
-const toggleChatInfoPanel = () => {
+const toggleChatInfoPanel = async () => {
   showChatInfoPanel.value = !showChatInfoPanel.value
+  
+  // 如果是群聊且面板打开，加载群成员列表
+  if (showChatInfoPanel.value && currentSession.value?.sessionType === SESSION_TYPE.GROUP) {
+    await loadGroupMembers(currentSession.value.targetId)
+  }
+  
   // 关闭个人菜单，避免冲突
   showChatMenu.value = false
+}
+
+/**
+ * 进入移动端聊天信息页
+ */
+const enterMobileChatInfo = async () => {
+  mobileChatInfoPage.value = true
+  
+  // 如果是群聊，加载群成员列表
+  if (currentMobileChat.value?.sessionType === SESSION_TYPE.GROUP) {
+    await loadGroupMembers(currentMobileChat.value.targetId)
+  }
+}
+
+/**
+ * 从移动端打开用户资料
+ */
+const openProfileFromMobile = (member) => {
+  // 复用 PC 端的逻辑
+  currentContact.value = {
+    sessionName: member.nickname,
+    avatar: member.avatar,
+    type: 'person',
+    targetId: member.userId,
+    desc: member.roleName || '群成员'
+  }
+  showProfileModal.value = true
+  mobileChatInfoPage.value = false
 }
 
 const findChatContent = () => {

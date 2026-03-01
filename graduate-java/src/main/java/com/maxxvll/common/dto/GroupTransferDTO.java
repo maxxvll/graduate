@@ -11,7 +11,7 @@ public class GroupTransferDTO {
     /**
      * 群ID
      */
-    private String groupId;
+    private Long groupId;
     
     /**
      * 新群主ID

@@ -35,7 +35,7 @@ public interface GroupApplicationService extends IService<GroupApplication> {
      * @param status 状态：0-待处理，1-已通过，2-已拒绝，null-全部
      * @return 申请列表
      */
-    List<GroupApplicationVO> getGroupApplications(String groupId, Integer status);
+    List<GroupApplicationVO> getGroupApplications(Long groupId, Integer status);
 
     /**
      * 获取用户发送的申请列表

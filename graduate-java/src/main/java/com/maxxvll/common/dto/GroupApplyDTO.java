@@ -11,7 +11,7 @@ public class GroupApplyDTO {
     /**
      * 群ID
      */
-    private String groupId;
+    private Long groupId;
     
     /**
      * 申请备注信息

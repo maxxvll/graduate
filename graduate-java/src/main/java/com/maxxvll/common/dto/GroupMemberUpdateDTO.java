@@ -11,7 +11,7 @@ public class GroupMemberUpdateDTO {
     /**
      * 群ID
      */
-    private String groupId;
+    private Long groupId;
     
     /**
      * 成员ID
@@ -27,4 +27,37 @@ public class GroupMemberUpdateDTO {
      * 是否禁言：0-否，1-是
      */
     private Integer isMute;
+    
+    // 手动添加 getter/setter 方法以解决 Lombok 编译问题
+    public Long getGroupId() {
+        return groupId;
+    }
+    
+    public void setGroupId(Long groupId) {
+        this.groupId = groupId;
+    }
+    
+    public String getUserId() {
+        return userId;
+    }
+    
+    public void setUserId(String userId) {
+        this.userId = userId;
+    }
+    
+    public Integer getRole() {
+        return role;
+    }
+    
+    public void setRole(Integer role) {
+        this.role = role;
+    }
+    
+    public Integer getIsMute() {
+        return isMute;
+    }
+    
+    public void setIsMute(Integer isMute) {
+        this.isMute = isMute;
+    }
 }

@@ -61,7 +61,7 @@ public class FriendController extends BaseController {
     public Result<Void> handleApplication(@RequestBody FriendApplyHandleDTO handleDTO) {
         String currentUserId = UserContextUtil.getCurrentUserId();
         friendApplicationService.handleApplication(handleDTO, currentUserId);
-        return Result.success(handleDTO.getStatus() == 1 ? "已接受好友申请" : "已拒绝");
+        return Result.success(handleDTO.getStatus() != null && handleDTO.getStatus() == 1 ? "已接受好友申请" : "已拒绝");
     }
 
     /**

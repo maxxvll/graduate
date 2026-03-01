@@ -11,7 +11,7 @@ public class GroupUpdateDTO {
     /**
      * 群ID
      */
-    private String groupId;
+    private Long groupId;
     
     /**
      * 群名称

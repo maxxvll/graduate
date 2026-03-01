@@ -153,7 +153,7 @@ public class ChatSessionServiceImpl extends ServiceImpl<ChatSessionMapper, ChatS
             }
         }
 
-        Map<String, ChatGroup> groupMap = new HashMap<>();
+        Map<Long, ChatGroup> groupMap = new HashMap<>();
         if (!groupTargetIds.isEmpty()) {
             chatGroupMapper.selectList(
                     new LambdaQueryWrapper<ChatGroup>()

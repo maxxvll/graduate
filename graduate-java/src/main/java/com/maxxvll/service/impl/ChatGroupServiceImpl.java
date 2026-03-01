@@ -56,15 +56,15 @@ public class ChatGroupServiceImpl extends ServiceImpl<ChatGroupMapper, ChatGroup
     @Override
     @Transactional(rollbackFor = Exception.class)
     public GroupInfoVO createGroup(GroupCreateDTO createDTO, String creatorId) {
-        // 1. 创建群聊
+        // 1. 创建群聊（使用雪花算法生成ID）
         ChatGroup group = new ChatGroup();
-        String groupId = UUID.randomUUID().toString().replace("-", "");
-        group.setId(groupId);
+        // MyBatis Plus 的 @TableId(type = IdType.ASSIGN_ID) 会自动使用雪花算法生成ID
+        // 这里不需要手动设置ID，save时会自动生成
         group.setGroupName(createDTO.getGroupName());
         // 未选择头像时使用空串，前端展示时用默认群头像兜底
         String avatar = createDTO.getGroupAvatar();
         group.setGroupAvatar(avatar != null && !avatar.trim().isEmpty() ? avatar.trim() : "");
-        group.setCreatorId(creatorId);
+        group.setCreatorId(Long.valueOf(creatorId));
         group.setMaxMember(createDTO.getMaxMember() != null ? createDTO.getMaxMember() : 200);
         group.setJoinType(createDTO.getJoinType() != null ? createDTO.getJoinType() : 1);
         group.setIsMuteAll(0);
@@ -76,7 +76,7 @@ public class ChatGroupServiceImpl extends ServiceImpl<ChatGroupMapper, ChatGroup
 
         // 2. 添加群主为成员
         ChatGroupMember owner = new ChatGroupMember();
-        owner.setGroupId(groupId);
+        owner.setGroupId(group.getId());
         owner.setUserId(creatorId);
         owner.setRole(1); // 群主
         owner.setJoinTime(new Date());
@@ -95,7 +95,7 @@ public class ChatGroupServiceImpl extends ServiceImpl<ChatGroupMapper, ChatGroup
                     .collect(Collectors.toList());
             for (String memberId : distinctMemberIds) {
                 ChatGroupMember member = new ChatGroupMember();
-                member.setGroupId(groupId);
+                member.setGroupId(group.getId());
                 member.setUserId(memberId);
                 member.setRole(3); // 普通成员
                 member.setJoinTime(new Date());
@@ -108,8 +108,8 @@ public class ChatGroupServiceImpl extends ServiceImpl<ChatGroupMapper, ChatGroup
             }
         }
 
-        log.info("用户[{}]创建了群聊[{}]", creatorId, groupId);
-        return getGroupInfo(groupId, creatorId);
+        log.info("用户[{}]创建了群聊[{}]", creatorId, group.getId());
+        return getGroupInfo(group.getId(), creatorId);
     }
 
     @Override
@@ -161,7 +161,7 @@ public class ChatGroupServiceImpl extends ServiceImpl<ChatGroupMapper, ChatGroup
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void dissolveGroup(String groupId, String operatorId) {
+    public void dissolveGroup(Long groupId, String operatorId) {
         // 1. 检查群是否存在
         ChatGroup group = this.getById(groupId);
         if (group == null || group.getStatus() == 2) {
@@ -193,7 +193,7 @@ public class ChatGroupServiceImpl extends ServiceImpl<ChatGroupMapper, ChatGroup
     }
 
     @Override
-    public GroupInfoVO getGroupInfo(String groupId, String userId) {
+    public GroupInfoVO getGroupInfo(Long groupId, String userId) {
         ChatGroup group = this.getById(groupId);
         if (group == null || group.getStatus() == 2) {
             throw new BusinessException("群聊不存在或已解散");
@@ -235,7 +235,7 @@ public class ChatGroupServiceImpl extends ServiceImpl<ChatGroupMapper, ChatGroup
         }
 
         // 获取群ID列表
-        List<String> groupIds = members.stream()
+        List<Long> groupIds = members.stream()
                 .map(ChatGroupMember::getGroupId)
                 .collect(Collectors.toList());
 
@@ -287,7 +287,7 @@ public class ChatGroupServiceImpl extends ServiceImpl<ChatGroupMapper, ChatGroup
         }
 
         // 4. 更新群主
-        group.setCreatorId(transferDTO.getNewOwnerId());
+        group.setCreatorId(Long.valueOf(transferDTO.getNewOwnerId()));
         group.setUpdatedAt(new Date());
         this.updateById(group);
 
@@ -321,7 +321,7 @@ public class ChatGroupServiceImpl extends ServiceImpl<ChatGroupMapper, ChatGroup
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void quitGroup(String groupId, String userId) {
+    public void quitGroup(Long groupId, String userId) {
         // 1. 检查群是否存在
         ChatGroup group = this.getById(groupId);
         if (group == null || group.getStatus() == 2) {
@@ -378,7 +378,7 @@ public class ChatGroupServiceImpl extends ServiceImpl<ChatGroupMapper, ChatGroup
                 // 检查是否有待处理的申请
                 long pendingCount = groupApplicationMapper.selectCount(
                         new LambdaQueryWrapper<GroupApplication>()
-                                .eq(GroupApplication::getGroupId, Long.valueOf(group.getId()))
+                                .eq(GroupApplication::getGroupId, group.getId())
                                 .eq(GroupApplication::getApplicantId, Long.valueOf(currentUserId))
                                 .eq(GroupApplication::getStatus, 0)
                 );

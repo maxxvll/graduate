@@ -19,4 +19,10 @@ public class FriendApplyDTO {
      */
     @NotRequired
     private String remark;
+    
+    /**
+     * 设备类型（前端设备标识，用于区分不同设备的请求）
+     */
+    @NotRequired
+    private String deviceType;
 }

@@ -60,18 +60,23 @@ public class GroupApplicationServiceImpl extends ServiceImpl<GroupApplicationMap
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void applyJoinGroup(GroupApplyDTO applyDTO, String applicantId) {
-        // 1. 检查群是否存在
+        // 1. 验证群ID格式
+        if (applyDTO.getGroupId() == null) {
+            throw new BusinessException("群ID不能为空");
+        }
+        
+        // 2. 检查群是否存在
         ChatGroup group = chatGroupMapper.selectById(applyDTO.getGroupId());
         if (group == null || group.getStatus() == 2) {
             throw new BusinessException("群聊不存在或已解散");
         }
 
-        // 2. 检查是否已在群中
+        // 3. 检查是否已在群中
         if (chatGroupMemberService.isGroupMember(applyDTO.getGroupId(), applicantId)) {
             throw new BusinessException("您已在该群聊中");
         }
 
-        // 3. 检查是否有待处理的申请
+        // 4. 检查是否有待处理的申请
         Long pendingCount = this.count(
                 new LambdaQueryWrapper<GroupApplication>()
                         .eq(GroupApplication::getGroupId, applyDTO.getGroupId())
@@ -82,7 +87,7 @@ public class GroupApplicationServiceImpl extends ServiceImpl<GroupApplicationMap
             throw new BusinessException("您已提交过申请，请等待审核");
         }
 
-        // 4. 根据加群方式处理
+        // 5. 根据加群方式处理
         if (group.getJoinType() == 2) {
             // 免审核，直接加入
             addMemberToGroup(applyDTO.getGroupId(), applicantId, null);
@@ -94,10 +99,10 @@ public class GroupApplicationServiceImpl extends ServiceImpl<GroupApplicationMap
             throw new BusinessException("该群聊仅支持邀请加入");
         }
 
-        // 5. 创建申请记录（需审核）
+        // 6. 创建申请记录（需审核）
         GroupApplication application = new GroupApplication();
         application.setApplicantId(Long.valueOf(applicantId));
-        application.setGroupId(Long.valueOf(applyDTO.getGroupId()));
+        application.setGroupId(applyDTO.getGroupId());
         application.setStatus(0);
         application.setCreateTime(new Date());
         application.setUpdateTime(new Date());
@@ -121,7 +126,7 @@ public class GroupApplicationServiceImpl extends ServiceImpl<GroupApplicationMap
         }
 
         // 3. 检查操作人权限
-        Integer role = chatGroupMemberService.getUserRole(String.valueOf(application.getGroupId()), operatorId);
+        Integer role = chatGroupMemberService.getUserRole(application.getGroupId(), operatorId);
         if (role == null || role > 2) {
             throw new BusinessException("无权限处理该申请");
         }
@@ -137,7 +142,7 @@ public class GroupApplicationServiceImpl extends ServiceImpl<GroupApplicationMap
 
         // 5. 如果通过，添加成员并发送系统通知
         if (handleDTO.getStatus() == 1) {
-            addMemberToGroup(String.valueOf(application.getGroupId()), String.valueOf(application.getApplicantId()), operatorId);
+            addMemberToGroup(application.getGroupId(), application.getApplicantId().toString(), operatorId);
             sendGroupJoinNotification(application.getGroupId(), application.getApplicantId());
         }
 
@@ -145,9 +150,10 @@ public class GroupApplicationServiceImpl extends ServiceImpl<GroupApplicationMap
     }
 
     @Override
-    public List<GroupApplicationVO> getGroupApplications(String groupId, Integer status) {
+    public List<GroupApplicationVO> getGroupApplications(Long groupId, Integer status) {
+        
         LambdaQueryWrapper<GroupApplication> wrapper = new LambdaQueryWrapper<GroupApplication>()
-                .eq(GroupApplication::getGroupId, Long.valueOf(groupId))
+                .eq(GroupApplication::getGroupId, groupId)
                 .orderByDesc(GroupApplication::getCreateTime);
 
         if (status != null) {
@@ -182,8 +188,10 @@ public class GroupApplicationServiceImpl extends ServiceImpl<GroupApplicationMap
             return List.of();
         }
 
+        // 注意：现在 ChatGroupMember.groupId 和 GroupApplication.groupId 都是 Long 类型
+        // 直接转换即可
         List<Long> groupIds = managedGroups.stream()
-                .map(m -> Long.valueOf(m.getGroupId()))
+                .map(ChatGroupMember::getGroupId)
                 .collect(Collectors.toList());
 
         List<GroupApplication> applications = this.list(
@@ -220,7 +228,7 @@ public class GroupApplicationServiceImpl extends ServiceImpl<GroupApplicationMap
     /**
      * 添加成员到群聊
      */
-    private void addMemberToGroup(String groupId, String userId, String inviterId) {
+    private void addMemberToGroup(Long groupId, String userId, String inviterId) {
         // 检查群成员上限
         ChatGroup group = chatGroupMapper.selectById(groupId);
         long currentCount = chatGroupMemberService.getMemberCount(groupId);

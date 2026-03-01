@@ -37,7 +37,7 @@ public interface ChatGroupService extends IService<ChatGroup> {
      * @param groupId 群ID
      * @param operatorId 操作人ID
      */
-    void dissolveGroup(String groupId, String operatorId);
+    void dissolveGroup(Long groupId, String operatorId);
 
     /**
      * 获取群聊信息
@@ -45,7 +45,7 @@ public interface ChatGroupService extends IService<ChatGroup> {
      * @param userId 当前用户ID
      * @return 群信息
      */
-    GroupInfoVO getGroupInfo(String groupId, String userId);
+    GroupInfoVO getGroupInfo(Long groupId, String userId);
 
     /**
      * 获取用户加入的群聊列表
@@ -66,7 +66,7 @@ public interface ChatGroupService extends IService<ChatGroup> {
      * @param groupId 群ID
      * @param userId 用户ID
      */
-    void quitGroup(String groupId, String userId);
+    void quitGroup(Long groupId, String userId);
 
     /**
      * 搜索群聊（按群名模糊匹配）

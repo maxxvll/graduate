@@ -50,7 +50,13 @@ public class RedissonConfig {
                 .setConnectionPoolSize(50) // 连接池大小（匹配你的lettuce.pool.max-active=50）
                 .setConnectionMinimumIdleSize(5) // 最小空闲连接（匹配你的lettuce.pool.min-idle=5）
                 .setIdleConnectionTimeout(180000) // 空闲连接超时（参考你的datasource配置）
-                .setRetryAttempts(3); // 连接失败重试次数（新增，提升容错）
+                .setRetryAttempts(3) // 连接失败重试次数
+                .setRetryInterval(1500) // 重试间隔时间（毫秒）
+                .setPingConnectionInterval(30000) // 心跳检测间隔
+                .setKeepAlive(true) // 保持连接活跃
+                .setTcpNoDelay(true) // 禁用Nagle算法，降低延迟
+                .setConnectTimeout(10000) // 连接超时时间
+                .setTimeout(5000); // 命令执行超时时间
 
         return Redisson.create(config);
     }

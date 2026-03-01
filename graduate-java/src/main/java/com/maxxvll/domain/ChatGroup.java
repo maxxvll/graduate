@@ -15,10 +15,10 @@ import lombok.Data;
 @Data
 public class ChatGroup {
     /**
-     * 群ID（主键，雪花ID/UUID，对应消息表receiver_id、会话表target_id）
+     * 群ID（主键，雪花算法生成，对应消息表receiver_id、会话表target_id）
      */
-    @TableId
-    private String id;
+    @TableId(type = IdType.ASSIGN_ID)
+    private Long id;
 
     /**
      * 群名称（聊天列表展示）
@@ -33,7 +33,7 @@ public class ChatGroup {
     /**
      * 创建人ID（关联chat_user.id）
      */
-    private String creatorId;
+    private Long creatorId;
 
     /**
      * 群最大成员数（默认200，可调整）
@@ -87,36 +87,36 @@ public class ChatGroup {
             return false;
         }
         ChatGroup other = (ChatGroup) that;
-        return (this.getId() == null ? other.getId() == null : this.getId().equals(other.getId()))
-            && (this.getGroupName() == null ? other.getGroupName() == null : this.getGroupName().equals(other.getGroupName()))
-            && (this.getGroupAvatar() == null ? other.getGroupAvatar() == null : this.getGroupAvatar().equals(other.getGroupAvatar()))
-            && (this.getCreatorId() == null ? other.getCreatorId() == null : this.getCreatorId().equals(other.getCreatorId()))
-            && (this.getMaxMember() == null ? other.getMaxMember() == null : this.getMaxMember().equals(other.getMaxMember()))
-            && (this.getJoinType() == null ? other.getJoinType() == null : this.getJoinType().equals(other.getJoinType()))
-            && (this.getNotice() == null ? other.getNotice() == null : this.getNotice().equals(other.getNotice()))
-            && (this.getIsMuteAll() == null ? other.getIsMuteAll() == null : this.getIsMuteAll().equals(other.getIsMuteAll()))
-            && (this.getStatus() == null ? other.getStatus() == null : this.getStatus().equals(other.getStatus()))
-            && (this.getExtInfo() == null ? other.getExtInfo() == null : this.getExtInfo().equals(other.getExtInfo()))
-            && (this.getCreatedAt() == null ? other.getCreatedAt() == null : this.getCreatedAt().equals(other.getCreatedAt()))
-            && (this.getUpdatedAt() == null ? other.getUpdatedAt() == null : this.getUpdatedAt().equals(other.getUpdatedAt()));
+        return (this.id == null ? other.id == null : this.id.equals(other.id))
+            && (this.groupName == null ? other.groupName == null : this.groupName.equals(other.groupName))
+            && (this.groupAvatar == null ? other.groupAvatar == null : this.groupAvatar.equals(other.groupAvatar))
+            && (this.creatorId == null ? other.creatorId == null : this.creatorId.equals(other.creatorId))
+            && (this.maxMember == null ? other.maxMember == null : this.maxMember.equals(other.maxMember))
+            && (this.joinType == null ? other.joinType == null : this.joinType.equals(other.joinType))
+            && (this.notice == null ? other.notice == null : this.notice.equals(other.notice))
+            && (this.isMuteAll == null ? other.isMuteAll == null : this.isMuteAll.equals(other.isMuteAll))
+            && (this.status == null ? other.status == null : this.status.equals(other.status))
+            && (this.extInfo == null ? other.extInfo == null : this.extInfo.equals(other.extInfo))
+            && (this.createdAt == null ? other.createdAt == null : this.createdAt.equals(other.createdAt))
+            && (this.updatedAt == null ? other.updatedAt == null : this.updatedAt.equals(other.updatedAt));
     }
 
     @Override
     public int hashCode() {
         final int prime = 31;
         int result = 1;
-        result = prime * result + ((getId() == null) ? 0 : getId().hashCode());
-        result = prime * result + ((getGroupName() == null) ? 0 : getGroupName().hashCode());
-        result = prime * result + ((getGroupAvatar() == null) ? 0 : getGroupAvatar().hashCode());
-        result = prime * result + ((getCreatorId() == null) ? 0 : getCreatorId().hashCode());
-        result = prime * result + ((getMaxMember() == null) ? 0 : getMaxMember().hashCode());
-        result = prime * result + ((getJoinType() == null) ? 0 : getJoinType().hashCode());
-        result = prime * result + ((getNotice() == null) ? 0 : getNotice().hashCode());
-        result = prime * result + ((getIsMuteAll() == null) ? 0 : getIsMuteAll().hashCode());
-        result = prime * result + ((getStatus() == null) ? 0 : getStatus().hashCode());
-        result = prime * result + ((getExtInfo() == null) ? 0 : getExtInfo().hashCode());
-        result = prime * result + ((getCreatedAt() == null) ? 0 : getCreatedAt().hashCode());
-        result = prime * result + ((getUpdatedAt() == null) ? 0 : getUpdatedAt().hashCode());
+        result = prime * result + ((id == null) ? 0 : id.hashCode());
+        result = prime * result + ((groupName == null) ? 0 : groupName.hashCode());
+        result = prime * result + ((groupAvatar == null) ? 0 : groupAvatar.hashCode());
+        result = prime * result + ((creatorId == null) ? 0 : creatorId.hashCode());
+        result = prime * result + ((maxMember == null) ? 0 : maxMember.hashCode());
+        result = prime * result + ((joinType == null) ? 0 : joinType.hashCode());
+        result = prime * result + ((notice == null) ? 0 : notice.hashCode());
+        result = prime * result + ((isMuteAll == null) ? 0 : isMuteAll.hashCode());
+        result = prime * result + ((status == null) ? 0 : status.hashCode());
+        result = prime * result + ((extInfo == null) ? 0 : extInfo.hashCode());
+        result = prime * result + ((createdAt == null) ? 0 : createdAt.hashCode());
+        result = prime * result + ((updatedAt == null) ? 0 : updatedAt.hashCode());
         return result;
     }
 

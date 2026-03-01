@@ -99,7 +99,7 @@ public class GroupController extends BaseController {
      * 获取群聊信息
      */
     @GetMapping("/info/{groupId}")
-    public Result<GroupInfoVO> getGroupInfo(@PathVariable String groupId) {
+    public Result<GroupInfoVO> getGroupInfo(@PathVariable Long groupId) {
         String userId = UserContextUtil.getCurrentUserId();
         GroupInfoVO groupInfo = chatGroupService.getGroupInfo(groupId, userId);
         return Result.success("获取群聊信息成功", groupInfo);
@@ -129,7 +129,7 @@ public class GroupController extends BaseController {
      * 解散群聊
      */
     @PostMapping("/dissolve/{groupId}")
-    public Result<Void> dissolveGroup(@PathVariable String groupId) {
+    public Result<Void> dissolveGroup(@PathVariable Long groupId) {
         String userId = UserContextUtil.getCurrentUserId();
         chatGroupService.dissolveGroup(groupId, userId);
         return Result.success("解散群聊成功");
@@ -139,7 +139,7 @@ public class GroupController extends BaseController {
      * 退出群聊
      */
     @PostMapping("/quit/{groupId}")
-    public Result<Void> quitGroup(@PathVariable String groupId) {
+    public Result<Void> quitGroup(@PathVariable Long groupId) {
         String userId = UserContextUtil.getCurrentUserId();
         chatGroupService.quitGroup(groupId, userId);
         return Result.success("退出群聊成功");
@@ -191,7 +191,7 @@ public class GroupController extends BaseController {
      * 获取群成员列表
      */
     @GetMapping("/member/list/{groupId}")
-    public Result<List<GroupMemberVO>> getGroupMembers(@PathVariable String groupId) {
+    public Result<List<GroupMemberVO>> getGroupMembers(@PathVariable Long groupId) {
         List<GroupMemberVO> members = chatGroupMemberService.getGroupMembers(groupId);
         return Result.success("获取群成员列表成功", members);
     }
@@ -200,7 +200,7 @@ public class GroupController extends BaseController {
      * 获取当前用户在群中的角色
      */
     @GetMapping("/member/role/{groupId}")
-    public Result<Integer> getUserRole(@PathVariable String groupId) {
+    public Result<Integer> getUserRole(@PathVariable Long groupId) {
         String userId = UserContextUtil.getCurrentUserId();
         Integer role = chatGroupMemberService.getUserRole(groupId, userId);
         return Result.success("获取角色成功", role);
@@ -233,7 +233,7 @@ public class GroupController extends BaseController {
      */
     @GetMapping("/apply/list/{groupId}")
     public Result<List<GroupApplicationVO>> getGroupApplications(
-            @PathVariable String groupId,
+            @PathVariable Long groupId,
             @RequestParam(required = false) Integer status) {
         List<GroupApplicationVO> applications = groupApplicationService.getGroupApplications(groupId, status);
         return Result.success("获取申请列表成功", applications);

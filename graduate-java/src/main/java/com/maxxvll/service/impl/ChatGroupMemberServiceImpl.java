@@ -17,6 +17,7 @@ import com.maxxvll.mapper.ChatGroupMemberMapper;
 import com.maxxvll.mapper.ChatUserMapper;
 import com.maxxvll.mapper.GroupApplicationMapper;
 import com.maxxvll.service.ChatGroupMemberService;
+import com.maxxvll.utils.MinioUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -44,6 +45,9 @@ public class ChatGroupMemberServiceImpl extends ServiceImpl<ChatGroupMemberMappe
 
     @Resource
     private GroupApplicationMapper groupApplicationMapper;
+
+    @Resource
+    private MinioUtil minioUtil;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -81,7 +85,7 @@ public class ChatGroupMemberServiceImpl extends ServiceImpl<ChatGroupMemberMappe
 
                     GroupApplication application = new GroupApplication();
                     application.setApplicantId(Long.valueOf(userId));
-                    application.setGroupId(Long.valueOf(addDTO.getGroupId()));
+                    application.setGroupId(addDTO.getGroupId());
                     application.setStatus(0);
                     application.setCreateTime(new Date());
                     application.setUpdateTime(new Date());
@@ -254,7 +258,7 @@ public class ChatGroupMemberServiceImpl extends ServiceImpl<ChatGroupMemberMappe
     }
 
     @Override
-    public List<GroupMemberVO> getGroupMembers(String groupId) {
+    public List<GroupMemberVO> getGroupMembers(Long groupId) {
         // 检查群是否存在
         ChatGroup group = chatGroupMapper.selectById(groupId);
         if (group == null || group.getStatus() == 2) {
@@ -273,7 +277,7 @@ public class ChatGroupMemberServiceImpl extends ServiceImpl<ChatGroupMemberMappe
     }
 
     @Override
-    public GroupMemberVO getMemberInfo(String groupId, String userId) {
+    public GroupMemberVO getMemberInfo(Long groupId, String userId) {
         ChatGroupMember member = this.getOne(
                 new LambdaQueryWrapper<ChatGroupMember>()
                         .eq(ChatGroupMember::getGroupId, groupId)
@@ -289,7 +293,7 @@ public class ChatGroupMemberServiceImpl extends ServiceImpl<ChatGroupMemberMappe
     }
 
     @Override
-    public boolean isGroupMember(String groupId, String userId) {
+    public boolean isGroupMember(Long groupId, String userId) {
         Long count = this.count(
                 new LambdaQueryWrapper<ChatGroupMember>()
                         .eq(ChatGroupMember::getGroupId, groupId)
@@ -300,7 +304,7 @@ public class ChatGroupMemberServiceImpl extends ServiceImpl<ChatGroupMemberMappe
     }
 
     @Override
-    public Integer getUserRole(String groupId, String userId) {
+    public Integer getUserRole(Long groupId, String userId) {
         ChatGroupMember member = this.getOne(
                 new LambdaQueryWrapper<ChatGroupMember>()
                         .eq(ChatGroupMember::getGroupId, groupId)
@@ -311,7 +315,7 @@ public class ChatGroupMemberServiceImpl extends ServiceImpl<ChatGroupMemberMappe
     }
 
     @Override
-    public long getMemberCount(String groupId) {
+    public long getMemberCount(Long groupId) {
         return this.count(
                 new LambdaQueryWrapper<ChatGroupMember>()
                         .eq(ChatGroupMember::getGroupId, groupId)
@@ -333,7 +337,8 @@ public class ChatGroupMemberServiceImpl extends ServiceImpl<ChatGroupMemberMappe
         ChatUser user = chatUserMapper.selectById(member.getUserId());
         if (user != null) {
             vo.setNickname(user.getNickname());
-            vo.setAvatar(user.getAvatar());
+            // 转换头像为公共桶永久直链
+            vo.setAvatar(minioUtil.getAvatarUrl(user.getAvatar()));
         }
 
         // 获取邀请人信息

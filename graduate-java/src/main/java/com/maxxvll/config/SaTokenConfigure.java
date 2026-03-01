@@ -33,7 +33,8 @@ public class SaTokenConfigure {
                         "/user/register",
                         "/user/check-username",
                         "/user/qrcode",
-                        "/user/sendEmailCode") // 把发送验证码也加上
+                        "/user/sendEmailCode",
+                        "/test/**") // 把测试接口和发送验证码也加上
 
                 // 认证函数: 每次请求执行
                 .setAuth(obj -> {
