@@ -28,7 +28,9 @@
           @click.stop="switchSidebarTab('contact')"
         >
           <text class="icon">👥</text>
-          <view class="red-dot" v-if="pendingNotifyCount > 0">{{ pendingNotifyCount }}</view>
+          <view class="red-dot" v-if="pendingNotifyCount > 0">{{
+            pendingNotifyCount
+          }}</view>
         </view>
         <view class="sidebar-item">
           <text class="icon">📁</text>
@@ -82,7 +84,9 @@
         />
         <!-- ➕ 按钮 + 下拉菜单 -->
         <view class="add-btn-wrapper" @click.stop="togglePlusMenu">
-          <text class="add-icon" :class="{ 'add-icon-active': showPlusMenu }">➕</text>
+          <text class="add-icon" :class="{ 'add-icon-active': showPlusMenu }"
+            >➕</text
+          >
           <view class="plus-dropdown" v-if="showPlusMenu" @click.stop>
             <view class="plus-dropdown-item" @click="openAddFriend">
               <text class="plus-dropdown-icon">🧑‍🤝‍🧑</text>
@@ -159,12 +163,27 @@
           @click="switchContactTab('notify')"
         >
           <text>通知</text>
-          <view class="tab-notify-badge" v-if="pendingNotifyCount > 0">{{ pendingNotifyCount }}</view>
+          <view class="tab-notify-badge" v-if="pendingNotifyCount > 0">{{
+            pendingNotifyCount
+          }}</view>
         </view>
       </view>
       <view class="contact-scroll">
         <!-- 好友列表 -->
         <view v-if="selectedFriendTab === 'friends'">
+          <!-- 添加朋友入口：与好友项同高、同结构，点击显示悬浮窗 -->
+          <view
+            class="contact-item friend-item add-friend-entry"
+            @click.stop="openAddFriendPopover"
+          >
+            <view class="person-avatar add-friend-avatar">
+              <text class="add-friend-plus">+</text>
+            </view>
+            <view class="contact-info">
+              <view class="contact-name">添加朋友</view>
+              <view class="contact-desc">搜索用户名或手机号添加</view>
+            </view>
+          </view>
           <view
             class="contact-item friend-item"
             v-for="friend in filteredFriends"
@@ -219,7 +238,10 @@
           </view>
           <template v-else>
             <!-- 好友申请 -->
-            <view class="notify-section" v-if="notifications.friendApplies.length > 0">
+            <view
+              class="notify-section"
+              v-if="notifications.friendApplies.length > 0"
+            >
               <view class="notify-section-title">好友申请</view>
               <view
                 class="notify-item"
@@ -233,20 +255,39 @@
                 />
                 <view class="notify-info">
                   <text class="notify-name">{{ apply.applicantNickname }}</text>
-                  <text class="notify-time">{{ formatMessageTime(apply.createTime) }}</text>
+                  <text class="notify-time">{{
+                    formatMessageTime(apply.createTime)
+                  }}</text>
                 </view>
                 <view class="notify-actions" v-if="apply.status === 0">
-                  <button class="notify-btn accept-btn" @click.stop="handleFriendApply(apply.id, 1)">接受</button>
-                  <button class="notify-btn reject-btn" @click.stop="handleFriendApply(apply.id, 2)">拒绝</button>
+                  <button
+                    class="notify-btn accept-btn"
+                    @click.stop="handleFriendApply(apply.id, 1)"
+                  >
+                    接受
+                  </button>
+                  <button
+                    class="notify-btn reject-btn"
+                    @click.stop="handleFriendApply(apply.id, 2)"
+                  >
+                    拒绝
+                  </button>
                 </view>
-                <text class="notify-status-tag" :class="apply.status === 1 ? 'tag-accepted' : 'tag-rejected'" v-else>
+                <text
+                  class="notify-status-tag"
+                  :class="apply.status === 1 ? 'tag-accepted' : 'tag-rejected'"
+                  v-else
+                >
                   {{ apply.status === 1 ? '已接受' : '已拒绝' }}
                 </text>
               </view>
             </view>
 
             <!-- 群聊申请（作为群主/管理员收到的） -->
-            <view class="notify-section" v-if="notifications.groupApplies.length > 0">
+            <view
+              class="notify-section"
+              v-if="notifications.groupApplies.length > 0"
+            >
               <view class="notify-section-title">群聊申请</view>
               <view
                 class="notify-item"
@@ -260,12 +301,26 @@
                 />
                 <view class="notify-info">
                   <text class="notify-name">{{ apply.applicantNickname }}</text>
-                  <text class="notify-group-name">申请加入 「{{ apply.groupName }}」</text>
-                  <text class="notify-time">{{ formatMessageTime(apply.createTime) }}</text>
+                  <text class="notify-group-name"
+                    >申请加入 「{{ apply.groupName }}」</text
+                  >
+                  <text class="notify-time">{{
+                    formatMessageTime(apply.createTime)
+                  }}</text>
                 </view>
                 <view class="notify-actions">
-                  <button class="notify-btn accept-btn" @click.stop="handleGroupApply(apply.id, 1)">同意</button>
-                  <button class="notify-btn reject-btn" @click.stop="handleGroupApply(apply.id, 2)">拒绝</button>
+                  <button
+                    class="notify-btn accept-btn"
+                    @click.stop="handleGroupApply(apply.id, 1)"
+                  >
+                    同意
+                  </button>
+                  <button
+                    class="notify-btn reject-btn"
+                    @click.stop="handleGroupApply(apply.id, 2)"
+                  >
+                    拒绝
+                  </button>
                 </view>
               </view>
             </view>
@@ -273,12 +328,156 @@
             <!-- 空状态 -->
             <view
               class="notify-empty"
-              v-if="!notifications.friendApplies.length && !notifications.groupApplies.length"
+              v-if="
+                !notifications.friendApplies.length &&
+                !notifications.groupApplies.length
+              "
             >
               <text class="notify-empty-icon">🔔</text>
               <text class="notify-empty-text">暂无新通知</text>
             </view>
           </template>
+        </view>
+      </view>
+    </view>
+
+    <!-- 添加朋友悬浮窗：带搜索框，符合 PC 端习惯，点击遮罩或关闭按钮关闭 -->
+    <view
+      v-if="showAddFriendPopover"
+      class="add-friend-popover-mask"
+      @click.self="closeAddFriendPopover"
+    >
+      <view class="add-friend-popover" @click.stop>
+        <view class="add-friend-popover-header">
+          <text class="add-friend-popover-title">添加朋友</text>
+          <text class="add-friend-popover-close" @click="closeAddFriendPopover"
+            >✕</text
+          >
+        </view>
+        <view class="add-friend-popover-search">
+          <text class="add-friend-search-icon">🔍</text>
+          <input
+            v-model="addFriendKeyword"
+            class="add-friend-search-input"
+            placeholder="搜索用户名或手机号"
+            @keyup.enter="doAddFriendSearch"
+          />
+          <text
+            v-if="addFriendKeyword"
+            class="add-friend-search-clear"
+            @click="clearAddFriendSearch"
+            >✕</text
+          >
+        </view>
+        <view class="add-friend-popover-actions">
+          <button
+            class="add-friend-search-btn"
+            :disabled="!addFriendKeyword.trim() || addFriendPopoverLoading"
+            @click="doAddFriendSearch"
+          >
+            {{ addFriendPopoverLoading ? '搜索中...' : '搜索' }}
+          </button>
+        </view>
+        <view class="add-friend-popover-body">
+          <view v-if="!addFriendSearched" class="add-friend-hint">
+            <text class="add-friend-hint-icon">👤</text>
+            <text class="add-friend-hint-text"
+              >输入用户名或手机号，搜索添加新朋友</text
+            >
+          </view>
+          <view v-else-if="addFriendPopoverLoading" class="add-friend-loading">
+            <text>搜索中...</text>
+          </view>
+          <view
+            v-else-if="addFriendSearchResult === null"
+            class="add-friend-empty"
+          >
+            <text class="add-friend-empty-icon">🔍</text>
+            <text class="add-friend-empty-text"
+              >未找到该用户，请确认用户名是否正确</text
+            >
+          </view>
+          <view v-else class="add-friend-result">
+            <image
+              :src="addFriendSearchResult.avatar || defaultAvatar"
+              class="add-friend-result-avatar"
+              mode="aspectFill"
+            />
+            <view class="add-friend-result-info">
+              <text class="add-friend-result-name">{{
+                addFriendSearchResult.nickname
+              }}</text>
+              <text class="add-friend-result-username"
+                >用户名：{{ addFriendSearchResult.username }}</text
+              >
+              <text
+                v-if="addFriendSearchResult.signature"
+                class="add-friend-result-sig"
+                >{{ addFriendSearchResult.signature }}</text
+              >
+            </view>
+            <view class="add-friend-result-action">
+              <button
+                v-if="addFriendSearchResult.isFriend"
+                class="add-friend-btn disabled"
+                disabled
+              >
+                已是好友
+              </button>
+              <button
+                v-else-if="addFriendSearchResult.isApplied"
+                class="add-friend-btn pending"
+                disabled
+              >
+                已申请
+              </button>
+              <button
+                v-else
+                class="add-friend-btn add"
+                :disabled="addFriendApplying"
+                @click="showAddFriendRemark = true"
+              >
+                {{ addFriendApplying ? '发送中...' : '+加好友' }}
+              </button>
+            </view>
+          </view>
+          <view
+            v-if="
+              showAddFriendRemark &&
+              addFriendSearchResult &&
+              !addFriendSearchResult.isFriend &&
+              !addFriendSearchResult.isApplied
+            "
+            class="add-friend-remark-panel"
+          >
+            <text class="add-friend-remark-label">验证信息（选填）</text>
+            <textarea
+              v-model="addFriendRemark"
+              class="add-friend-remark-input"
+              placeholder="请输入验证信息"
+              maxlength="100"
+            />
+            <view class="add-friend-remark-footer">
+              <text class="add-friend-remark-count"
+                >{{ addFriendRemark.length }}/100</text
+              >
+              <view class="add-friend-remark-btns">
+                <button
+                  class="add-friend-btn default"
+                  @click="showAddFriendRemark = false"
+                >
+                  取消
+                </button>
+                <button
+                  class="add-friend-btn add"
+                  :disabled="addFriendApplying"
+                  @click="sendAddFriendApply"
+                >
+                  发送申请
+                </button>
+              </view>
+            </view>
+          </view>
         </view>
       </view>
     </view>
@@ -423,11 +622,72 @@
       @joined="loadGroups"
     />
 
-    <!-- 添加成员：PC端全屏弹窗（复用移动端样式）-->
-    <view v-if="showAddMemberModal" class="mobile-create-group-page">
+    <!-- 添加成员：PC 端悬浮窗（联系人 + 顶部搜索），符合 PC 习惯 -->
+    <view
+      v-if="showAddMemberModal && !isMobileView"
+      class="add-member-popover-mask"
+      @click.self="showAddMemberModal = false"
+    >
+      <view class="add-member-popover" @click.stop>
+        <view class="add-member-popover-header">
+          <text class="add-member-popover-title">{{
+            currentSession?.sessionType === SESSION_TYPE.GROUP ? '邀请入群' : '发起群聊'
+          }}</text>
+          <text class="add-member-popover-close" @click="showAddMemberModal = false">✕</text>
+        </view>
+        <view class="add-member-popover-search">
+          <text class="add-member-search-icon">🔍</text>
+          <input
+            v-model="addMemberSearchKeyword"
+            class="add-member-search-input"
+            placeholder="搜索联系人"
+            type="text"
+          />
+        </view>
+        <scroll-view scroll-y class="add-member-popover-list">
+          <view
+            v-for="friend in filteredAddMemberCandidates"
+            :key="friend.userId"
+            class="add-member-popover-item"
+            @click="toggleAddMemberSelect(friend.userId)"
+          >
+            <view
+              class="add-member-checkbox"
+              :class="{ 'cg-checked': addMemberSelectedFriends.includes(friend.userId) }"
+            >
+              <text v-if="addMemberSelectedFriends.includes(friend.userId)" class="cg-check-mark">✓</text>
+            </view>
+            <image
+              :src="friend.avatar || defaultAvatar"
+              class="add-member-avatar"
+              mode="aspectFill"
+            />
+            <text class="add-member-name">{{ friend.nickname }}</text>
+          </view>
+          <view v-if="filteredAddMemberCandidates.length === 0" class="add-member-empty">
+            <text>暂无可添加的好友</text>
+          </view>
+        </scroll-view>
+        <view class="add-member-popover-footer">
+          <button
+            class="add-member-confirm-btn"
+            :class="{ 'add-member-confirm-active': addMemberSelectedFriends.length > 0 }"
+            :disabled="addMemberSelectedFriends.length === 0 || isAddingMember"
+            @click="confirmAddMember"
+          >
+            {{ isAddingMember ? '添加中...' : '确定' }}{{ addMemberSelectedFriends.length > 0 ? `（${addMemberSelectedFriends.length}）` : '' }}
+          </button>
+        </view>
+      </view>
+    </view>
+
+    <!-- 添加成员：移动端全屏弹窗 -->
+    <view v-if="showAddMemberModal && isMobileView" class="mobile-create-group-page">
       <view class="mobile-chat-header">
         <text class="mobile-back-btn" @click="showAddMemberModal = false">取消</text>
-        <text class="mobile-chat-title">{{ currentSession?.sessionType === SESSION_TYPE.GROUP ? '邀请入群' : '发起群聊' }}</text>
+        <text class="mobile-chat-title">{{
+          currentSession?.sessionType === SESSION_TYPE.GROUP ? '邀请入群' : '发起群聊'
+        }}</text>
         <text
           class="mobile-confirm-btn"
           :class="{ 'mobile-confirm-active': addMemberSelectedFriends.length > 0 }"
@@ -441,10 +701,17 @@
           class="mobile-cg-item"
           @click="toggleAddMemberSelect(friend.userId)"
         >
-          <view class="mobile-cg-checkbox" :class="{ 'cg-checked': addMemberSelectedFriends.includes(friend.userId) }">
+          <view
+            class="mobile-cg-checkbox"
+            :class="{ 'cg-checked': addMemberSelectedFriends.includes(friend.userId) }"
+          >
             <text v-if="addMemberSelectedFriends.includes(friend.userId)" class="cg-check-mark">✓</text>
           </view>
-          <image :src="friend.avatar || defaultAvatar" class="mobile-cg-avatar" mode="aspectFill" />
+          <image
+            :src="friend.avatar || defaultAvatar"
+            class="mobile-cg-avatar"
+            mode="aspectFill"
+          />
           <text class="mobile-cg-name">「{{ friend.nickname }}」</text>
         </view>
         <view v-if="addMemberCandidates.length === 0" class="mobile-cg-empty">
@@ -454,10 +721,17 @@
       <view class="mobile-cg-footer">
         <view
           class="mobile-cg-submit-btn"
-          :class="{ 'cg-submit-disabled': addMemberSelectedFriends.length === 0 || isAddingMember }"
+          :class="{
+            'cg-submit-disabled': addMemberSelectedFriends.length === 0 || isAddingMember,
+          }"
           @click="confirmAddMember"
         >
-          {{ isAddingMember ? '添加中...' : (currentSession?.sessionType === SESSION_TYPE.GROUP ? '邀请加入群聊' : '发起群聊') + (addMemberSelectedFriends.length > 0 ? `（已选 ${addMemberSelectedFriends.length} 人）` : '') }}
+          {{
+            isAddingMember
+              ? '添加中...'
+              : (currentSession?.sessionType === SESSION_TYPE.GROUP ? '邀请加入群聊' : '发起群聊') +
+                (addMemberSelectedFriends.length > 0 ? `（已选 ${addMemberSelectedFriends.length} 人）` : '')
+          }}
         </view>
       </view>
     </view>
@@ -553,7 +827,8 @@
               class="mobile-icon"
               :class="{ 'mobile-icon-active': showMobilePlusMenu }"
               @click="showMobilePlusMenu = !showMobilePlusMenu"
-            >➕</text>
+              >➕</text
+            >
             <view v-if="showMobilePlusMenu" class="mobile-plus-dropdown">
               <view class="mobile-plus-item" @click="openMobileAddFriend">
                 <text class="mobile-plus-icon">👤</text>
@@ -617,7 +892,9 @@
 
     <!-- 聊天详情页面 (H5 响应式) -->
     <view
-      v-else-if="mobileCurrentTab === 'chat' && currentMobileChat && !mobileChatInfoPage"
+      v-else-if="
+        mobileCurrentTab === 'chat' && currentMobileChat && !mobileChatInfoPage
+      "
       class="mobile-chat-detail"
     >
       <!-- 聊天顶部栏：返回按钮 + 会话名称 + 信息页入口 -->
@@ -626,10 +903,9 @@
           >← {{ currentMobileChat.sessionName }}</text
         >
         <!-- ··· 直接进入全屏聊天信息页 -->
-        <text
-          class="mobile-more-icon"
-          @click="mobileChatInfoPage = true"
-        >···</text>
+        <text class="mobile-more-icon" @click="mobileChatInfoPage = true"
+          >···</text
+        >
       </view>
 
       <!-- 消息列表 -->
@@ -665,10 +941,7 @@
 
               <view class="mobile-bubble-content">
                 <!-- 已撤回消息 -->
-                <view
-                  v-if="item.msg.status === 3"
-                  class="mobile-revoke-msg"
-                >
+                <view v-if="item.msg.status === 3" class="mobile-revoke-msg">
                   {{ item.msg.content_replaced || '[消息已撤回]' }}
                 </view>
 
@@ -740,12 +1013,11 @@
             placeholder="发送消息"
             class="mobile-text-input"
             @keyup.enter="sendMessageWithFiles"
-            @focus="showMobileTools = false; showEmojiMobile = false"
+            @focus="onMobileInputFocus"
           />
           <text class="mobile-input-action" @click="toggleMobileEmoji">😊</text>
-          <!-- 有文字/文件时显示「发送」按鈕，否则显示「➕」展开工具 -->
           <text
-            v-if="inputMsg.trim() || pendingFiles.length > 0"
+            v-if="hasContentToSend"
             class="mobile-send-btn"
             @click="sendMessageWithFiles"
           >发送</text>
@@ -765,14 +1037,15 @@
                 :key="emoji"
                 class="mobile-emoji-item"
                 @click="insertMobileEmoji(emoji)"
-              >{{ emoji }}</text>
+                >{{ emoji }}</text
+              >
             </view>
           </scroll-view>
         </view>
 
         <!-- 工具面板：图片、文件 -->
         <view v-if="showMobileTools" class="mobile-tools-grid">
-          <view class="mobile-tool-item" @click="chooseMobileImage; showMobileTools = false">
+          <view class="mobile-tool-item" @click="onChooseMobileImage">
             <view class="mobile-tool-icon-wrap">🖼️</view>
             <text class="mobile-tool-label">图片</text>
           </view>
@@ -786,12 +1059,16 @@
 
     <!-- 聊天信息页 (H5)：全屏设置页，仿微信风格 -->
     <view
-      v-else-if="mobileCurrentTab === 'chat' && currentMobileChat && mobileChatInfoPage"
+      v-else-if="
+        mobileCurrentTab === 'chat' && currentMobileChat && mobileChatInfoPage
+      "
       class="mobile-chat-info-full"
     >
       <!-- 顶部导航 -->
       <view class="mobile-chat-header">
-        <text class="mobile-back-btn" @click="mobileChatInfoPage = false">← 返回</text>
+        <text class="mobile-back-btn" @click="mobileChatInfoPage = false"
+          >← 返回</text
+        >
         <text class="mobile-chat-title">聊天信息</text>
         <view style="width: 60px"></view>
       </view>
@@ -805,7 +1082,9 @@
               class="mobile-info-member-avatar"
               mode="aspectFill"
             />
-            <text class="mobile-info-member-name">{{ currentMobileChat.sessionName }}</text>
+            <text class="mobile-info-member-name">{{
+              currentMobileChat.sessionName
+            }}</text>
           </view>
           <view class="mobile-chat-info-member" @click="openAddMemberModal">
             <view class="mobile-chat-info-add">
@@ -849,12 +1128,9 @@
 
         <!-- 清空记录 -->
         <view class="mobile-chat-info-section">
-          <view
-            class="mobile-chat-info-row"
-            @click="clearChatRecords; mobileChatInfoPage = false"
-          >
+          <view class="mobile-chat-info-row" @click="onClearChatRecordsMobile">
             <text class="mobile-chat-info-label mobile-chat-info-danger">清空聊天记录</text>
-            <text class="mobile-chat-info-arrow">›</text>
+            <text class="mobile-chat-info-arrow">&gt;</text>
           </view>
         </view>
       </scroll-view>
@@ -904,7 +1180,9 @@
           @click="selectedFriendTab = 'notify'"
         >
           <text>通知</text>
-          <view class="mobile-tab-badge" v-if="pendingNotifyCount > 0">{{ pendingNotifyCount }}</view>
+          <view class="mobile-tab-badge" v-if="pendingNotifyCount > 0">{{
+            pendingNotifyCount
+          }}</view>
         </view>
       </view>
       <scroll-view scroll-y class="mobile-contacts-scroll">
@@ -942,7 +1220,9 @@
             />
             <view class="mobile-session-content">
               <text class="mobile-session-name">{{ group.groupName }}</text>
-              <text class="mobile-last-msg">{{ group.memberCount }} 个成员</text>
+              <text class="mobile-last-msg"
+                >{{ group.memberCount }} 个成员</text
+              >
             </view>
           </view>
         </view>
@@ -953,7 +1233,10 @@
           </view>
           <template v-else>
             <!-- 好友申请 -->
-            <view class="notify-section" v-if="notifications.friendApplies.length > 0">
+            <view
+              class="notify-section"
+              v-if="notifications.friendApplies.length > 0"
+            >
               <view class="notify-section-title">好友申请</view>
               <view
                 class="notify-item"
@@ -967,11 +1250,23 @@
                 />
                 <view class="notify-info">
                   <text class="notify-name">{{ apply.applicantNickname }}</text>
-                  <text class="notify-time">{{ formatMessageTime(apply.createTime) }}</text>
+                  <text class="notify-time">{{
+                    formatMessageTime(apply.createTime)
+                  }}</text>
                 </view>
                 <view class="notify-actions" v-if="apply.status === 0">
-                  <button class="notify-btn accept-btn" @click.stop="handleFriendApply(apply.id, 1)">接受</button>
-                  <button class="notify-btn reject-btn" @click.stop="handleFriendApply(apply.id, 2)">拒绝</button>
+                  <button
+                    class="notify-btn accept-btn"
+                    @click.stop="handleFriendApply(apply.id, 1)"
+                  >
+                    接受
+                  </button>
+                  <button
+                    class="notify-btn reject-btn"
+                    @click.stop="handleFriendApply(apply.id, 2)"
+                  >
+                    拒绝
+                  </button>
                 </view>
                 <text
                   class="notify-status-tag"
@@ -983,7 +1278,10 @@
               </view>
             </view>
             <!-- 群聊申请（作为群主/管理员收到的） -->
-            <view class="notify-section" v-if="notifications.groupApplies.length > 0">
+            <view
+              class="notify-section"
+              v-if="notifications.groupApplies.length > 0"
+            >
               <view class="notify-section-title">群聊申请</view>
               <view
                 class="notify-item"
@@ -997,19 +1295,36 @@
                 />
                 <view class="notify-info">
                   <text class="notify-name">{{ apply.applicantNickname }}</text>
-                  <text class="notify-group-name">申请加入 「{{ apply.groupName }}」</text>
-                  <text class="notify-time">{{ formatMessageTime(apply.createTime) }}</text>
+                  <text class="notify-group-name"
+                    >申请加入 「{{ apply.groupName }}」</text
+                  >
+                  <text class="notify-time">{{
+                    formatMessageTime(apply.createTime)
+                  }}</text>
                 </view>
                 <view class="notify-actions">
-                  <button class="notify-btn accept-btn" @click.stop="handleGroupApply(apply.id, 1)">同意</button>
-                  <button class="notify-btn reject-btn" @click.stop="handleGroupApply(apply.id, 2)">拒绝</button>
+                  <button
+                    class="notify-btn accept-btn"
+                    @click.stop="handleGroupApply(apply.id, 1)"
+                  >
+                    同意
+                  </button>
+                  <button
+                    class="notify-btn reject-btn"
+                    @click.stop="handleGroupApply(apply.id, 2)"
+                  >
+                    拒绝
+                  </button>
                 </view>
               </view>
             </view>
             <!-- 空状态 -->
             <view
               class="notify-empty"
-              v-if="!notifications.friendApplies.length && !notifications.groupApplies.length"
+              v-if="
+                !notifications.friendApplies.length &&
+                !notifications.groupApplies.length
+              "
             >
               <text class="notify-empty-icon">🔔</text>
               <text class="notify-empty-text">暂无新通知</text>
@@ -1106,13 +1421,18 @@
     <view v-if="showMobileCreateGroup" class="mobile-create-group-page">
       <!-- 顶部操作栏 -->
       <view class="mobile-chat-header">
-        <text class="mobile-back-btn" @click="showMobileCreateGroup = false">取消</text>
+        <text class="mobile-back-btn" @click="showMobileCreateGroup = false"
+          >取消</text
+        >
         <text class="mobile-chat-title">发起群聊</text>
         <text
           class="mobile-confirm-btn"
-          :class="{ 'mobile-confirm-active': createGroupSelectedFriends.length > 0 }"
+          :class="{
+            'mobile-confirm-active': createGroupSelectedFriends.length > 0,
+          }"
           @click="submitCreateGroup"
-        >完成({{ createGroupSelectedFriends.length }})</text>
+          >完成({{ createGroupSelectedFriends.length }})</text
+        >
       </view>
 
       <!-- 群头像上传 -->
@@ -1125,7 +1445,9 @@
         />
         <view v-else class="mobile-cg-avatar-placeholder">
           <text class="mobile-cg-avatar-icon">📷</text>
-          <text class="mobile-cg-avatar-hint">{{ isUploadingGroupAvatar ? '上传中...' : '点击设置群头像' }}</text>
+          <text class="mobile-cg-avatar-hint">{{
+            isUploadingGroupAvatar ? '上传中...' : '点击设置群头像'
+          }}</text>
         </view>
       </view>
 
@@ -1150,9 +1472,15 @@
           <!-- 自定义圆形 checkbox -->
           <view
             class="mobile-cg-checkbox"
-            :class="{ 'cg-checked': createGroupSelectedFriends.includes(friend.userId) }"
+            :class="{
+              'cg-checked': createGroupSelectedFriends.includes(friend.userId),
+            }"
           >
-            <text v-if="createGroupSelectedFriends.includes(friend.userId)" class="cg-check-mark">✓</text>
+            <text
+              v-if="createGroupSelectedFriends.includes(friend.userId)"
+              class="cg-check-mark"
+              >✓</text
+            >
           </view>
           <image
             :src="friend.avatar || defaultAvatar"
@@ -1170,10 +1498,17 @@
       <view class="mobile-cg-footer">
         <view
           class="mobile-cg-submit-btn"
-          :class="{ 'cg-submit-disabled': createGroupSelectedFriends.length === 0 || isCreatingGroup }"
+          :class="{
+            'cg-submit-disabled':
+              createGroupSelectedFriends.length === 0 || isCreatingGroup,
+          }"
           @click="submitCreateGroup"
         >
-          {{ isCreatingGroup ? '创建中...' : `发起群聊${ createGroupSelectedFriends.length > 0 ? '（已选 ' + createGroupSelectedFriends.length + ' 人）' : '' }` }}
+          {{
+            isCreatingGroup
+              ? '创建中...'
+              : `发起群聊${createGroupSelectedFriends.length > 0 ? '（已选 ' + createGroupSelectedFriends.length + ' 人）' : ''}`
+          }}
         </view>
       </view>
     </view>
@@ -1181,13 +1516,22 @@
     <!-- 添加成员：全屏选人弹窗（H5）-->
     <view v-if="showAddMemberModal" class="mobile-create-group-page">
       <view class="mobile-chat-header">
-        <text class="mobile-back-btn" @click="showAddMemberModal = false">取消</text>
-        <text class="mobile-chat-title">{{ currentMobileChat?.sessionType === SESSION_TYPE.GROUP ? '邀请入群' : '发起群聊' }}</text>
+        <text class="mobile-back-btn" @click="showAddMemberModal = false"
+          >取消</text
+        >
+        <text class="mobile-chat-title">{{
+          currentMobileChat?.sessionType === SESSION_TYPE.GROUP
+            ? '邀请入群'
+            : '发起群聊'
+        }}</text>
         <text
           class="mobile-confirm-btn"
-          :class="{ 'mobile-confirm-active': addMemberSelectedFriends.length > 0 }"
+          :class="{
+            'mobile-confirm-active': addMemberSelectedFriends.length > 0,
+          }"
           @click="confirmAddMember"
-        >完成({{ addMemberSelectedFriends.length }})</text>
+          >完成({{ addMemberSelectedFriends.length }})</text
+        >
       </view>
       <scroll-view scroll-y class="mobile-cg-scroll">
         <view
@@ -1196,10 +1540,23 @@
           class="mobile-cg-item"
           @click="toggleAddMemberSelect(friend.userId)"
         >
-          <view class="mobile-cg-checkbox" :class="{ 'cg-checked': addMemberSelectedFriends.includes(friend.userId) }">
-            <text v-if="addMemberSelectedFriends.includes(friend.userId)" class="cg-check-mark">✓</text>
+          <view
+            class="mobile-cg-checkbox"
+            :class="{
+              'cg-checked': addMemberSelectedFriends.includes(friend.userId),
+            }"
+          >
+            <text
+              v-if="addMemberSelectedFriends.includes(friend.userId)"
+              class="cg-check-mark"
+              >✓</text
+            >
           </view>
-          <image :src="friend.avatar || defaultAvatar" class="mobile-cg-avatar" mode="aspectFill" />
+          <image
+            :src="friend.avatar || defaultAvatar"
+            class="mobile-cg-avatar"
+            mode="aspectFill"
+          />
           <text class="mobile-cg-name">「{{ friend.nickname }}」</text>
         </view>
         <view v-if="addMemberCandidates.length === 0" class="mobile-cg-empty">
@@ -1209,10 +1566,22 @@
       <view class="mobile-cg-footer">
         <view
           class="mobile-cg-submit-btn"
-          :class="{ 'cg-submit-disabled': addMemberSelectedFriends.length === 0 || isAddingMember }"
+          :class="{
+            'cg-submit-disabled':
+              addMemberSelectedFriends.length === 0 || isAddingMember,
+          }"
           @click="confirmAddMember"
         >
-          {{ isAddingMember ? '添加中...' : (currentMobileChat?.sessionType === SESSION_TYPE.GROUP ? '邀请加入群聊' : '发起群聊') + (addMemberSelectedFriends.length > 0 ? `（已选 ${addMemberSelectedFriends.length} 人）` : '') }}
+          {{
+            isAddingMember
+              ? '添加中...'
+              : (currentMobileChat?.sessionType === SESSION_TYPE.GROUP
+                  ? '邀请加入群聊'
+                  : '发起群聊') +
+                (addMemberSelectedFriends.length > 0
+                  ? `（已选 ${addMemberSelectedFriends.length} 人）`
+                  : '')
+          }}
         </view>
       </view>
     </view>
@@ -1220,13 +1589,15 @@
     <!-- 添加好友：全屏搜索页（H5）-->
     <view v-if="showMobileAddFriend" class="mobile-add-friend-page">
       <view class="mobile-chat-header">
-        <text class="mobile-back-btn" @click="showMobileAddFriend = false">← 返回</text>
+        <text class="mobile-back-btn" @click="showMobileAddFriend = false"
+          >← 返回</text
+        >
         <text class="mobile-chat-title">添加好友</text>
         <view style="width: 60px"></view>
       </view>
       <view class="mobile-af-search-bar">
         <input
-          v-model="addFriendKeyword"
+          v-model="mobileAddFriendKeyword"
           type="text"
           placeholder="搜索用户名 / 手机号"
           class="mobile-af-search-input"
@@ -1242,27 +1613,59 @@
       </view>
       <view v-else-if="addFriendResult" class="mobile-af-result">
         <view class="mobile-af-user-card">
-          <image :src="addFriendResult.avatar || defaultAvatar" class="mobile-af-avatar" mode="aspectFill" />
+          <image
+            :src="addFriendResult.avatar || defaultAvatar"
+            class="mobile-af-avatar"
+            mode="aspectFill"
+          />
           <view class="mobile-af-user-info">
-            <text class="mobile-af-nickname">{{ addFriendResult.nickname }}</text>
-            <text class="mobile-af-username">{{ addFriendResult.username }}</text>
+            <text class="mobile-af-nickname">{{
+              addFriendResult.nickname
+            }}</text>
+            <text class="mobile-af-username">{{
+              addFriendResult.username
+            }}</text>
           </view>
-          <view class="mobile-af-apply-btn" @click="sendFriendApply(addFriendResult.id)">
+          <view
+            class="mobile-af-apply-btn"
+            @click="sendFriendApply(addFriendResult.id)"
+          >
             <text>{{ isSendingApply ? '发送中...' : '添加好友' }}</text>
           </view>
         </view>
       </view>
-      <view v-else-if="addFriendKeyword && !isSearchingFriend" class="mobile-af-empty">
+      <view
+        v-else-if="mobileAddFriendKeyword && !isSearchingFriend"
+        class="mobile-af-empty"
+      >
         <text>未找到用户，换个关键词试试</text>
       </view>
     </view>
 
     <!-- 消息长按上下文菜单（H5）-->
-    <view v-if="mobileContextMenu.visible" class="mobile-ctx-overlay" @click="closeMsgContextMenu">
+    <view
+      v-if="mobileContextMenu.visible"
+      class="mobile-ctx-overlay"
+      @click="closeMsgContextMenu"
+    >
       <view class="mobile-ctx-menu" @click.stop>
-        <view v-if="mobileContextMenu.msg?.message_type === MESSAGE_TYPE.TEXT" class="mobile-ctx-item" @click="copyMobileMsg">复制</view>
-        <view v-if="isMyMessage(mobileContextMenu.msg)" class="mobile-ctx-item mobile-ctx-revoke" @click="revokeMessage(mobileContextMenu.msg)">撤回</view>
-        <view class="mobile-ctx-item mobile-ctx-cancel" @click="closeMsgContextMenu">取消</view>
+        <view
+          v-if="mobileContextMenu.msg?.message_type === MESSAGE_TYPE.TEXT"
+          class="mobile-ctx-item"
+          @click="copyMobileMsg"
+          >复制</view
+        >
+        <view
+          v-if="isMyMessage(mobileContextMenu.msg)"
+          class="mobile-ctx-item mobile-ctx-revoke"
+          @click="revokeMessage(mobileContextMenu.msg)"
+          >撤回</view
+        >
+        <view
+          class="mobile-ctx-item mobile-ctx-cancel"
+          @click="closeMsgContextMenu"
+          >取消</view
+        >
       </view>
     </view>
   </view>
@@ -1273,7 +1676,11 @@
   <view class="mobile-container">
     <!-- 使用相同的移动端布局，因为原生 APP 本身就是移动端 -->
     <!-- 会话列表页面 -->
-    <view v-if="!currentMobileChat" class="mobile-session-list" @click="showMobilePlusMenu = false">
+    <view
+      v-if="!currentMobileChat"
+      class="mobile-session-list"
+      @click="showMobilePlusMenu = false"
+    >
       <!-- 顶部导航栏 -->
       <view class="mobile-navbar">
         <text class="mobile-title">微信</text>
@@ -1285,7 +1692,8 @@
               class="mobile-icon"
               :class="{ 'mobile-icon-active': showMobilePlusMenu }"
               @click="showMobilePlusMenu = !showMobilePlusMenu"
-            >➕</text>
+              >➕</text
+            >
             <view v-if="showMobilePlusMenu" class="mobile-plus-dropdown">
               <view class="mobile-plus-item" @click="openMobileAddFriend">
                 <text class="mobile-plus-icon">👤</text>
@@ -1342,7 +1750,9 @@
           >← {{ currentMobileChat.sessionName }}</text
         >
         <!-- ··· 直接进入全屏聊天信息页 -->
-        <text class="mobile-more-icon" @click="mobileChatInfoPage = true">···</text>
+        <text class="mobile-more-icon" @click="mobileChatInfoPage = true"
+          >···</text
+        >
       </view>
 
       <!-- 消息列表 -->
@@ -1374,27 +1784,49 @@
                 </view>
                 <!-- 文本消息 -->
                 <view
-                  v-else-if="item.msg.message_type === MESSAGE_TYPE.TEXT && item.msg.content && item.msg.content.trim()"
+                  v-else-if="
+                    item.msg.message_type === MESSAGE_TYPE.TEXT &&
+                    item.msg.content &&
+                    item.msg.content.trim()
+                  "
                   class="mobile-text-msg"
                 >
                   {{ item.msg.content }}
                 </view>
                 <!-- 图片消息 -->
                 <image
-                  v-else-if="item.msg.message_type === MESSAGE_TYPE.IMAGE && item.msg.file_url"
+                  v-else-if="
+                    item.msg.message_type === MESSAGE_TYPE.IMAGE &&
+                    item.msg.file_url
+                  "
                   :src="item.msg.local_file_url || item.msg.file_url"
                   class="mobile-image-msg"
                   @click="handleImageClick(item.msg)"
                   mode="aspectFill"
                 />
                 <!-- 语音消息 -->
-                <text v-else-if="item.msg.message_type === MESSAGE_TYPE.AUDIO" class="mobile-emoji-msg">🎤 语音</text>
+                <text
+                  v-else-if="item.msg.message_type === MESSAGE_TYPE.AUDIO"
+                  class="mobile-emoji-msg"
+                  >🎤 语音</text
+                >
                 <!-- 文件消息 -->
-                <view v-else-if="item.msg.message_type === MESSAGE_TYPE.FILE && item.msg.file_url" class="mobile-message-file" @click="handleFileClick(item.msg)">
+                <view
+                  v-else-if="
+                    item.msg.message_type === MESSAGE_TYPE.FILE &&
+                    item.msg.file_url
+                  "
+                  class="mobile-message-file"
+                  @click="handleFileClick(item.msg)"
+                >
                   <text class="mobile-file-icon">📄</text>
                   <view class="mobile-file-info">
-                    <text class="mobile-file-name">{{ item.msg.file_name || '未知文件' }}</text>
-                    <text class="mobile-file-size">{{ formatFileSize(item.msg.file_size) }}</text>
+                    <text class="mobile-file-name">{{
+                      item.msg.file_name || '未知文件'
+                    }}</text>
+                    <text class="mobile-file-size">{{
+                      formatFileSize(item.msg.file_size)
+                    }}</text>
                   </view>
                 </view>
               </view>
@@ -1413,11 +1845,11 @@
             placeholder="发送消息"
             class="mobile-text-input"
             @keyup.enter="sendMessageWithFiles"
-            @focus="showMobileTools = false; showEmojiMobile = false"
+            @focus="onMobileInputFocus"
           />
           <text class="mobile-input-action" @click="toggleMobileEmoji">😊</text>
           <text
-            v-if="inputMsg.trim() || pendingFiles.length > 0"
+            v-if="hasContentToSend"
             class="mobile-send-btn"
             @click="sendMessageWithFiles"
           >发送</text>
@@ -1435,12 +1867,13 @@
                 :key="emoji"
                 class="mobile-emoji-item"
                 @click="insertMobileEmoji(emoji)"
-              >{{ emoji }}</text>
+                >{{ emoji }}</text
+              >
             </view>
           </scroll-view>
         </view>
         <view v-if="showMobileTools" class="mobile-tools-grid">
-          <view class="mobile-tool-item" @click="chooseMobileImage; showMobileTools = false">
+          <view class="mobile-tool-item" @click="onChooseMobileImage">
             <view class="mobile-tool-icon-wrap">🖼️</view>
             <text class="mobile-tool-label">图片</text>
           </view>
@@ -1455,15 +1888,23 @@
     <!-- 聊天信息页（Native）-->
     <view v-else-if="mobileChatInfoPage" class="mobile-chat-info-full">
       <view class="mobile-chat-header">
-        <text class="mobile-back-btn" @click="mobileChatInfoPage = false">← 返回</text>
+        <text class="mobile-back-btn" @click="mobileChatInfoPage = false"
+          >← 返回</text
+        >
         <text class="mobile-chat-title">聊天信息</text>
         <view style="width: 60px"></view>
       </view>
       <scroll-view scroll-y class="mobile-chat-info-scroll">
         <view class="mobile-chat-info-members">
           <view class="mobile-chat-info-member">
-            <image :src="currentMobileChat.sessionAvatar || defaultAvatar" class="mobile-info-member-avatar" mode="aspectFill" />
-            <text class="mobile-info-member-name">{{ currentMobileChat.sessionName }}</text>
+            <image
+              :src="currentMobileChat.sessionAvatar || defaultAvatar"
+              class="mobile-info-member-avatar"
+              mode="aspectFill"
+            />
+            <text class="mobile-info-member-name">{{
+              currentMobileChat.sessionName
+            }}</text>
           </view>
           <view class="mobile-chat-info-member" @click="openAddMemberModal">
             <view class="mobile-chat-info-add">
@@ -1481,21 +1922,29 @@
         <view class="mobile-chat-info-section">
           <view class="mobile-chat-info-row">
             <text class="mobile-chat-info-label">消息免打扰</text>
-            <view class="mobile-switch" :class="{ 'mobile-switch-on': doNotDisturb }" @click="toggleDoNotDisturb">
+            <view
+              class="mobile-switch"
+              :class="{ 'mobile-switch-on': doNotDisturb }"
+              @click="toggleDoNotDisturb"
+            >
               <view class="mobile-switch-thumb"></view>
             </view>
           </view>
           <view class="mobile-chat-info-row">
             <text class="mobile-chat-info-label">置顶聊天</text>
-            <view class="mobile-switch" :class="{ 'mobile-switch-on': pinned }" @click="togglePinChat">
+            <view
+              class="mobile-switch"
+              :class="{ 'mobile-switch-on': pinned }"
+              @click="togglePinChat"
+            >
               <view class="mobile-switch-thumb"></view>
             </view>
           </view>
         </view>
         <view class="mobile-chat-info-section">
-          <view class="mobile-chat-info-row" @click="clearChatRecords; mobileChatInfoPage = false">
+          <view class="mobile-chat-info-row" @click="onClearChatRecordsMobile">
             <text class="mobile-chat-info-label mobile-chat-info-danger">清空聊天记录</text>
-            <text class="mobile-chat-info-arrow">›</text>
+            <text class="mobile-chat-info-arrow">&gt;</text>
           </view>
         </view>
       </scroll-view>
@@ -1524,20 +1973,32 @@
     <!-- 发起群聊：全屏选人弹窗（同 H5，position absolute 覆盖整个容器）-->
     <view v-if="showMobileCreateGroup" class="mobile-create-group-page">
       <view class="mobile-chat-header">
-        <text class="mobile-back-btn" @click="showMobileCreateGroup = false">取消</text>
+        <text class="mobile-back-btn" @click="showMobileCreateGroup = false"
+          >取消</text
+        >
         <text class="mobile-chat-title">发起群聊</text>
         <text
           class="mobile-confirm-btn"
-          :class="{ 'mobile-confirm-active': createGroupSelectedFriends.length > 0 }"
+          :class="{
+            'mobile-confirm-active': createGroupSelectedFriends.length > 0,
+          }"
           @click="submitCreateGroup"
-        >完成({{ createGroupSelectedFriends.length }})</text>
+          >完成({{ createGroupSelectedFriends.length }})</text
+        >
       </view>
       <!-- 群头像上传 -->
       <view class="mobile-cg-avatar-section" @click="chooseGroupAvatar">
-        <image v-if="createGroupAvatarUrl" :src="createGroupAvatarUrl" class="mobile-cg-avatar-preview" mode="aspectFill" />
+        <image
+          v-if="createGroupAvatarUrl"
+          :src="createGroupAvatarUrl"
+          class="mobile-cg-avatar-preview"
+          mode="aspectFill"
+        />
         <view v-else class="mobile-cg-avatar-placeholder">
           <text class="mobile-cg-avatar-icon">📷</text>
-          <text class="mobile-cg-avatar-hint">{{ isUploadingGroupAvatar ? '上传中...' : '点击设置群头像' }}</text>
+          <text class="mobile-cg-avatar-hint">{{
+            isUploadingGroupAvatar ? '上传中...' : '点击设置群头像'
+          }}</text>
         </view>
       </view>
       <view class="mobile-cg-name-wrap">
@@ -1555,10 +2016,23 @@
           class="mobile-cg-item"
           @click="toggleFriendSelect(friend.userId)"
         >
-          <view class="mobile-cg-checkbox" :class="{ 'cg-checked': createGroupSelectedFriends.includes(friend.userId) }">
-            <text v-if="createGroupSelectedFriends.includes(friend.userId)" class="cg-check-mark">✓</text>
+          <view
+            class="mobile-cg-checkbox"
+            :class="{
+              'cg-checked': createGroupSelectedFriends.includes(friend.userId),
+            }"
+          >
+            <text
+              v-if="createGroupSelectedFriends.includes(friend.userId)"
+              class="cg-check-mark"
+              >✓</text
+            >
           </view>
-          <image :src="friend.avatar || defaultAvatar" class="mobile-cg-avatar" mode="aspectFill" />
+          <image
+            :src="friend.avatar || defaultAvatar"
+            class="mobile-cg-avatar"
+            mode="aspectFill"
+          />
           <text class="mobile-cg-name">「{{ friend.nickname }}」</text>
         </view>
         <view v-if="friends.length === 0" class="mobile-cg-empty">
@@ -1568,10 +2042,17 @@
       <view class="mobile-cg-footer">
         <view
           class="mobile-cg-submit-btn"
-          :class="{ 'cg-submit-disabled': createGroupSelectedFriends.length === 0 || isCreatingGroup }"
+          :class="{
+            'cg-submit-disabled':
+              createGroupSelectedFriends.length === 0 || isCreatingGroup,
+          }"
           @click="submitCreateGroup"
         >
-          {{ isCreatingGroup ? '创建中...' : `发起群聊${ createGroupSelectedFriends.length > 0 ? '（已选 ' + createGroupSelectedFriends.length + ' 人）' : '' }` }}
+          {{
+            isCreatingGroup
+              ? '创建中...'
+              : `发起群聊${createGroupSelectedFriends.length > 0 ? '（已选 ' + createGroupSelectedFriends.length + ' 人）' : ''}`
+          }}
         </view>
       </view>
     </view>
@@ -1579,13 +2060,22 @@
     <!-- 添加成员：全屏选人弹窗（Native）-->
     <view v-if="showAddMemberModal" class="mobile-create-group-page">
       <view class="mobile-chat-header">
-        <text class="mobile-back-btn" @click="showAddMemberModal = false">取消</text>
-        <text class="mobile-chat-title">{{ currentMobileChat?.sessionType === SESSION_TYPE.GROUP ? '邀请入群' : '发起群聊' }}</text>
+        <text class="mobile-back-btn" @click="showAddMemberModal = false"
+          >取消</text
+        >
+        <text class="mobile-chat-title">{{
+          currentMobileChat?.sessionType === SESSION_TYPE.GROUP
+            ? '邀请入群'
+            : '发起群聊'
+        }}</text>
         <text
           class="mobile-confirm-btn"
-          :class="{ 'mobile-confirm-active': addMemberSelectedFriends.length > 0 }"
+          :class="{
+            'mobile-confirm-active': addMemberSelectedFriends.length > 0,
+          }"
           @click="confirmAddMember"
-        >完成({{ addMemberSelectedFriends.length }})</text>
+          >完成({{ addMemberSelectedFriends.length }})</text
+        >
       </view>
       <scroll-view scroll-y class="mobile-cg-scroll">
         <view
@@ -1594,10 +2084,23 @@
           class="mobile-cg-item"
           @click="toggleAddMemberSelect(friend.userId)"
         >
-          <view class="mobile-cg-checkbox" :class="{ 'cg-checked': addMemberSelectedFriends.includes(friend.userId) }">
-            <text v-if="addMemberSelectedFriends.includes(friend.userId)" class="cg-check-mark">✓</text>
+          <view
+            class="mobile-cg-checkbox"
+            :class="{
+              'cg-checked': addMemberSelectedFriends.includes(friend.userId),
+            }"
+          >
+            <text
+              v-if="addMemberSelectedFriends.includes(friend.userId)"
+              class="cg-check-mark"
+              >✓</text
+            >
           </view>
-          <image :src="friend.avatar || defaultAvatar" class="mobile-cg-avatar" mode="aspectFill" />
+          <image
+            :src="friend.avatar || defaultAvatar"
+            class="mobile-cg-avatar"
+            mode="aspectFill"
+          />
           <text class="mobile-cg-name">「{{ friend.nickname }}」</text>
         </view>
         <view v-if="addMemberCandidates.length === 0" class="mobile-cg-empty">
@@ -1607,10 +2110,22 @@
       <view class="mobile-cg-footer">
         <view
           class="mobile-cg-submit-btn"
-          :class="{ 'cg-submit-disabled': addMemberSelectedFriends.length === 0 || isAddingMember }"
+          :class="{
+            'cg-submit-disabled':
+              addMemberSelectedFriends.length === 0 || isAddingMember,
+          }"
           @click="confirmAddMember"
         >
-          {{ isAddingMember ? '添加中...' : (currentMobileChat?.sessionType === SESSION_TYPE.GROUP ? '邀请加入群聊' : '发起群聊') + (addMemberSelectedFriends.length > 0 ? `（已选 ${addMemberSelectedFriends.length} 人）` : '') }}
+          {{
+            isAddingMember
+              ? '添加中...'
+              : (currentMobileChat?.sessionType === SESSION_TYPE.GROUP
+                  ? '邀请加入群聊'
+                  : '发起群聊') +
+                (addMemberSelectedFriends.length > 0
+                  ? `（已选 ${addMemberSelectedFriends.length} 人）`
+                  : '')
+          }}
         </view>
       </view>
     </view>
@@ -1618,13 +2133,15 @@
     <!-- 添加好友：全屏搜索页（Native）-->
     <view v-if="showMobileAddFriend" class="mobile-add-friend-page">
       <view class="mobile-chat-header">
-        <text class="mobile-back-btn" @click="showMobileAddFriend = false">← 返回</text>
+        <text class="mobile-back-btn" @click="showMobileAddFriend = false"
+          >← 返回</text
+        >
         <text class="mobile-chat-title">添加好友</text>
         <view style="width: 60px"></view>
       </view>
       <view class="mobile-af-search-bar">
         <input
-          v-model="addFriendKeyword"
+          v-model="mobileAddFriendKeyword"
           type="text"
           placeholder="搜索用户名 / 手机号"
           class="mobile-af-search-input"
@@ -1639,27 +2156,59 @@
       </view>
       <view v-else-if="addFriendResult" class="mobile-af-result">
         <view class="mobile-af-user-card">
-          <image :src="addFriendResult.avatar || defaultAvatar" class="mobile-af-avatar" mode="aspectFill" />
+          <image
+            :src="addFriendResult.avatar || defaultAvatar"
+            class="mobile-af-avatar"
+            mode="aspectFill"
+          />
           <view class="mobile-af-user-info">
-            <text class="mobile-af-nickname">{{ addFriendResult.nickname }}</text>
-            <text class="mobile-af-username">{{ addFriendResult.username }}</text>
+            <text class="mobile-af-nickname">{{
+              addFriendResult.nickname
+            }}</text>
+            <text class="mobile-af-username">{{
+              addFriendResult.username
+            }}</text>
           </view>
-          <view class="mobile-af-apply-btn" @click="sendFriendApply(addFriendResult.id)">
+          <view
+            class="mobile-af-apply-btn"
+            @click="sendFriendApply(addFriendResult.id)"
+          >
             <text>{{ isSendingApply ? '发送中...' : '添加好友' }}</text>
           </view>
         </view>
       </view>
-      <view v-else-if="addFriendKeyword && !isSearchingFriend" class="mobile-af-empty">
+      <view
+        v-else-if="mobileAddFriendKeyword && !isSearchingFriend"
+        class="mobile-af-empty"
+      >
         <text>未找到用户，换个关键词试试</text>
       </view>
     </view>
 
     <!-- 消息长按上下文菜单（Native）-->
-    <view v-if="mobileContextMenu.visible" class="mobile-ctx-overlay" @click="closeMsgContextMenu">
+    <view
+      v-if="mobileContextMenu.visible"
+      class="mobile-ctx-overlay"
+      @click="closeMsgContextMenu"
+    >
       <view class="mobile-ctx-menu" @click.stop>
-        <view v-if="mobileContextMenu.msg?.message_type === MESSAGE_TYPE.TEXT" class="mobile-ctx-item" @click="copyMobileMsg">复制</view>
-        <view v-if="isMyMessage(mobileContextMenu.msg)" class="mobile-ctx-item mobile-ctx-revoke" @click="revokeMessage(mobileContextMenu.msg)">撤回</view>
-        <view class="mobile-ctx-item mobile-ctx-cancel" @click="closeMsgContextMenu">取消</view>
+        <view
+          v-if="mobileContextMenu.msg?.message_type === MESSAGE_TYPE.TEXT"
+          class="mobile-ctx-item"
+          @click="copyMobileMsg"
+          >复制</view
+        >
+        <view
+          v-if="isMyMessage(mobileContextMenu.msg)"
+          class="mobile-ctx-item mobile-ctx-revoke"
+          @click="revokeMessage(mobileContextMenu.msg)"
+          >撤回</view
+        >
+        <view
+          class="mobile-ctx-item mobile-ctx-cancel"
+          @click="closeMsgContextMenu"
+          >取消</view
+        >
       </view>
     </view>
   </view>
@@ -1735,15 +2284,15 @@
 import { ref, computed, onMounted, nextTick, onUnmounted, watch } from 'vue'
 import ChatStorage from '@/utils/chat-storage'
 import service from '@/utils/request'
-import EditProfile    from '@/components/EditProfile.vue'
-import QrCodeModal    from '@/components/home/QrCodeModal.vue'
+import EditProfile from '@/components/EditProfile.vue'
+import QrCodeModal from '@/components/home/QrCodeModal.vue'
 import AddFriendModal from '@/components/home/AddFriendModal.vue'
 import JoinGroupModal from '@/components/home/JoinGroupModal.vue'
-import SettingsPanel  from '@/components/home/SettingsPanel.vue'
-import ChatArea       from '@/components/home/ChatArea.vue'
+import SettingsPanel from '@/components/home/SettingsPanel.vue'
+import ChatArea from '@/components/home/ChatArea.vue'
 import { useNotifications } from '@/composables/useNotifications'
-import { useContacts }      from '@/composables/useContacts'
-import { useSendMessage }   from '@/composables/useSendMessage'
+import { useContacts } from '@/composables/useContacts'
+import { useSendMessage } from '@/composables/useSendMessage'
 import {
   handleMsgDownload,
   getUserInfoFromStorage,
@@ -1767,7 +2316,15 @@ const selfAvatar =
 const defaultAvatar = selfAvatar
 
 // 枚举
-const MESSAGE_TYPE = { TEXT: 1, IMAGE: 2, VIDEO: 3, AUDIO: 4, FILE: 5, EMOJI: 6, SYSTEM: 7 }
+const MESSAGE_TYPE = {
+  TEXT: 1,
+  IMAGE: 2,
+  VIDEO: 3,
+  AUDIO: 4,
+  FILE: 5,
+  EMOJI: 6,
+  SYSTEM: 7,
+}
 const SESSION_TYPE = { SINGLE: 1, GROUP: 2 }
 const SEND_STATUS = { PENDING: 'pending', SUCCESS: 'success', FAILED: 'failed' }
 const CHUNK_SIZE = 10 * 1024 * 1024
@@ -1841,13 +2398,26 @@ const showPlusMenu = ref(false)
 // 添加好友 / 加入群聊弹窗：展开关由父组件控制，弹窗内部状态由子组件自管理
 const showAddFriendModal = ref(false)
 const showJoinGroupModal = ref(false)
+// 通讯录内「添加朋友」悬浮窗（带搜索框）
+const showAddFriendPopover = ref(false)
+const addFriendKeyword = ref('')
+const addFriendSearchResult = ref(undefined) // undefined=未搜索, null=无结果, object=找到
+const addFriendSearched = ref(false)
+const addFriendPopoverLoading = ref(false)
+const addFriendApplying = ref(false)
+const addFriendRemark = ref('')
+const showAddFriendRemark = ref(false)
 // 我的二维码弹窗显隐
 const showQrCode = ref(false)
 // 通知状态：由 useNotifications composable 提供，包含好友申请 + 群聊申请
 // onApproved 回调：同意申请成功后立刻刷新会话列表
 const {
-  notifications, notifyLoading, pendingNotifyCount,
-  loadNotifications, handleFriendApply, handleGroupApply,
+  notifications,
+  notifyLoading,
+  pendingNotifyCount,
+  loadNotifications,
+  handleFriendApply,
+  handleGroupApply,
 } = useNotifications({
   onApproved: () => loadSessionList(),
 })
@@ -1939,7 +2509,6 @@ const filteredSessions = computed(() => {
   return sessions.value.filter((s) => s.sessionName.toLowerCase().includes(q))
 })
 
-
 const formatMessageTime = (timeStr) => {
   if (!timeStr) return ''
   const msgTime = new Date(timeStr)
@@ -2023,16 +2592,13 @@ const cleanMessage = (rawMsg, defaultContent = '', forceMessageType = null) => {
     download_progress: rawMsg.download_progress || 0,
     avatar: isMyMessage({ sender_id: senderId })
       ? userInfo.value.avatar || selfAvatar
-      // 优先使用后端返回的真实发送人头像（senderAvatar）
-      // 如果后端没有带（如旧消息缓存），单聊时用会话头像兜底
-      : (
-          rawMsg.senderAvatar || rawMsg.sender_avatar ||
-          (
-            currentSession.value?.sessionType === SESSION_TYPE.SINGLE
-              ? (currentSession.value?.sessionAvatar || selfAvatar)
-              : selfAvatar
-          )
-        ),
+      : // 优先使用后端返回的真实发送人头像（senderAvatar）
+        // 如果后端没有带（如旧消息缓存），单聊时用会话头像兜底
+        rawMsg.senderAvatar ||
+        rawMsg.sender_avatar ||
+        (currentSession.value?.sessionType === SESSION_TYPE.SINGLE
+          ? currentSession.value?.sessionAvatar || selfAvatar
+          : selfAvatar),
   }
 }
 
@@ -2210,6 +2776,12 @@ const clearChatRecords = async () => {
   showChatInfoPanel.value = false
 }
 
+/** 移动端聊天信息页「清空聊天记录」：执行清空并关闭信息页，避免模板内多行 @click 导致编译解析错误 */
+const onClearChatRecordsMobile = async () => {
+  await clearChatRecords()
+  mobileChatInfoPage.value = false
+}
+
 const openProfileFromPanel = (eventOrFriend, maybeFriend, maybeFriendId) => {
   // 支持两种调用：openProfileFromPanel($event, friend) 或 openProfileFromPanel(friend)
   let ev = null
@@ -2318,6 +2890,7 @@ const toggleMoreMenu = () => {
 const closeMoreMenu = () => {
   showMoreMenu.value = false
   showPlusMenu.value = false
+  showAddFriendPopover.value = false
   // 优先关闭头像弹出层
   if (showProfilePopover.value) {
     showProfilePopover.value = false
@@ -2343,6 +2916,72 @@ const openAddFriend = () => {
   showAddFriendModal.value = true
 }
 
+/** 通讯录内「添加朋友」行点击：打开带搜索的悬浮窗 */
+const openAddFriendPopover = () => {
+  showAddFriendPopover.value = true
+}
+
+/** 关闭添加朋友悬浮窗并重置状态 */
+const closeAddFriendPopover = () => {
+  showAddFriendPopover.value = false
+  addFriendKeyword.value = ''
+  addFriendSearchResult.value = undefined
+  addFriendSearched.value = false
+  addFriendRemark.value = ''
+  showAddFriendRemark.value = false
+}
+
+/** 悬浮窗内执行用户搜索（与 AddFriendModal 同一接口） */
+const doAddFriendSearch = async () => {
+  const q = addFriendKeyword.value.trim()
+  if (!q || addFriendPopoverLoading.value) return
+  addFriendPopoverLoading.value = true
+  addFriendSearched.value = true
+  addFriendSearchResult.value = undefined
+  try {
+    const res = await service.get('/user/search', { params: { keyword: q } })
+    addFriendSearchResult.value = res.code === 200 && res.data ? res.data : null
+  } catch {
+    addFriendSearchResult.value = null
+  } finally {
+    addFriendPopoverLoading.value = false
+  }
+}
+
+const clearAddFriendSearch = () => {
+  addFriendKeyword.value = ''
+  addFriendSearchResult.value = undefined
+  addFriendSearched.value = false
+  addFriendRemark.value = ''
+  showAddFriendRemark.value = false
+}
+
+/** 悬浮窗内发送好友申请 */
+const sendAddFriendApply = async () => {
+  if (!addFriendSearchResult.value || addFriendApplying.value) return
+  addFriendApplying.value = true
+  try {
+    const res = await service.post('/friend/apply', {
+      targetId: addFriendSearchResult.value.id,
+      remark: addFriendRemark.value.trim() || null,
+    })
+    if (res.code === 200) {
+      addFriendSearchResult.value = {
+        ...addFriendSearchResult.value,
+        isApplied: true,
+      }
+      showAddFriendRemark.value = false
+      loadNotifications()
+    } else {
+      uni.showToast({ title: res.msg || '申请失败', icon: 'none' })
+    }
+  } catch {
+    uni.showToast({ title: '网络异常，请稍后重试', icon: 'none' })
+  } finally {
+    addFriendApplying.value = false
+  }
+}
+
 const openCreateGroup = () => {
   showPlusMenu.value = false
   uni.showToast({ title: '发起群聊功能开发中', icon: 'none' })
@@ -2354,12 +2993,14 @@ const openJoinGroup = () => {
   showJoinGroupModal.value = true
 }
 
-const openChatFiles    = () => uni.showToast({ title: '功能开发中', icon: 'none' })
-const manageChatHistory = () => uni.showToast({ title: '功能开发中', icon: 'none' })
-const loadHistoryChat   = () => uni.showToast({ title: '功能开发中', icon: 'none' })
-const lockApp           = () => uni.showToast({ title: '功能开发中', icon: 'none' })
-const openFeedback      = () => uni.showToast({ title: '功能开发中', icon: 'none' })
-const openSettings      = () => uni.showToast({ title: '功能开发中', icon: 'none' })
+const openChatFiles = () => uni.showToast({ title: '功能开发中', icon: 'none' })
+const manageChatHistory = () =>
+  uni.showToast({ title: '功能开发中', icon: 'none' })
+const loadHistoryChat = () =>
+  uni.showToast({ title: '功能开发中', icon: 'none' })
+const lockApp = () => uni.showToast({ title: '功能开发中', icon: 'none' })
+const openFeedback = () => uni.showToast({ title: '功能开发中', icon: 'none' })
+const openSettings = () => uni.showToast({ title: '功能开发中', icon: 'none' })
 
 // 退出登录：尝试调用后端接口并清除本地 token
 const handleLogout = async () => {
@@ -2375,12 +3016,16 @@ const handleLogout = async () => {
 
 const switchSidebarTab = (tab) => {
   currentSidebarTab.value = tab
-  showMoreMenu.value   = false
+  showMoreMenu.value = false
   showEmojiPanel.value = false
 }
 
-const selectContact    = (item) => { currentContact.value = item }
-const toggleGroupExpand = (item) => { item.expanded = !item.expanded }
+const selectContact = (item) => {
+  currentContact.value = item
+}
+const toggleGroupExpand = (item) => {
+  item.expanded = !item.expanded
+}
 
 /**
  * 展示好友详情（右侧面板）—— 仅更新当前联系人，不自行进入聊天
@@ -2388,10 +3033,10 @@ const toggleGroupExpand = (item) => { item.expanded = !item.expanded }
 const selectFriend = (friend) => {
   currentContact.value = {
     sessionName: friend.nickname,
-    avatar:      friend.avatar,
-    type:        'person',
-    targetId:    friend.userId,
-    desc:        friend.signature,
+    avatar: friend.avatar,
+    type: 'person',
+    targetId: friend.userId,
+    desc: friend.signature,
   }
 }
 
@@ -2399,10 +3044,10 @@ const selectFriend = (friend) => {
 const selectGroup = (group) => {
   currentContact.value = {
     sessionName: group.groupName,
-    avatar:      group.groupAvatar,
-    type:        'group',
-    targetId:    group.groupId,
-    desc:        `${group.memberCount} 个成员`,
+    avatar: group.groupAvatar,
+    type: 'group',
+    targetId: group.groupId,
+    desc: `${group.memberCount} 个成员`,
   }
 }
 const switchSession = async (item) => {
@@ -2424,10 +3069,16 @@ const switchSession = async (item) => {
  * switchSession 必须先于此调用，作为回调传入。
  */
 const {
-  friends, groups, selectedFriendTab,
-  filteredFriends, filteredGroups,
-  loadFriends, loadGroups, switchContactTab,
-  chatWithFriend, chatWithGroup,
+  friends,
+  groups,
+  selectedFriendTab,
+  filteredFriends,
+  filteredGroups,
+  loadFriends,
+  loadGroups,
+  switchContactTab,
+  chatWithFriend,
+  chatWithGroup,
 } = useContacts({
   sessions,
   currentSidebarTab,
@@ -2445,14 +3096,14 @@ const chatWithContact = () => {
   if (!currentContact.value) return
   if (currentContact.value.type === 'person') {
     chatWithFriend({
-      userId:   currentContact.value.targetId,
+      userId: currentContact.value.targetId,
       nickname: currentContact.value.sessionName,
-      avatar:   currentContact.value.avatar,
+      avatar: currentContact.value.avatar,
     })
   } else if (currentContact.value.type === 'group') {
     chatWithGroup({
-      groupId:     currentContact.value.targetId,
-      groupName:   currentContact.value.sessionName,
+      groupId: currentContact.value.targetId,
+      groupName: currentContact.value.sessionName,
       groupAvatar: currentContact.value.avatar,
     })
   }
@@ -2508,8 +3159,8 @@ const updateSessionLastMsg = (sessionId, content, sendTime) => {
   if (idx !== -1) {
     const updatedSession = {
       ...sessions.value[idx],
-      lastMessageContent:  content,
-      lastMessageTime:     sendTime,
+      lastMessageContent: content,
+      lastMessageTime: sendTime,
       lastMessageSenderId: CURRENT_USER_ID.value,
     }
     sessions.value.splice(idx, 1, updatedSession)
@@ -2521,25 +3172,38 @@ const updateSessionLastMsg = (sessionId, content, sendTime) => {
 }
 
 /**
- * 加载指定会话的消息列表，采用 Local-First 策略：
- *  1. 先读本地缓存并立即渲染（避免空白页）
- *  2. 再将服务端最新数据作为权威源刷新视图 + 回写缓存
- *  3. 网络失败时本地数据已展示，无需重复读取
+ * 加载指定会话的消息列表，符合「先本地后服务端」规范：
+ *  1. 检测是否当前设备首次登录：首次无本地缓存，直接请求服务端；非首次先读本地并渲染，再拉取服务端离线消息
+ *  2. 非首次：先读本地缓存并立即渲染（避免空白页），再从服务端拉取最新/离线消息作为权威源刷新视图并回写缓存
+ *  3. 首次或服务端请求成功后标记本设备已初始化，下次进入视为非首次
+ *  4. 网络失败时若已有本地数据则保留展示，不重复读本地
  */
 const loadMessages = async (sessionId) => {
   if (!sessionId) return
+  const userId = String(CURRENT_USER_ID.value || '').trim()
+  const isFirstTime = ChatStorage.isFirstTimeOnDevice(userId)
+
   try {
-    const localMsgs = await ChatStorage.queryMessages(sessionId)
-    if (localMsgs.length > 0) {
-      messages.value = localMsgs.map((item) => cleanMessage(item))
-      await nextTick()
-      scrollToBottom()
+    if (!isFirstTime) {
+      const localMsgs = await ChatStorage.queryMessages(sessionId)
+      if (localMsgs.length > 0) {
+        messages.value = localMsgs.map((item) => cleanMessage(item))
+        await nextTick()
+        scrollToBottom()
+      }
+    } else {
+      messages.value = []
     }
 
-    const res = await service.get('/chat/message/list', { params: { sessionId } })
-    if (res.code === 200 && Array.isArray(res.data) && res.data.length > 0) {
-      await ChatStorage.insertMessages(sessionId, res.data)
-      messages.value = res.data.map((item) => cleanMessage(item))
+    const res = await service.get('/chat/message/list', {
+      params: { sessionId },
+    })
+    if (res.code === 200 && Array.isArray(res.data)) {
+      if (res.data.length > 0) {
+        await ChatStorage.insertMessages(sessionId, res.data)
+        messages.value = res.data.map((item) => cleanMessage(item))
+      }
+      if (userId) ChatStorage.setDeviceInitialized(userId)
     }
   } catch (e) {
     console.error('加载消息失败', e)
@@ -2610,15 +3274,30 @@ const performSessionSearch = () => {
  * 展开后的全部输入区状态和操作函数由 ChatArea 组件通过 props/events 使用。
  */
 const {
-  inputMsg, pendingFiles, isSending,
-  isRecording, recordingDuration,
-  isInputDragOver, showEmojiPanel, recentEmojis, allEmojis,
+  inputMsg,
+  pendingFiles,
+  isSending,
+  isRecording,
+  recordingDuration,
+  isInputDragOver,
+  showEmojiPanel,
+  recentEmojis,
+  allEmojis,
   sendMessageWithFiles,
-  handleEnterKey, handleCtrlEnter,
-  toggleEmojiPanel, insertEmoji,
-  chooseImage, chooseFile, removePendingFile,
-  onInputDragEnter, onInputDragOver, onInputDragLeave, onInputDrop,
-  toggleVoiceRecording, stopAndSendVoice, cancelVoice,
+  handleEnterKey,
+  handleCtrlEnter,
+  toggleEmojiPanel,
+  insertEmoji,
+  chooseImage,
+  chooseFile,
+  removePendingFile,
+  onInputDragEnter,
+  onInputDragOver,
+  onInputDragLeave,
+  onInputDrop,
+  toggleVoiceRecording,
+  stopAndSendVoice,
+  cancelVoice,
   cleanup: cleanupSendMessage,
 } = useSendMessage({
   currentSession,
@@ -2631,6 +3310,13 @@ const {
   MESSAGE_TYPE,
   SEND_STATUS,
   CHUNK_SIZE,
+})
+
+/** 是否有内容可发送（输入文字或待发文件），用于移动端发送/展开按钮切换，避免模板内复杂表达式解析问题 */
+const hasContentToSend = computed(() => {
+  const text = (inputMsg.value || '').trim()
+  const files = pendingFiles.value || []
+  return text.length > 0 || files.length > 0
 })
 
 // 切换好友/群时重置搜索内容
@@ -2652,6 +3338,18 @@ const toggleSearch = () => {
   mobileSearchText.value = ''
 }
 
+// 移动端输入框获焦时收起工具/表情面板，避免模板内多行表达式导致编译器解析错误
+const onMobileInputFocus = () => {
+  showMobileTools.value = false
+  showEmojiMobile.value = false
+}
+
+// 移动端点击「图片」：选图并收起工具面板
+const onChooseMobileImage = () => {
+  chooseMobileImage()
+  showMobileTools.value = false
+}
+
 // H5/Mobile 底部 tab 切换统一方法
 const setMobileTab = (tab) => {
   showMobilePlusMenu.value = false
@@ -2666,7 +3364,7 @@ const mobileChatInfoPage = ref(false)
 
 // ========== 移动端添加好友 ==========
 const showMobileAddFriend = ref(false)
-const addFriendKeyword = ref('')
+const mobileAddFriendKeyword = ref('')
 const addFriendResult = ref(null)
 const isSearchingFriend = ref(false)
 const isSendingApply = ref(false)
@@ -2674,14 +3372,14 @@ const isSendingApply = ref(false)
 /** 打开添加好友全屏页 */
 const openMobileAddFriend = () => {
   showMobilePlusMenu.value = false
-  addFriendKeyword.value = ''
+  mobileAddFriendKeyword.value = ''
   addFriendResult.value = null
   showMobileAddFriend.value = true
 }
 
 /** 搜索用户 */
 const searchAddFriend = async () => {
-  const keyword = addFriendKeyword.value.trim()
+  const keyword = mobileAddFriendKeyword.value.trim()
   if (!keyword) {
     uni.showToast({ title: '请输入搜索关键词', icon: 'none' })
     return
@@ -2733,7 +3431,7 @@ const createGroupSelectedFriends = ref([])
 const isCreatingGroup = ref(false)
 // 群头像上传
 const createGroupAvatarPath = ref('') // 短路径（提交用）
-const createGroupAvatarUrl = ref('')  // 预览 URL（展示用）
+const createGroupAvatarUrl = ref('') // 预览 URL（展示用）
 const isUploadingGroupAvatar = ref(false)
 
 /** 打开发起群聊弹窗：重置所有状态展示 */
@@ -2885,13 +3583,28 @@ const isAddingMember = ref(false)
  *  - 群聊：好友列表（后端 addMembers 会自动去重已在群内的成员）
  */
 const addMemberCandidates = computed(() => {
-  // 确保好友列表已加载
   return friends.value || []
 })
 
-/** 打开“添加成员”弹窗，重置选中状态 */
+/** PC 端添加成员面板内搜索关键词 */
+const addMemberSearchKeyword = ref('')
+
+/** 根据搜索关键词过滤的可选成员（PC 端列表） */
+const filteredAddMemberCandidates = computed(() => {
+  const list = addMemberCandidates.value
+  const kw = (addMemberSearchKeyword.value || '').trim().toLowerCase()
+  if (!kw) return list
+  return list.filter(
+    (f) =>
+      (f.nickname || '').toLowerCase().includes(kw) ||
+      (f.signature || '').toLowerCase().includes(kw)
+  )
+})
+
+/** 打开“添加成员”弹窗，重置选中状态与搜索 */
 const openAddMemberModal = () => {
   addMemberSelectedFriends.value = []
+  addMemberSearchKeyword.value = ''
   showAddMemberModal.value = true
 }
 
@@ -2945,7 +3658,8 @@ const confirmAddMember = async () => {
         allMembers
           .slice(0, 3)
           .map((id) => {
-            if (id === currentSessionForAdd.targetId) return currentSessionForAdd.sessionName
+            if (id === currentSessionForAdd.targetId)
+              return currentSessionForAdd.sessionName
             return friends.value.find((f) => f.userId === id)?.nickname || ''
           })
           .filter(Boolean)
@@ -3024,10 +3738,14 @@ const revokeMessage = async (msg) => {
   // 关闭移动端菜单（如果已开启）
   closeMsgContextMenu()
   try {
-    const res = await service.put('/chat/message/revoke?messageId=' + encodeURIComponent(msg.id))
+    const res = await service.put(
+      '/chat/message/revoke?messageId=' + encodeURIComponent(msg.id),
+    )
     if (res.code === 200) {
       // 就地更新消息状态，无需重新拉取
-      const idx = messages.value.findIndex((m) => String(m.id) === String(msg.id))
+      const idx = messages.value.findIndex(
+        (m) => String(m.id) === String(msg.id),
+      )
       if (idx !== -1) {
         messages.value[idx] = {
           ...messages.value[idx],
@@ -3069,7 +3787,11 @@ const mobileScan = () => {
   })
   // #endif
   // #ifdef H5
-  uni.showToast({ title: '请在手机 APP 中使用扫一扫', icon: 'none', duration: 2000 })
+  uni.showToast({
+    title: '请在手机 APP 中使用扫一扫',
+    icon: 'none',
+    duration: 2000,
+  })
   // #endif
 }
 
@@ -3754,6 +4476,395 @@ onUnmounted(() => {
   color: #666;
 }
 
+/* 通讯录「添加朋友」入口：与好友项同高、同结构，文字与好友名对齐 */
+.add-friend-entry {
+  border-bottom: 1px solid #e6e6e6;
+}
+.add-friend-entry .add-friend-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  margin-right: 10px;
+  flex-shrink: 0;
+  background: #f0f0f0;
+  border: 1px dashed #ccc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.add-friend-entry .add-friend-plus {
+  font-size: 22px;
+  color: #666;
+  line-height: 1;
+}
+.add-friend-entry .contact-info {
+  flex: 1;
+  min-width: 0;
+  margin-left: 10px;
+}
+.add-friend-entry .contact-name,
+.add-friend-entry .contact-desc {
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 2px;
+}
+.add-friend-entry .contact-desc {
+  font-size: 12px;
+  font-weight: 400;
+  color: #999;
+}
+
+/* 添加朋友悬浮窗：PC 端习惯的浮层 + 搜索框 */
+.add-friend-popover-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1600;
+}
+.add-friend-popover {
+  background: #fff;
+  border-radius: 12px;
+  width: 420px;
+  max-width: 90vw;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+}
+.add-friend-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.add-friend-popover-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+.add-friend-popover-close {
+  font-size: 16px;
+  color: #999;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+.add-friend-popover-close:hover {
+  color: #333;
+  background: #f5f5f5;
+}
+.add-friend-popover-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: #f7f8fa;
+  border-bottom: 1px solid #f0f0f0;
+}
+.add-friend-search-icon {
+  font-size: 14px;
+  color: #999;
+  flex-shrink: 0;
+}
+.add-friend-search-input {
+  flex: 1;
+  border: 1px solid #e6e6e6;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 14px;
+  outline: none;
+  background: #fff;
+}
+.add-friend-search-input:focus {
+  border-color: #07c160;
+}
+.add-friend-search-clear {
+  font-size: 13px;
+  color: #999;
+  cursor: pointer;
+  padding: 4px;
+}
+.add-friend-popover-actions {
+  padding: 0 20px 12px;
+}
+.add-friend-search-btn {
+  width: 100%;
+  padding: 10px;
+  background: #07c160;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+}
+.add-friend-search-btn:disabled {
+  background: #b8e6cf;
+  cursor: not-allowed;
+}
+.add-friend-search-btn:not(:disabled):hover {
+  background: #06ad56;
+}
+.add-friend-popover-body {
+  padding: 16px 20px 20px;
+  min-height: 100px;
+}
+.add-friend-hint,
+.add-friend-loading,
+.add-friend-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 0;
+  color: #999;
+  font-size: 14px;
+}
+.add-friend-hint-icon,
+.add-friend-empty-icon {
+  font-size: 28px;
+}
+.add-friend-result {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  background: #f7f8fa;
+  border-radius: 10px;
+  border: 1px solid #ebebeb;
+}
+.add-friend-result-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  flex-shrink: 0;
+  background: #e6e6e6;
+}
+.add-friend-result-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.add-friend-result-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+.add-friend-result-username,
+.add-friend-result-sig {
+  font-size: 12px;
+  color: #888;
+}
+.add-friend-result-action .add-friend-btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.add-friend-btn.add {
+  background: #07c160;
+  color: #fff;
+}
+.add-friend-btn.add:not(:disabled):hover {
+  background: #06ad56;
+}
+.add-friend-btn.disabled,
+.add-friend-btn.pending {
+  background: #f0f0f0;
+  color: #999;
+  cursor: not-allowed;
+}
+.add-friend-btn.default {
+  background: #fff;
+  color: #333;
+  border: 1px solid #d9d9d9;
+}
+.add-friend-remark-panel {
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: #f7f8fa;
+  border-radius: 8px;
+  border: 1px solid #ebebeb;
+}
+.add-friend-remark-label {
+  font-size: 13px;
+  color: #666;
+  display: block;
+  margin-bottom: 8px;
+}
+.add-friend-remark-input {
+  width: 100%;
+  min-height: 56px;
+  font-size: 14px;
+  border: 1px solid #e6e6e6;
+  border-radius: 6px;
+  padding: 8px 10px;
+  box-sizing: border-box;
+  resize: none;
+  outline: none;
+  margin-bottom: 10px;
+}
+.add-friend-remark-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.add-friend-remark-count {
+  font-size: 12px;
+  color: #999;
+}
+.add-friend-remark-btns {
+  display: flex;
+  gap: 8px;
+}
+
+/* PC 端添加成员悬浮窗：顶部搜索 + 联系人列表 */
+.add-member-popover-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1600;
+}
+.add-member-popover {
+  background: #fff;
+  border-radius: 12px;
+  width: 380px;
+  max-height: 80vh;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.add-member-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.add-member-popover-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+.add-member-popover-close {
+  font-size: 16px;
+  color: #999;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+.add-member-popover-close:hover {
+  color: #333;
+  background: #f5f5f5;
+}
+.add-member-popover-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: #f7f8fa;
+  border-bottom: 1px solid #f0f0f0;
+}
+.add-member-search-icon {
+  font-size: 14px;
+  color: #999;
+}
+.add-member-search-input {
+  flex: 1;
+  border: 1px solid #e6e6e6;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 14px;
+  outline: none;
+}
+.add-member-popover-list {
+  flex: 1;
+  min-height: 200px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+.add-member-popover-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 20px;
+  cursor: pointer;
+  gap: 12px;
+  border-bottom: 1px solid #f5f5f5;
+}
+.add-member-popover-item:hover {
+  background: #f7f8fa;
+}
+.add-member-checkbox {
+  width: 20px;
+  height: 20px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.add-member-checkbox.cg-checked {
+  background: #07c160;
+  border-color: #07c160;
+}
+.add-member-checkbox .cg-check-mark {
+  color: #fff;
+  font-size: 12px;
+}
+.add-member-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  background: #eee;
+}
+.add-member-name {
+  flex: 1;
+  font-size: 14px;
+  color: #333;
+}
+.add-member-empty {
+  padding: 24px;
+  text-align: center;
+  color: #999;
+  font-size: 14px;
+}
+.add-member-popover-footer {
+  padding: 16px 20px;
+  border-top: 1px solid #f0f0f0;
+}
+.add-member-confirm-btn {
+  width: 100%;
+  padding: 10px;
+  font-size: 14px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  background: #e0e0e0;
+  color: #999;
+}
+.add-member-confirm-btn.add-member-confirm-active {
+  background: #07c160;
+  color: #fff;
+}
+.add-member-confirm-btn.add-member-confirm-active:hover:not(:disabled) {
+  background: #06ad56;
+}
+.add-member-confirm-btn:disabled {
+  cursor: not-allowed;
+}
+
 /* ─── 个人主页（PC端设置页重设计）─── */
 .profile-area {
   flex: 1;
@@ -4394,15 +5505,22 @@ onUnmounted(() => {
   color: #000;
 }
 
+/* 放大镜与 + 号同一条水平线对齐 */
 .mobile-nav-icons {
   display: flex;
+  align-items: center;
   gap: 16px;
+  min-height: 28px;
 }
 
 .mobile-icon {
   font-size: 20px;
+  line-height: 1;
   cursor: pointer;
   padding: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .mobile-search-box {
@@ -4796,7 +5914,7 @@ onUnmounted(() => {
   background: #fff;
   border: 1px solid #e0e0e0;
   border-radius: 6px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   min-width: 130px;
   z-index: 200;
   overflow: hidden;
@@ -5442,7 +6560,9 @@ onUnmounted(() => {
   justify-content: center;
   margin-right: 14px;
   flex-shrink: 0;
-  transition: border-color 0.2s, background 0.2s;
+  transition:
+    border-color 0.2s,
+    background 0.2s;
 }
 .cg-checked {
   border-color: #07c160 !important;
@@ -5629,7 +6749,7 @@ onUnmounted(() => {
   padding: 16px;
   margin-top: 4px;
   gap: 12px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 .mobile-af-avatar {
   width: 52px;

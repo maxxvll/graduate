@@ -368,6 +368,40 @@ class ChatStorage {
       }
     })
   }
+
+  /**
+   * 检测当前用户是否为本设备首次登录（从未在本设备成功同步过消息）
+   * 用于决定是否先读本地缓存：首次登录无本地数据，直接走服务端；非首次先读本地再拉离线消息
+   * @param {string} userId - 当前用户 ID
+   * @returns {boolean} true=首次在本设备登录，false=非首次（已有本地同步记录）
+   */
+  isFirstTimeOnDevice(userId) {
+    if (!userId || String(userId).trim() === '') return true
+    try {
+      const key = `chat_device_initialized_${String(userId).trim()}`
+      const val = typeof uni !== 'undefined' ? uni.getStorageSync(key) : null
+      return val !== true && val !== '1'
+    } catch (e) {
+      console.warn('ChatStorage: isFirstTimeOnDevice 读取失败', e)
+      return true
+    }
+  }
+
+  /**
+   * 标记当前用户在本设备已完成首次消息同步，后续进入视为非首次
+   * @param {string} userId - 当前用户 ID
+   */
+  setDeviceInitialized(userId) {
+    if (!userId || String(userId).trim() === '') return
+    try {
+      const key = `chat_device_initialized_${String(userId).trim()}`
+      if (typeof uni !== 'undefined') {
+        uni.setStorageSync(key, true)
+      }
+    } catch (e) {
+      console.warn('ChatStorage: setDeviceInitialized 写入失败', e)
+    }
+  }
 }
 
 // 导出单例

@@ -93,13 +93,17 @@ public class ChatGroupMemberServiceImpl extends ServiceImpl<ChatGroupMemberMappe
             // joinType == 2 (免审核)：普通成员也可直接邀请
         }
 
-        // 4. 管理员/群主直接添加，或免审核群普通成员邀请直接入群
+        // 4. 管理员/群主直接添加，或免审核群普通成员邀请直接入群（userIds 去重，避免 uk_group_user 唯一约束冲突）
+        List<String> userIdsDistinct = addDTO.getUserIds().stream()
+                .filter(id -> id != null && !id.trim().isEmpty())
+                .distinct()
+                .collect(Collectors.toList());
         long currentCount = getMemberCount(addDTO.getGroupId());
-        if (currentCount + addDTO.getUserIds().size() > group.getMaxMember()) {
+        if (currentCount + userIdsDistinct.size() > group.getMaxMember()) {
             throw new BusinessException("群成员数量将超过上限");
         }
 
-        for (String userId : addDTO.getUserIds()) {
+        for (String userId : userIdsDistinct) {
             if (isGroupMember(addDTO.getGroupId(), userId)) {
                 continue;
             }
@@ -139,12 +143,21 @@ public class ChatGroupMemberServiceImpl extends ServiceImpl<ChatGroupMemberMappe
             throw new BusinessException("您不在该群聊中");
         }
 
-        // 群主可以移除任何人，管理员只能移除普通成员，普通成员不能移除他人
-        if (operatorRole == 2 && targetRole != null && targetRole <= 2) {
-            throw new BusinessException("管理员无法移除群主或其他管理员");
-        }
-        if (operatorRole == 3) {
-            throw new BusinessException("普通成员无法移除他人");
+        // 权限检查：
+        // - 群主(1)：可以移除任何人（包括管理员和其他群主）
+        // - 管理员(2)：只能移除普通成员(3)，不能移除群主和其他管理员
+        // - 普通成员(3)：无权移除他人
+        if (operatorRole == 2) {
+            // 管理员权限检查
+            if (targetRole == null) {
+                throw new BusinessException("目标用户不在该群聊中");
+            }
+            if (targetRole <= 2) {  // 不能移除群主(1)或管理员(2)
+                throw new BusinessException("管理员无法移除群主或其他管理员");
+            }
+        } else if (operatorRole == 3) {
+            // 普通成员无权限
+            throw new BusinessException("普通成员无权限移除他人");
         }
 
         // 不能移除自己（退出群聊用另一个接口）
@@ -163,9 +176,12 @@ public class ChatGroupMemberServiceImpl extends ServiceImpl<ChatGroupMemberMappe
         if (member != null) {
             member.setIsQuit(1);
             member.setQuitTime(new Date());
+            member.setQuitReason(removeDTO.getReason());
             member.setUpdatedAt(new Date());
             this.updateById(member);
-            log.info("用户[{}]被从群聊[{}]移除，操作人：[{}]", removeDTO.getUserId(), removeDTO.getGroupId(), operatorId);
+            log.info("用户[{}]被从群聊[{}]移除，操作人：[{}]，原因：{}", 
+                    removeDTO.getUserId(), removeDTO.getGroupId(), operatorId, 
+                    removeDTO.getReason() != null ? removeDTO.getReason() : "无");
         }
     }
 
@@ -198,32 +214,43 @@ public class ChatGroupMemberServiceImpl extends ServiceImpl<ChatGroupMemberMappe
             throw new BusinessException("成员不存在");
         }
 
-        // 4. 更新角色
+        // 4. 更新角色权限控制
         if (updateDTO.getRole() != null) {
-            // 只有群主可以设置管理员
+            // 权限检查：
+            // - 只有群主可以设置管理员
+            // - 不能修改群主的角色
+            // - 管理员之间平等，不能相互操作角色
             if (updateDTO.getRole() == 2 && operatorRole != 1) {
                 throw new BusinessException("只有群主可以设置管理员");
             }
-            // 不能修改群主的角色
             if (targetRole != null && targetRole == 1) {
                 throw new BusinessException("不能修改群主的角色");
             }
+            if (operatorRole == 2 && targetRole != null && targetRole == 2) {
+                throw new BusinessException("管理员不能修改其他管理员的角色");
+            }
             member.setRole(updateDTO.getRole());
+            log.info("用户[{}]在群聊[{}]的角色被更新为[{}]，操作人：[{}]", 
+                    updateDTO.getUserId(), updateDTO.getGroupId(), 
+                    getRoleName(updateDTO.getRole()), operatorId);
         }
 
-        // 5. 更新禁言状态
+        // 5. 更新禁言状态权限控制
         if (updateDTO.getIsMute() != null) {
-            // 群主和管理员可以禁言普通成员，群主可以禁言管理员
+            // 权限检查：
+            // - 群主可以禁言任何人（包括管理员）
+            // - 管理员只能禁言普通成员
             if (operatorRole == 2 && targetRole != null && targetRole <= 2) {
                 throw new BusinessException("管理员无法禁言群主或其他管理员");
             }
             member.setIsMute(updateDTO.getIsMute());
+            log.info("用户[{}]在群聊[{}]的禁言状态被更新为[{}]，操作人：[{}]", 
+                    updateDTO.getUserId(), updateDTO.getGroupId(), 
+                    updateDTO.getIsMute() == 1 ? "禁言" : "取消禁言", operatorId);
         }
 
         member.setUpdatedAt(new Date());
         this.updateById(member);
-
-        log.info("用户[{}]在群聊[{}]的信息被更新，操作人：[{}]", updateDTO.getUserId(), updateDTO.getGroupId(), operatorId);
     }
 
     @Override

@@ -36,6 +36,7 @@ create table chat_group_member
     is_mute    tinyint  default 0                 not null comment '是否被禁言：0-否，1-是（仅群主/管理员可设置）',
     is_quit    tinyint  default 0                 not null comment '是否退出：0-未退出，1-已退出',
     quit_time  datetime                           null comment '退出时间（未退出则为空）',
+    quit_reason varchar(255)                      null comment '移除原因（管理员/群主移除成员时填写）',
     created_at datetime default CURRENT_TIMESTAMP not null comment '记录创建时间',
     updated_at datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '记录更新时间',
     constraint uk_group_user

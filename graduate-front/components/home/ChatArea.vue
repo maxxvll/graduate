@@ -27,7 +27,7 @@
           <text class="avatar-name">{{ friendForSession.nickname }}</text>
         </view>
         <view class="avatar-item add-avatar" @click="$emit('addMember')">
-          <text class="add-plus">+</text>
+          <view class="add-plus-wrap"><text class="add-plus">+</text></view>
           <text class="avatar-name">添加</text>
         </view>
       </view>
@@ -495,21 +495,28 @@ const formatFileSize = (bytes) => {
   margin-top: 6px;
 }
 .add-avatar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+}
+.add-plus-wrap {
   width: 56px;
   height: 56px;
   border-radius: 8px;
   border: 2px dashed #ddd;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  margin-top: 0;
+  flex-shrink: 0;
 }
-.add-plus {
+.add-avatar .add-plus {
   font-size: 24px;
   color: #ccc;
   line-height: 1;
+}
+.add-avatar .avatar-name {
+  margin-top: 6px;
 }
 .chat-info-options {
   margin-top: 8px;

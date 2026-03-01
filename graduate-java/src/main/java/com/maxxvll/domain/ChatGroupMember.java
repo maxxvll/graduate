@@ -64,6 +64,11 @@ public class ChatGroupMember {
     private Date quitTime;
 
     /**
+     * 移除原因（管理员/群主移除成员时填写）
+     */
+    private String quitReason;
+
+    /**
      * 记录创建时间
      */
     private Date createdAt;

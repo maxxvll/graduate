@@ -52,19 +52,20 @@ public class ChatMessageServiceImpl extends ServiceImpl<ChatMessageMapper, ChatM
 
     // ==================== 核心方法：发送消息 ====================
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public ChatMessage sendMessage(ChatMessageSendDTO sendDTO, MultipartFile[] files) throws Exception {
 
         UserInfoVO currentUser = UserContextUtil.getCurrentUser();
         String senderId = currentUser.getId();
         boolean isPublicFile = SessionType.isGroup(sendDTO.getSessionType());
 
-        // 2. 预处理文件（事务外执行远程IO）
+        // 1. 预处理文件（事务外执行远程IO）
         List<FileUploadResult> uploadResults = preUploadFiles(files, isPublicFile);
 
-        // 3. 事务内只做数据库操作
+        // 2. 事务内只做数据库操作
         ChatMessage result = doSendMessageInTransaction(sendDTO, senderId, isPublicFile, uploadResults);
 
-        // 4. 填充发送人信息（非DB字段，供前端消息气泡展示头像）
+        // 3. 填充发送人信息（非DB字段，供前端消息气泡展示头像）
         result.setSenderName(currentUser.getNickname());
         result.setSenderAvatar(minioUtil.getAvatarUrl(currentUser.getAvatar()));
         return result;
@@ -115,9 +116,9 @@ public class ChatMessageServiceImpl extends ServiceImpl<ChatMessageMapper, ChatM
     }
 
     /**
-     * 事务内保存消息
+     * 事务内保存消息（注意：该方法由已开启事务的父方法调用）
+     * 保证文件上传和数据库操作的原子性
      */
-    @Transactional(rollbackFor = Exception.class)
     public ChatMessage doSendMessageInTransaction(ChatMessageSendDTO sendDTO, String senderId,
                                                   boolean isPublicFile, List<FileUploadResult> uploadResults) {
         List<ChatMessage> messageToSave = new ArrayList<>();
@@ -157,9 +158,24 @@ public class ChatMessageServiceImpl extends ServiceImpl<ChatMessageMapper, ChatM
             throw new BusinessException("消息内容不能为空");
         }
 
-        // 4. 批量保存
-        saveBatch(messageToSave);
-        log.info("消息保存成功，数量: {}, sessionId: {}", messageToSave.size(), sendDTO.getSessionId());
+        // 4. 为每个消息生成全局唯一的messageNo（使用时间戳+UUID确保唯一性）
+        String baseMessageNo = System.currentTimeMillis() + "_" + IdUtil.fastSimpleUUID();
+        for (int i = 0; i < messageToSave.size(); i++) {
+            ChatMessage msg = messageToSave.get(i);
+            // 生成带序号的唯一messageNo，确保同一批次内也不会重复
+            String uniqueMessageNo = baseMessageNo + "_" + i;
+            msg.setMessageNo(uniqueMessageNo);
+            log.debug("为消息生成唯一编号: {}", uniqueMessageNo);
+        }
+        
+        // 5. 批量保存（在同一个事务中）
+        try {
+            saveBatch(messageToSave);
+            log.info("消息保存成功，数量: {}, sessionId: {}", messageToSave.size(), sendDTO.getSessionId());
+        } catch (Exception e) {
+            log.error("消息保存失败，事务将回滚", e);
+            throw new BusinessException("消息保存失败: " + e.getMessage());
+        }
 
         // 5. 更新会话
         ChatMessage firstMsg = messageToSave.get(0);

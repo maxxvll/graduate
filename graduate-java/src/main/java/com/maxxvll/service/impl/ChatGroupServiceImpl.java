@@ -61,7 +61,9 @@ public class ChatGroupServiceImpl extends ServiceImpl<ChatGroupMapper, ChatGroup
         String groupId = UUID.randomUUID().toString().replace("-", "");
         group.setId(groupId);
         group.setGroupName(createDTO.getGroupName());
-        group.setGroupAvatar(createDTO.getGroupAvatar());
+        // 未选择头像时使用空串，前端展示时用默认群头像兜底
+        String avatar = createDTO.getGroupAvatar();
+        group.setGroupAvatar(avatar != null && !avatar.trim().isEmpty() ? avatar.trim() : "");
         group.setCreatorId(creatorId);
         group.setMaxMember(createDTO.getMaxMember() != null ? createDTO.getMaxMember() : 200);
         group.setJoinType(createDTO.getJoinType() != null ? createDTO.getJoinType() : 1);
@@ -84,12 +86,14 @@ public class ChatGroupServiceImpl extends ServiceImpl<ChatGroupMapper, ChatGroup
         owner.setUpdatedAt(new Date());
         chatGroupMemberMapper.insert(owner);
 
-        // 3. 添加初始成员
+        // 3. 添加初始成员（去重且排除群主，避免 uk_group_user 唯一约束冲突）
         if (createDTO.getMemberIds() != null && !createDTO.getMemberIds().isEmpty()) {
-            for (String memberId : createDTO.getMemberIds()) {
-                if (memberId.equals(creatorId)) {
-                    continue;
-                }
+            List<String> distinctMemberIds = createDTO.getMemberIds().stream()
+                    .filter(id -> id != null && !id.trim().isEmpty())
+                    .distinct()
+                    .filter(id -> !id.equals(creatorId))
+                    .collect(Collectors.toList());
+            for (String memberId : distinctMemberIds) {
                 ChatGroupMember member = new ChatGroupMember();
                 member.setGroupId(groupId);
                 member.setUserId(memberId);
