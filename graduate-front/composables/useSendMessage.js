@@ -147,6 +147,8 @@ export function useSendMessage({
       let finalFileSize = msgData.file_size
       // 小文件通过 multipart 一次性完成「上传 + 发送」，无需再调 send 接口
       let alreadySent = false
+      // 服务端返回的消息对象（含真实 id、messageNo）
+      let serverData = null
 
       if (msgData.originalFile) {
         const file = msgData.originalFile
@@ -171,6 +173,7 @@ export function useSendMessage({
           formData.append('files', file)
           const res  = await service({ url: '/chat/message/send', method: 'post', data: formData })
           const data = unwrapData(res)
+          serverData    = data
           finalFileUrl  = data?.fileUrl || data?.file_url || null
           finalFileName = file.name
           finalFileSize = file.size
@@ -236,19 +239,24 @@ export function useSendMessage({
         formData.append('sendDTO', JSON.stringify(sendDTO))
         const res  = await service({ url: '/chat/message/send', method: 'post', data: formData })
         const data = unwrapData(res)
+        serverData = data
         // 以服务端返回的 URL 为准（如有转码处理）
         if (data?.fileUrl) finalFileUrl = data.fileUrl
       }
 
       // 将发送成功的最终消息写入本地缓存，并同步更新 UI 状态
+      // 关键：用服务端返回的真实 id 替换临时前端 id，确保撤回等后续操作能找到正确的 DB 记录
       const serverMsg = {
         ...localMsg,
-        file_url:     finalFileUrl,
-        file_name:    finalFileName,
-        file_size:    finalFileSize,
-        send_status:  SEND_STATUS.SUCCESS,
+        id:          serverData?.id ?? localMsg.id,
+        messageNo:   serverData?.messageNo ?? localMsg.messageNo,
+        file_url:    finalFileUrl,
+        file_name:   finalFileName,
+        file_size:   finalFileSize,
+        send_status: SEND_STATUS.SUCCESS,
       }
       serverMsg.local_file_url = localMsg.local_file_url
+      // 通过 messageNo 定位占位消息（客户端 messageNo 与服务端已对齐）
       const idx = messages.value.findIndex((m) => m.messageNo === localMsg.messageNo)
       if (idx !== -1) {
         messages.value[idx] = cleanMessage(serverMsg)

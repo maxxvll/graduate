@@ -1,5 +1,6 @@
 package com.maxxvll.common.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 
 @Data
@@ -10,6 +11,7 @@ public class UserRegisterDTO {
     private String nickname;
     private String phone;
     private String email;
-    private String captchaKey;
-    private String captchaCode;
+    /** 前端字段名为 code，映射到后端 emailCode */
+    @JsonProperty("code")
+    private String emailCode;
 }

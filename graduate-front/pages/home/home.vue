@@ -108,7 +108,7 @@
           :class="{ active: currentSession?.sessionId === item.sessionId }"
         >
           <image
-            :src="item.sessionAvatar"
+            :src="item.sessionAvatar || defaultAvatar"
             class="session-avatar"
             mode="aspectFill"
           ></image>
@@ -172,7 +172,7 @@
             @click="selectFriend(friend)"
           >
             <image
-              :src="friend.avatar"
+              :src="friend.avatar || defaultAvatar"
               class="person-avatar"
               mode="aspectFill"
             ></image>
@@ -344,6 +344,9 @@
       @enterKey="handleEnterKey"
       @ctrlEnter="handleCtrlEnter"
       @send="sendMessageWithFiles"
+      @revokeMsg="revokeMessage"
+      @copyMsg="handlePcCopy"
+      @addMember="openAddMemberModal"
     />
 
     <!-- 通讯录详情 -->
@@ -419,6 +422,45 @@
       @close="showJoinGroupModal = false"
       @joined="loadGroups"
     />
+
+    <!-- 添加成员：PC端全屏弹窗（复用移动端样式）-->
+    <view v-if="showAddMemberModal" class="mobile-create-group-page">
+      <view class="mobile-chat-header">
+        <text class="mobile-back-btn" @click="showAddMemberModal = false">取消</text>
+        <text class="mobile-chat-title">{{ currentSession?.sessionType === SESSION_TYPE.GROUP ? '邀请入群' : '发起群聊' }}</text>
+        <text
+          class="mobile-confirm-btn"
+          :class="{ 'mobile-confirm-active': addMemberSelectedFriends.length > 0 }"
+          @click="confirmAddMember"
+        >完成({{ addMemberSelectedFriends.length }})</text>
+      </view>
+      <scroll-view scroll-y class="mobile-cg-scroll">
+        <view
+          v-for="friend in addMemberCandidates"
+          :key="friend.userId"
+          class="mobile-cg-item"
+          @click="toggleAddMemberSelect(friend.userId)"
+        >
+          <view class="mobile-cg-checkbox" :class="{ 'cg-checked': addMemberSelectedFriends.includes(friend.userId) }">
+            <text v-if="addMemberSelectedFriends.includes(friend.userId)" class="cg-check-mark">✓</text>
+          </view>
+          <image :src="friend.avatar || defaultAvatar" class="mobile-cg-avatar" mode="aspectFill" />
+          <text class="mobile-cg-name">「{{ friend.nickname }}」</text>
+        </view>
+        <view v-if="addMemberCandidates.length === 0" class="mobile-cg-empty">
+          <text>暂无可添加的好友</text>
+        </view>
+      </scroll-view>
+      <view class="mobile-cg-footer">
+        <view
+          class="mobile-cg-submit-btn"
+          :class="{ 'cg-submit-disabled': addMemberSelectedFriends.length === 0 || isAddingMember }"
+          @click="confirmAddMember"
+        >
+          {{ isAddingMember ? '添加中...' : (currentSession?.sessionType === SESSION_TYPE.GROUP ? '邀请加入群聊' : '发起群聊') + (addMemberSelectedFriends.length > 0 ? `（已选 ${addMemberSelectedFriends.length} 人）` : '') }}
+        </view>
+      </view>
+    </view>
 
     <!-- 我的二维码弹窗：将 wechatId 编码为 QR 供他人扫码添加好友 -->
     <QrCodeModal
@@ -514,12 +556,16 @@
             >➕</text>
             <view v-if="showMobilePlusMenu" class="mobile-plus-dropdown">
               <view class="mobile-plus-item" @click="openMobileAddFriend">
-                <text class="mobile-plus-icon">👤⁺</text>
-                <text class="mobile-plus-text">添加朋友</text>
+                <text class="mobile-plus-icon">👤</text>
+                <text class="mobile-plus-text">添加好友</text>
               </view>
-              <view class="mobile-plus-item" @click="openMobileJoinGroup">
+              <view class="mobile-plus-item" @click="openMobileCreateGroup">
                 <text class="mobile-plus-icon">👥</text>
-                <text class="mobile-plus-text">加入群聊</text>
+                <text class="mobile-plus-text">发起群聊</text>
+              </view>
+              <view class="mobile-plus-item" @click="mobileScan">
+                <text class="mobile-plus-icon">📷</text>
+                <text class="mobile-plus-text">扫一扫</text>
               </view>
             </view>
           </view>
@@ -571,15 +617,19 @@
 
     <!-- 聊天详情页面 (H5 响应式) -->
     <view
-      v-else-if="mobileCurrentTab === 'chat' && currentMobileChat"
+      v-else-if="mobileCurrentTab === 'chat' && currentMobileChat && !mobileChatInfoPage"
       class="mobile-chat-detail"
     >
-      <!-- 聊天顶部栏 -->
+      <!-- 聊天顶部栏：返回按钮 + 会话名称 + 信息页入口 -->
       <view class="mobile-chat-header">
         <text class="mobile-back-btn" @click="backToMobileList"
           >← {{ currentMobileChat.sessionName }}</text
         >
-        <text class="mobile-more-icon">···</text>
+        <!-- ··· 直接进入全屏聊天信息页 -->
+        <text
+          class="mobile-more-icon"
+          @click="mobileChatInfoPage = true"
+        >···</text>
       </view>
 
       <!-- 消息列表 -->
@@ -606,6 +656,7 @@
               class="mobile-message-bubble"
               :class="isMyMessage(item.msg) ? 'mobile-own' : 'mobile-other'"
               :id="'msg-' + item.msg.id"
+              @longpress="showMsgContextMenu(item.msg)"
             >
               <image
                 :src="item.msg.avatar || defaultAvatar"
@@ -613,9 +664,17 @@
               />
 
               <view class="mobile-bubble-content">
+                <!-- 已撤回消息 -->
+                <view
+                  v-if="item.msg.status === 3"
+                  class="mobile-revoke-msg"
+                >
+                  {{ item.msg.content_replaced || '[消息已撤回]' }}
+                </view>
+
                 <!-- 文本消息 -->
                 <view
-                  v-if="
+                  v-else-if="
                     item.msg.message_type === MESSAGE_TYPE.TEXT &&
                     item.msg.content &&
                     item.msg.content.trim()
@@ -637,7 +696,7 @@
                   mode="aspectFill"
                 />
 
-                <!-- 表情消息 -->
+                <!-- 语音消息 -->
                 <text
                   v-else-if="item.msg.message_type === MESSAGE_TYPE.AUDIO"
                   class="mobile-emoji-msg"
@@ -670,44 +729,135 @@
         </view>
       </scroll-view>
 
-      <!-- 输入栏 -->
+      <!-- 输入栏：仿微信移动端风格 -->
       <view class="mobile-input-bar">
-        <view class="mobile-input-tools">
-          <text class="mobile-tool-icon" @click="startMobileRecord">🎤</text>
-          <text class="mobile-tool-icon" @click="toggleMobileEmoji">😊</text>
-          <text class="mobile-tool-icon" @click="chooseMobileImage">🖼️</text>
-          <text class="mobile-tool-icon">📁</text>
-        </view>
-
-        <view class="mobile-input-field">
+        <!-- 主输入行：[语音] [输入框] [表情] [更多/发送] -->
+        <view class="mobile-input-row">
+          <text class="mobile-input-action" @click="startMobileRecord">🎤</text>
           <input
             v-model="inputMsg"
             type="text"
-            placeholder="输入消息..."
+            placeholder="发送消息"
             class="mobile-text-input"
             @keyup.enter="sendMessageWithFiles"
+            @focus="showMobileTools = false; showEmojiMobile = false"
           />
-          <text class="mobile-send-btn" @click="sendMessageWithFiles"
-            >发送</text
-          >
+          <text class="mobile-input-action" @click="toggleMobileEmoji">😊</text>
+          <!-- 有文字/文件时显示「发送」按鈕，否则显示「➕」展开工具 -->
+          <text
+            v-if="inputMsg.trim() || pendingFiles.length > 0"
+            class="mobile-send-btn"
+            @click="sendMessageWithFiles"
+          >发送</text>
+          <text
+            v-else
+            class="mobile-input-action mobile-input-more"
+            @click="showMobileTools = !showMobileTools; showEmojiMobile = false"
+          >➕</text>
+        </view>
+
+        <!-- 表情面板 -->
+        <view v-if="showEmojiMobile" class="mobile-emoji-picker">
+          <scroll-view scroll-y class="mobile-emoji-scroll">
+            <view class="mobile-emoji-grid">
+              <text
+                v-for="emoji in allEmojis"
+                :key="emoji"
+                class="mobile-emoji-item"
+                @click="insertMobileEmoji(emoji)"
+              >{{ emoji }}</text>
+            </view>
+          </scroll-view>
+        </view>
+
+        <!-- 工具面板：图片、文件 -->
+        <view v-if="showMobileTools" class="mobile-tools-grid">
+          <view class="mobile-tool-item" @click="chooseMobileImage; showMobileTools = false">
+            <view class="mobile-tool-icon-wrap">🖼️</view>
+            <text class="mobile-tool-label">图片</text>
+          </view>
+          <view class="mobile-tool-item" @click="showMobileTools = false">
+            <view class="mobile-tool-icon-wrap">📁</view>
+            <text class="mobile-tool-label">文件</text>
+          </view>
         </view>
       </view>
+    </view>
 
-      <!-- 表情选择器 -->
-      <view v-if="showEmojiMobile" class="mobile-emoji-picker">
-        <scroll-view scroll-x class="mobile-emoji-scroll">
-          <view class="mobile-emoji-grid">
-            <text
-              v-for="emoji in allEmojis"
-              :key="emoji"
-              class="mobile-emoji-item"
-              @click="insertMobileEmoji(emoji)"
-            >
-              {{ emoji }}
-            </text>
-          </view>
-        </scroll-view>
+    <!-- 聊天信息页 (H5)：全屏设置页，仿微信风格 -->
+    <view
+      v-else-if="mobileCurrentTab === 'chat' && currentMobileChat && mobileChatInfoPage"
+      class="mobile-chat-info-full"
+    >
+      <!-- 顶部导航 -->
+      <view class="mobile-chat-header">
+        <text class="mobile-back-btn" @click="mobileChatInfoPage = false">← 返回</text>
+        <text class="mobile-chat-title">聊天信息</text>
+        <view style="width: 60px"></view>
       </view>
+
+      <scroll-view scroll-y class="mobile-chat-info-scroll">
+        <!-- 成员头像区 -->
+        <view class="mobile-chat-info-members">
+          <view class="mobile-chat-info-member">
+            <image
+              :src="currentMobileChat.sessionAvatar || defaultAvatar"
+              class="mobile-info-member-avatar"
+              mode="aspectFill"
+            />
+            <text class="mobile-info-member-name">{{ currentMobileChat.sessionName }}</text>
+          </view>
+          <view class="mobile-chat-info-member" @click="openAddMemberModal">
+            <view class="mobile-chat-info-add">
+              <text class="mobile-chat-info-add-icon">+</text>
+            </view>
+            <text class="mobile-info-member-name">添加</text>
+          </view>
+        </view>
+
+        <!-- 查找聊天记录 -->
+        <view class="mobile-chat-info-section">
+          <view class="mobile-chat-info-row" @click="findChatContent">
+            <text class="mobile-chat-info-label">查找聊天记录</text>
+            <text class="mobile-chat-info-arrow">›</text>
+          </view>
+        </view>
+
+        <!-- 开关选项 -->
+        <view class="mobile-chat-info-section">
+          <view class="mobile-chat-info-row">
+            <text class="mobile-chat-info-label">消息免打扰</text>
+            <view
+              class="mobile-switch"
+              :class="{ 'mobile-switch-on': doNotDisturb }"
+              @click="toggleDoNotDisturb"
+            >
+              <view class="mobile-switch-thumb"></view>
+            </view>
+          </view>
+          <view class="mobile-chat-info-row">
+            <text class="mobile-chat-info-label">置顶聊天</text>
+            <view
+              class="mobile-switch"
+              :class="{ 'mobile-switch-on': pinned }"
+              @click="togglePinChat"
+            >
+              <view class="mobile-switch-thumb"></view>
+            </view>
+          </view>
+        </view>
+
+        <!-- 清空记录 -->
+        <view class="mobile-chat-info-section">
+          <view
+            class="mobile-chat-info-row"
+            @click="clearChatRecords; mobileChatInfoPage = false"
+          >
+            <text class="mobile-chat-info-label mobile-chat-info-danger">清空聊天记录</text>
+            <text class="mobile-chat-info-arrow">›</text>
+          </view>
+        </view>
+      </scroll-view>
     </view>
 
     <!-- 移动端通讯录页面 -->
@@ -767,7 +917,7 @@
             @click="chatWithFriend(friend)"
           >
             <image
-              :src="friend.avatar"
+              :src="friend.avatar || defaultAvatar"
               class="mobile-avatar"
               mode="aspectFill"
             />
@@ -786,7 +936,7 @@
             @click="chatWithGroup(group)"
           >
             <image
-              :src="group.groupAvatar"
+              :src="group.groupAvatar || defaultAvatar"
               class="mobile-avatar"
               mode="aspectFill"
             />
@@ -922,8 +1072,10 @@
       </scroll-view>
     </view>
 
-    <!-- 底部导航栏 (H5 响应式) -->
-    <view class="mobile-bottom-tab-bar">
+    <view
+      class="mobile-bottom-tab-bar"
+      v-show="!(mobileCurrentTab === 'chat' && currentMobileChat)"
+    >
       <view
         class="mobile-tab-item"
         :class="{ 'mobile-active': mobileCurrentTab === 'chat' }"
@@ -949,6 +1101,170 @@
         <text class="mobile-tab-label">我</text>
       </view>
     </view>
+
+    <!-- 发起群聊：全屏选人弹窗（position absolute 覆盖整个容器）-->
+    <view v-if="showMobileCreateGroup" class="mobile-create-group-page">
+      <!-- 顶部操作栏 -->
+      <view class="mobile-chat-header">
+        <text class="mobile-back-btn" @click="showMobileCreateGroup = false">取消</text>
+        <text class="mobile-chat-title">发起群聊</text>
+        <text
+          class="mobile-confirm-btn"
+          :class="{ 'mobile-confirm-active': createGroupSelectedFriends.length > 0 }"
+          @click="submitCreateGroup"
+        >完成({{ createGroupSelectedFriends.length }})</text>
+      </view>
+
+      <!-- 群头像上传 -->
+      <view class="mobile-cg-avatar-section" @click="chooseGroupAvatar">
+        <image
+          v-if="createGroupAvatarUrl"
+          :src="createGroupAvatarUrl"
+          class="mobile-cg-avatar-preview"
+          mode="aspectFill"
+        />
+        <view v-else class="mobile-cg-avatar-placeholder">
+          <text class="mobile-cg-avatar-icon">📷</text>
+          <text class="mobile-cg-avatar-hint">{{ isUploadingGroupAvatar ? '上传中...' : '点击设置群头像' }}</text>
+        </view>
+      </view>
+
+      <!-- 群名输入框 -->
+      <view class="mobile-cg-name-wrap">
+        <input
+          v-model="createGroupName"
+          placeholder="输入群名（不填则自动生成）"
+          class="mobile-cg-name-input"
+          maxlength="30"
+        />
+      </view>
+
+      <!-- 好友列表多选 -->
+      <scroll-view scroll-y class="mobile-cg-scroll">
+        <view
+          v-for="friend in friends"
+          :key="friend.userId"
+          class="mobile-cg-item"
+          @click="toggleFriendSelect(friend.userId)"
+        >
+          <!-- 自定义圆形 checkbox -->
+          <view
+            class="mobile-cg-checkbox"
+            :class="{ 'cg-checked': createGroupSelectedFriends.includes(friend.userId) }"
+          >
+            <text v-if="createGroupSelectedFriends.includes(friend.userId)" class="cg-check-mark">✓</text>
+          </view>
+          <image
+            :src="friend.avatar || defaultAvatar"
+            class="mobile-cg-avatar"
+            mode="aspectFill"
+          />
+          <text class="mobile-cg-name">「{{ friend.nickname }}」</text>
+        </view>
+        <view v-if="friends.length === 0" class="mobile-cg-empty">
+          <text>暂无好友，先添加好友吧</text>
+        </view>
+      </scroll-view>
+
+      <!-- 底部进入群聊按钮 -->
+      <view class="mobile-cg-footer">
+        <view
+          class="mobile-cg-submit-btn"
+          :class="{ 'cg-submit-disabled': createGroupSelectedFriends.length === 0 || isCreatingGroup }"
+          @click="submitCreateGroup"
+        >
+          {{ isCreatingGroup ? '创建中...' : `发起群聊${ createGroupSelectedFriends.length > 0 ? '（已选 ' + createGroupSelectedFriends.length + ' 人）' : '' }` }}
+        </view>
+      </view>
+    </view>
+
+    <!-- 添加成员：全屏选人弹窗（H5）-->
+    <view v-if="showAddMemberModal" class="mobile-create-group-page">
+      <view class="mobile-chat-header">
+        <text class="mobile-back-btn" @click="showAddMemberModal = false">取消</text>
+        <text class="mobile-chat-title">{{ currentMobileChat?.sessionType === SESSION_TYPE.GROUP ? '邀请入群' : '发起群聊' }}</text>
+        <text
+          class="mobile-confirm-btn"
+          :class="{ 'mobile-confirm-active': addMemberSelectedFriends.length > 0 }"
+          @click="confirmAddMember"
+        >完成({{ addMemberSelectedFriends.length }})</text>
+      </view>
+      <scroll-view scroll-y class="mobile-cg-scroll">
+        <view
+          v-for="friend in addMemberCandidates"
+          :key="friend.userId"
+          class="mobile-cg-item"
+          @click="toggleAddMemberSelect(friend.userId)"
+        >
+          <view class="mobile-cg-checkbox" :class="{ 'cg-checked': addMemberSelectedFriends.includes(friend.userId) }">
+            <text v-if="addMemberSelectedFriends.includes(friend.userId)" class="cg-check-mark">✓</text>
+          </view>
+          <image :src="friend.avatar || defaultAvatar" class="mobile-cg-avatar" mode="aspectFill" />
+          <text class="mobile-cg-name">「{{ friend.nickname }}」</text>
+        </view>
+        <view v-if="addMemberCandidates.length === 0" class="mobile-cg-empty">
+          <text>暂无可添加的好友</text>
+        </view>
+      </scroll-view>
+      <view class="mobile-cg-footer">
+        <view
+          class="mobile-cg-submit-btn"
+          :class="{ 'cg-submit-disabled': addMemberSelectedFriends.length === 0 || isAddingMember }"
+          @click="confirmAddMember"
+        >
+          {{ isAddingMember ? '添加中...' : (currentMobileChat?.sessionType === SESSION_TYPE.GROUP ? '邀请加入群聊' : '发起群聊') + (addMemberSelectedFriends.length > 0 ? `（已选 ${addMemberSelectedFriends.length} 人）` : '') }}
+        </view>
+      </view>
+    </view>
+
+    <!-- 添加好友：全屏搜索页（H5）-->
+    <view v-if="showMobileAddFriend" class="mobile-add-friend-page">
+      <view class="mobile-chat-header">
+        <text class="mobile-back-btn" @click="showMobileAddFriend = false">← 返回</text>
+        <text class="mobile-chat-title">添加好友</text>
+        <view style="width: 60px"></view>
+      </view>
+      <view class="mobile-af-search-bar">
+        <input
+          v-model="addFriendKeyword"
+          type="text"
+          placeholder="搜索用户名 / 手机号"
+          class="mobile-af-search-input"
+          @confirm="searchAddFriend"
+          @keyup.enter="searchAddFriend"
+        />
+        <view class="mobile-af-search-btn" @click="searchAddFriend">
+          <text>{{ isSearchingFriend ? '搜索中...' : '搜索' }}</text>
+        </view>
+      </view>
+      <view v-if="isSearchingFriend" class="mobile-af-loading">
+        <text>正在搜索...</text>
+      </view>
+      <view v-else-if="addFriendResult" class="mobile-af-result">
+        <view class="mobile-af-user-card">
+          <image :src="addFriendResult.avatar || defaultAvatar" class="mobile-af-avatar" mode="aspectFill" />
+          <view class="mobile-af-user-info">
+            <text class="mobile-af-nickname">{{ addFriendResult.nickname }}</text>
+            <text class="mobile-af-username">{{ addFriendResult.username }}</text>
+          </view>
+          <view class="mobile-af-apply-btn" @click="sendFriendApply(addFriendResult.id)">
+            <text>{{ isSendingApply ? '发送中...' : '添加好友' }}</text>
+          </view>
+        </view>
+      </view>
+      <view v-else-if="addFriendKeyword && !isSearchingFriend" class="mobile-af-empty">
+        <text>未找到用户，换个关键词试试</text>
+      </view>
+    </view>
+
+    <!-- 消息长按上下文菜单（H5）-->
+    <view v-if="mobileContextMenu.visible" class="mobile-ctx-overlay" @click="closeMsgContextMenu">
+      <view class="mobile-ctx-menu" @click.stop>
+        <view v-if="mobileContextMenu.msg?.message_type === MESSAGE_TYPE.TEXT" class="mobile-ctx-item" @click="copyMobileMsg">复制</view>
+        <view v-if="isMyMessage(mobileContextMenu.msg)" class="mobile-ctx-item mobile-ctx-revoke" @click="revokeMessage(mobileContextMenu.msg)">撤回</view>
+        <view class="mobile-ctx-item mobile-ctx-cancel" @click="closeMsgContextMenu">取消</view>
+      </view>
+    </view>
   </view>
   <!-- #endif -->
 
@@ -972,12 +1288,16 @@
             >➕</text>
             <view v-if="showMobilePlusMenu" class="mobile-plus-dropdown">
               <view class="mobile-plus-item" @click="openMobileAddFriend">
-                <text class="mobile-plus-icon">👤⁺</text>
-                <text class="mobile-plus-text">添加朋友</text>
+                <text class="mobile-plus-icon">👤</text>
+                <text class="mobile-plus-text">添加好友</text>
               </view>
-              <view class="mobile-plus-item" @click="openMobileJoinGroup">
+              <view class="mobile-plus-item" @click="openMobileCreateGroup">
                 <text class="mobile-plus-icon">👥</text>
-                <text class="mobile-plus-text">加入群聊</text>
+                <text class="mobile-plus-text">发起群聊</text>
+              </view>
+              <view class="mobile-plus-item" @click="mobileScan">
+                <text class="mobile-plus-icon">📷</text>
+                <text class="mobile-plus-text">扫一扫</text>
               </view>
             </view>
           </view>
@@ -1015,13 +1335,14 @@
     </view>
 
     <!-- 聊天详情页面 -->
-    <view v-else class="mobile-chat-detail">
-      <!-- 聊天顶部栏 -->
+    <view v-else-if="!mobileChatInfoPage" class="mobile-chat-detail">
+      <!-- 聊天顶部栏：返回按钮 + 会话名称 + 信息页入口 -->
       <view class="mobile-chat-header">
         <text class="mobile-back-btn" @click="backToMobileList"
           >← {{ currentMobileChat.sessionName }}</text
         >
-        <text class="mobile-more-icon">···</text>
+        <!-- ··· 直接进入全屏聊天信息页 -->
+        <text class="mobile-more-icon" @click="mobileChatInfoPage = true">···</text>
       </view>
 
       <!-- 消息列表 -->
@@ -1040,59 +1361,144 @@
               v-if="item.type === 'msg'"
               class="mobile-message-bubble"
               :class="isMyMessage(item.msg) ? 'mobile-own' : 'mobile-other'"
+              @longpress="showMsgContextMenu(item.msg)"
             >
               <image
                 :src="item.msg.avatar || defaultAvatar"
                 class="mobile-bubble-avatar"
               />
               <view class="mobile-bubble-content">
+                <!-- 已撤回消息 -->
+                <view v-if="item.msg.status === 3" class="mobile-revoke-msg">
+                  {{ item.msg.content_replaced || '[消息已撤回]' }}
+                </view>
+                <!-- 文本消息 -->
                 <view
-                  v-if="
-                    item.msg.message_type === MESSAGE_TYPE.TEXT &&
-                    item.msg.content &&
-                    item.msg.content.trim()
-                  "
+                  v-else-if="item.msg.message_type === MESSAGE_TYPE.TEXT && item.msg.content && item.msg.content.trim()"
                   class="mobile-text-msg"
                 >
                   {{ item.msg.content }}
                 </view>
+                <!-- 图片消息 -->
                 <image
-                  v-else-if="
-                    item.msg.message_type === MESSAGE_TYPE.IMAGE &&
-                    item.msg.file_url
-                  "
+                  v-else-if="item.msg.message_type === MESSAGE_TYPE.IMAGE && item.msg.file_url"
                   :src="item.msg.local_file_url || item.msg.file_url"
                   class="mobile-image-msg"
                   @click="handleImageClick(item.msg)"
                   mode="aspectFill"
                 />
+                <!-- 语音消息 -->
+                <text v-else-if="item.msg.message_type === MESSAGE_TYPE.AUDIO" class="mobile-emoji-msg">🎤 语音</text>
+                <!-- 文件消息 -->
+                <view v-else-if="item.msg.message_type === MESSAGE_TYPE.FILE && item.msg.file_url" class="mobile-message-file" @click="handleFileClick(item.msg)">
+                  <text class="mobile-file-icon">📄</text>
+                  <view class="mobile-file-info">
+                    <text class="mobile-file-name">{{ item.msg.file_name || '未知文件' }}</text>
+                    <text class="mobile-file-size">{{ formatFileSize(item.msg.file_size) }}</text>
+                  </view>
+                </view>
               </view>
             </view>
           </template>
         </view>
       </scroll-view>
 
-      <!-- 输入栏 -->
+      <!-- 输入栏：仿微信移动端风格 -->
       <view class="mobile-input-bar">
-        <view class="mobile-input-tools">
-          <text class="mobile-tool-icon" @click="startMobileRecord">🎤</text>
-          <text class="mobile-tool-icon" @click="toggleMobileEmoji">😊</text>
-          <text class="mobile-tool-icon" @click="chooseMobileImage">🖼️</text>
-          <text class="mobile-tool-icon">📁</text>
-        </view>
-        <view class="mobile-input-field">
+        <view class="mobile-input-row">
+          <text class="mobile-input-action" @click="startMobileRecord">🎤</text>
           <input
             v-model="inputMsg"
             type="text"
-            placeholder="输入消息..."
+            placeholder="发送消息"
             class="mobile-text-input"
             @keyup.enter="sendMessageWithFiles"
+            @focus="showMobileTools = false; showEmojiMobile = false"
           />
-          <text class="mobile-send-btn" @click="sendMessageWithFiles"
-            >发送</text
-          >
+          <text class="mobile-input-action" @click="toggleMobileEmoji">😊</text>
+          <text
+            v-if="inputMsg.trim() || pendingFiles.length > 0"
+            class="mobile-send-btn"
+            @click="sendMessageWithFiles"
+          >发送</text>
+          <text
+            v-else
+            class="mobile-input-action mobile-input-more"
+            @click="showMobileTools = !showMobileTools; showEmojiMobile = false"
+          >➕</text>
+        </view>
+        <view v-if="showEmojiMobile" class="mobile-emoji-picker">
+          <scroll-view scroll-y class="mobile-emoji-scroll">
+            <view class="mobile-emoji-grid">
+              <text
+                v-for="emoji in allEmojis"
+                :key="emoji"
+                class="mobile-emoji-item"
+                @click="insertMobileEmoji(emoji)"
+              >{{ emoji }}</text>
+            </view>
+          </scroll-view>
+        </view>
+        <view v-if="showMobileTools" class="mobile-tools-grid">
+          <view class="mobile-tool-item" @click="chooseMobileImage; showMobileTools = false">
+            <view class="mobile-tool-icon-wrap">🖼️</view>
+            <text class="mobile-tool-label">图片</text>
+          </view>
+          <view class="mobile-tool-item" @click="showMobileTools = false">
+            <view class="mobile-tool-icon-wrap">📁</view>
+            <text class="mobile-tool-label">文件</text>
+          </view>
         </view>
       </view>
+    </view>
+
+    <!-- 聊天信息页（Native）-->
+    <view v-else-if="mobileChatInfoPage" class="mobile-chat-info-full">
+      <view class="mobile-chat-header">
+        <text class="mobile-back-btn" @click="mobileChatInfoPage = false">← 返回</text>
+        <text class="mobile-chat-title">聊天信息</text>
+        <view style="width: 60px"></view>
+      </view>
+      <scroll-view scroll-y class="mobile-chat-info-scroll">
+        <view class="mobile-chat-info-members">
+          <view class="mobile-chat-info-member">
+            <image :src="currentMobileChat.sessionAvatar || defaultAvatar" class="mobile-info-member-avatar" mode="aspectFill" />
+            <text class="mobile-info-member-name">{{ currentMobileChat.sessionName }}</text>
+          </view>
+          <view class="mobile-chat-info-member" @click="openAddMemberModal">
+            <view class="mobile-chat-info-add">
+              <text class="mobile-chat-info-add-icon">+</text>
+            </view>
+            <text class="mobile-info-member-name">添加</text>
+          </view>
+        </view>
+        <view class="mobile-chat-info-section">
+          <view class="mobile-chat-info-row" @click="findChatContent">
+            <text class="mobile-chat-info-label">查找聊天记录</text>
+            <text class="mobile-chat-info-arrow">›</text>
+          </view>
+        </view>
+        <view class="mobile-chat-info-section">
+          <view class="mobile-chat-info-row">
+            <text class="mobile-chat-info-label">消息免打扰</text>
+            <view class="mobile-switch" :class="{ 'mobile-switch-on': doNotDisturb }" @click="toggleDoNotDisturb">
+              <view class="mobile-switch-thumb"></view>
+            </view>
+          </view>
+          <view class="mobile-chat-info-row">
+            <text class="mobile-chat-info-label">置顶聊天</text>
+            <view class="mobile-switch" :class="{ 'mobile-switch-on': pinned }" @click="togglePinChat">
+              <view class="mobile-switch-thumb"></view>
+            </view>
+          </view>
+        </view>
+        <view class="mobile-chat-info-section">
+          <view class="mobile-chat-info-row" @click="clearChatRecords; mobileChatInfoPage = false">
+            <text class="mobile-chat-info-label mobile-chat-info-danger">清空聊天记录</text>
+            <text class="mobile-chat-info-arrow">›</text>
+          </view>
+        </view>
+      </scroll-view>
     </view>
 
     <!-- 底部导航栏 -->
@@ -1112,6 +1518,148 @@
       <view class="mobile-tab-item">
         <text class="mobile-tab-icon">👤</text>
         <text class="mobile-tab-label">我</text>
+      </view>
+    </view>
+
+    <!-- 发起群聊：全屏选人弹窗（同 H5，position absolute 覆盖整个容器）-->
+    <view v-if="showMobileCreateGroup" class="mobile-create-group-page">
+      <view class="mobile-chat-header">
+        <text class="mobile-back-btn" @click="showMobileCreateGroup = false">取消</text>
+        <text class="mobile-chat-title">发起群聊</text>
+        <text
+          class="mobile-confirm-btn"
+          :class="{ 'mobile-confirm-active': createGroupSelectedFriends.length > 0 }"
+          @click="submitCreateGroup"
+        >完成({{ createGroupSelectedFriends.length }})</text>
+      </view>
+      <!-- 群头像上传 -->
+      <view class="mobile-cg-avatar-section" @click="chooseGroupAvatar">
+        <image v-if="createGroupAvatarUrl" :src="createGroupAvatarUrl" class="mobile-cg-avatar-preview" mode="aspectFill" />
+        <view v-else class="mobile-cg-avatar-placeholder">
+          <text class="mobile-cg-avatar-icon">📷</text>
+          <text class="mobile-cg-avatar-hint">{{ isUploadingGroupAvatar ? '上传中...' : '点击设置群头像' }}</text>
+        </view>
+      </view>
+      <view class="mobile-cg-name-wrap">
+        <input
+          v-model="createGroupName"
+          placeholder="输入群名（不填则自动生成）"
+          class="mobile-cg-name-input"
+          maxlength="30"
+        />
+      </view>
+      <scroll-view scroll-y class="mobile-cg-scroll">
+        <view
+          v-for="friend in friends"
+          :key="friend.userId"
+          class="mobile-cg-item"
+          @click="toggleFriendSelect(friend.userId)"
+        >
+          <view class="mobile-cg-checkbox" :class="{ 'cg-checked': createGroupSelectedFriends.includes(friend.userId) }">
+            <text v-if="createGroupSelectedFriends.includes(friend.userId)" class="cg-check-mark">✓</text>
+          </view>
+          <image :src="friend.avatar || defaultAvatar" class="mobile-cg-avatar" mode="aspectFill" />
+          <text class="mobile-cg-name">「{{ friend.nickname }}」</text>
+        </view>
+        <view v-if="friends.length === 0" class="mobile-cg-empty">
+          <text>暂无好友，先添加好友吧</text>
+        </view>
+      </scroll-view>
+      <view class="mobile-cg-footer">
+        <view
+          class="mobile-cg-submit-btn"
+          :class="{ 'cg-submit-disabled': createGroupSelectedFriends.length === 0 || isCreatingGroup }"
+          @click="submitCreateGroup"
+        >
+          {{ isCreatingGroup ? '创建中...' : `发起群聊${ createGroupSelectedFriends.length > 0 ? '（已选 ' + createGroupSelectedFriends.length + ' 人）' : '' }` }}
+        </view>
+      </view>
+    </view>
+
+    <!-- 添加成员：全屏选人弹窗（Native）-->
+    <view v-if="showAddMemberModal" class="mobile-create-group-page">
+      <view class="mobile-chat-header">
+        <text class="mobile-back-btn" @click="showAddMemberModal = false">取消</text>
+        <text class="mobile-chat-title">{{ currentMobileChat?.sessionType === SESSION_TYPE.GROUP ? '邀请入群' : '发起群聊' }}</text>
+        <text
+          class="mobile-confirm-btn"
+          :class="{ 'mobile-confirm-active': addMemberSelectedFriends.length > 0 }"
+          @click="confirmAddMember"
+        >完成({{ addMemberSelectedFriends.length }})</text>
+      </view>
+      <scroll-view scroll-y class="mobile-cg-scroll">
+        <view
+          v-for="friend in addMemberCandidates"
+          :key="friend.userId"
+          class="mobile-cg-item"
+          @click="toggleAddMemberSelect(friend.userId)"
+        >
+          <view class="mobile-cg-checkbox" :class="{ 'cg-checked': addMemberSelectedFriends.includes(friend.userId) }">
+            <text v-if="addMemberSelectedFriends.includes(friend.userId)" class="cg-check-mark">✓</text>
+          </view>
+          <image :src="friend.avatar || defaultAvatar" class="mobile-cg-avatar" mode="aspectFill" />
+          <text class="mobile-cg-name">「{{ friend.nickname }}」</text>
+        </view>
+        <view v-if="addMemberCandidates.length === 0" class="mobile-cg-empty">
+          <text>暂无可添加的好友</text>
+        </view>
+      </scroll-view>
+      <view class="mobile-cg-footer">
+        <view
+          class="mobile-cg-submit-btn"
+          :class="{ 'cg-submit-disabled': addMemberSelectedFriends.length === 0 || isAddingMember }"
+          @click="confirmAddMember"
+        >
+          {{ isAddingMember ? '添加中...' : (currentMobileChat?.sessionType === SESSION_TYPE.GROUP ? '邀请加入群聊' : '发起群聊') + (addMemberSelectedFriends.length > 0 ? `（已选 ${addMemberSelectedFriends.length} 人）` : '') }}
+        </view>
+      </view>
+    </view>
+
+    <!-- 添加好友：全屏搜索页（Native）-->
+    <view v-if="showMobileAddFriend" class="mobile-add-friend-page">
+      <view class="mobile-chat-header">
+        <text class="mobile-back-btn" @click="showMobileAddFriend = false">← 返回</text>
+        <text class="mobile-chat-title">添加好友</text>
+        <view style="width: 60px"></view>
+      </view>
+      <view class="mobile-af-search-bar">
+        <input
+          v-model="addFriendKeyword"
+          type="text"
+          placeholder="搜索用户名 / 手机号"
+          class="mobile-af-search-input"
+          @confirm="searchAddFriend"
+        />
+        <view class="mobile-af-search-btn" @click="searchAddFriend">
+          <text>{{ isSearchingFriend ? '搜索中...' : '搜索' }}</text>
+        </view>
+      </view>
+      <view v-if="isSearchingFriend" class="mobile-af-loading">
+        <text>正在搜索...</text>
+      </view>
+      <view v-else-if="addFriendResult" class="mobile-af-result">
+        <view class="mobile-af-user-card">
+          <image :src="addFriendResult.avatar || defaultAvatar" class="mobile-af-avatar" mode="aspectFill" />
+          <view class="mobile-af-user-info">
+            <text class="mobile-af-nickname">{{ addFriendResult.nickname }}</text>
+            <text class="mobile-af-username">{{ addFriendResult.username }}</text>
+          </view>
+          <view class="mobile-af-apply-btn" @click="sendFriendApply(addFriendResult.id)">
+            <text>{{ isSendingApply ? '发送中...' : '添加好友' }}</text>
+          </view>
+        </view>
+      </view>
+      <view v-else-if="addFriendKeyword && !isSearchingFriend" class="mobile-af-empty">
+        <text>未找到用户，换个关键词试试</text>
+      </view>
+    </view>
+
+    <!-- 消息长按上下文菜单（Native）-->
+    <view v-if="mobileContextMenu.visible" class="mobile-ctx-overlay" @click="closeMsgContextMenu">
+      <view class="mobile-ctx-menu" @click.stop>
+        <view v-if="mobileContextMenu.msg?.message_type === MESSAGE_TYPE.TEXT" class="mobile-ctx-item" @click="copyMobileMsg">复制</view>
+        <view v-if="isMyMessage(mobileContextMenu.msg)" class="mobile-ctx-item mobile-ctx-revoke" @click="revokeMessage(mobileContextMenu.msg)">撤回</view>
+        <view class="mobile-ctx-item mobile-ctx-cancel" @click="closeMsgContextMenu">取消</view>
       </view>
     </view>
   </view>
@@ -1217,10 +1765,9 @@ const CURRENT_USER_ID = ref(null) // 动态从 /user/info 获取，初始为 nul
 const selfAvatar =
   'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNjY2NjY2MiLz48L3N2Zz4='
 const defaultAvatar = selfAvatar
-const targetAvatar = 'https://api.dicebear.com/7.x/avataaars/svg?seed=Susan'
 
 // 枚举
-const MESSAGE_TYPE = { TEXT: 1, IMAGE: 2, VIDEO: 3, AUDIO: 4, FILE: 5 }
+const MESSAGE_TYPE = { TEXT: 1, IMAGE: 2, VIDEO: 3, AUDIO: 4, FILE: 5, EMOJI: 6, SYSTEM: 7 }
 const SESSION_TYPE = { SINGLE: 1, GROUP: 2 }
 const SEND_STATUS = { PENDING: 'pending', SUCCESS: 'success', FAILED: 'failed' }
 const CHUNK_SIZE = 10 * 1024 * 1024
@@ -1297,10 +1844,13 @@ const showJoinGroupModal = ref(false)
 // 我的二维码弹窗显隐
 const showQrCode = ref(false)
 // 通知状态：由 useNotifications composable 提供，包含好友申请 + 群聊申请
+// onApproved 回调：同意申请成功后立刻刷新会话列表
 const {
   notifications, notifyLoading, pendingNotifyCount,
   loadNotifications, handleFriendApply, handleGroupApply,
-} = useNotifications()
+} = useNotifications({
+  onApproved: () => loadSessionList(),
+})
 
 // 文档级点击与键盘处理，用于关闭浮层
 const handleDocClick = (e) => {
@@ -1333,6 +1883,8 @@ const showMobilePlusMenu = ref(false)
 const showMobileSearch = ref(false)
 const mobileSearchText = ref('')
 const showEmojiMobile = ref(false)
+// 移动端输入栏工具格（图片/文件）展开状态
+const showMobileTools = ref(false)
 
 // msgIdCounter 由 cleanMessage/generateUniqueId 使用，需保留在 home.vue 范围内
 let msgIdCounter = 0
@@ -1458,7 +2010,8 @@ const cleanMessage = (rawMsg, defaultContent = '', forceMessageType = null) => {
     receiver_id: rawMsg.receiverId || rawMsg.receiver_id || '',
     message_type: msgType,
     content: rawMsg.content || defaultContent,
-    content_replaced: rawMsg.content_replaced || '',
+    content_replaced: rawMsg.contentReplaced || rawMsg.content_replaced || '',
+    status: Number(rawMsg.status || 0),
     send_time: sendTime,
     file_url: fileUrl,
     local_file_url: rawMsg.local_file_url || null,
@@ -1470,7 +2023,16 @@ const cleanMessage = (rawMsg, defaultContent = '', forceMessageType = null) => {
     download_progress: rawMsg.download_progress || 0,
     avatar: isMyMessage({ sender_id: senderId })
       ? userInfo.value.avatar || selfAvatar
-      : targetAvatar,
+      // 优先使用后端返回的真实发送人头像（senderAvatar）
+      // 如果后端没有带（如旧消息缓存），单聊时用会话头像兜底
+      : (
+          rawMsg.senderAvatar || rawMsg.sender_avatar ||
+          (
+            currentSession.value?.sessionType === SESSION_TYPE.SINGLE
+              ? (currentSession.value?.sessionAvatar || selfAvatar)
+              : selfAvatar
+          )
+        ),
   }
 }
 
@@ -2099,18 +2661,419 @@ const setMobileTab = (tab) => {
   }
 }
 
-// 移动端 ➕ 菜单操作：关闭菜单后复用 PC 端的弹窗函数
+// 移动端聊天信息页（点击···进入全屏界面）
+const mobileChatInfoPage = ref(false)
+
+// ========== 移动端添加好友 ==========
+const showMobileAddFriend = ref(false)
+const addFriendKeyword = ref('')
+const addFriendResult = ref(null)
+const isSearchingFriend = ref(false)
+const isSendingApply = ref(false)
+
+/** 打开添加好友全屏页 */
 const openMobileAddFriend = () => {
   showMobilePlusMenu.value = false
-  openAddFriend()
+  addFriendKeyword.value = ''
+  addFriendResult.value = null
+  showMobileAddFriend.value = true
 }
+
+/** 搜索用户 */
+const searchAddFriend = async () => {
+  const keyword = addFriendKeyword.value.trim()
+  if (!keyword) {
+    uni.showToast({ title: '请输入搜索关键词', icon: 'none' })
+    return
+  }
+  isSearchingFriend.value = true
+  addFriendResult.value = null
+  try {
+    const res = await service.get('/user/search', { params: { keyword } })
+    if (res.code === 200) {
+      addFriendResult.value = res.data
+    } else {
+      uni.showToast({ title: res.message || '未找到用户', icon: 'none' })
+    }
+  } catch (e) {
+    uni.showToast({ title: '网络异常，请重试', icon: 'none' })
+  } finally {
+    isSearchingFriend.value = false
+  }
+}
+
+/** 发送好友申请 */
+const sendFriendApply = async (targetId) => {
+  if (isSendingApply.value) return
+  isSendingApply.value = true
+  try {
+    const res = await service.post('/friend/apply', { targetId })
+    if (res.code === 200) {
+      uni.showToast({ title: '好友申请已发送', icon: 'success' })
+      showMobileAddFriend.value = false
+    } else {
+      uni.showToast({ title: res.message || '发送申请失败', icon: 'none' })
+    }
+  } catch (e) {
+    uni.showToast({ title: '网络异常，请重试', icon: 'none' })
+  } finally {
+    isSendingApply.value = false
+  }
+}
+
 const openMobileJoinGroup = () => {
   showMobilePlusMenu.value = false
   openJoinGroup()
 }
 
-// ========== 移动端方法 ==========
-// #ifndef H5
+// ========== 发起群聊 ==========
+const showMobileCreateGroup = ref(false)
+const createGroupName = ref('')
+const createGroupSelectedFriends = ref([])
+const isCreatingGroup = ref(false)
+// 群头像上传
+const createGroupAvatarPath = ref('') // 短路径（提交用）
+const createGroupAvatarUrl = ref('')  // 预览 URL（展示用）
+const isUploadingGroupAvatar = ref(false)
+
+/** 打开发起群聊弹窗：重置所有状态展示 */
+const openMobileCreateGroup = () => {
+  showMobilePlusMenu.value = false
+  createGroupName.value = ''
+  createGroupSelectedFriends.value = []
+  createGroupAvatarPath.value = ''
+  createGroupAvatarUrl.value = ''
+  showMobileCreateGroup.value = true
+}
+
+/** 选择并上传群头像 */
+const chooseGroupAvatar = () => {
+  // #ifdef H5
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = 'image/*'
+  input.onchange = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    isUploadingGroupAvatar.value = true
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await service.post('/group/avatar/upload', fd)
+      if (res.code === 200) {
+        createGroupAvatarPath.value = res.data.filePath
+        createGroupAvatarUrl.value = res.data.previewUrl
+      } else {
+        uni.showToast({ title: res.message || '上传失败', icon: 'none' })
+      }
+    } catch (err) {
+      uni.showToast({ title: '上传失败，请重试', icon: 'none' })
+    } finally {
+      isUploadingGroupAvatar.value = false
+    }
+  }
+  input.click()
+  // #endif
+  // #ifndef H5
+  uni.chooseImage({
+    count: 1,
+    sizeType: ['compressed'],
+    sourceType: ['album', 'camera'],
+    success: (chooseRes) => {
+      const tempFilePath = chooseRes.tempFilePaths[0]
+      createGroupAvatarUrl.value = tempFilePath // 先本地预览
+      isUploadingGroupAvatar.value = true
+      // 获取后端地址和认证 token
+      const baseUrl = service.defaults?.baseURL || 'http://127.0.0.1:5050/api'
+      const token = uni.getStorageSync('satoken') || ''
+      uni.uploadFile({
+        url: baseUrl + '/group/avatar/upload',
+        filePath: tempFilePath,
+        name: 'file',
+        header: token ? { satoken: token } : {},
+        success: (uploadRes) => {
+          try {
+            const data = JSON.parse(uploadRes.data)
+            if (data.code === 200) {
+              createGroupAvatarPath.value = data.data.filePath
+              createGroupAvatarUrl.value = data.data.previewUrl
+            } else {
+              uni.showToast({ title: data.message || '上传失败', icon: 'none' })
+              createGroupAvatarUrl.value = ''
+            }
+          } catch {
+            uni.showToast({ title: '上传失败，请重试', icon: 'none' })
+            createGroupAvatarUrl.value = ''
+          }
+        },
+        fail: () => {
+          uni.showToast({ title: '上传失败，请重试', icon: 'none' })
+          createGroupAvatarUrl.value = ''
+        },
+        complete: () => {
+          isUploadingGroupAvatar.value = false
+        },
+      })
+    },
+  })
+  // #endif
+}
+
+/** 切换好友选中状态 */
+const toggleFriendSelect = (userId) => {
+  const idx = createGroupSelectedFriends.value.indexOf(userId)
+  if (idx === -1) {
+    createGroupSelectedFriends.value.push(userId)
+  } else {
+    createGroupSelectedFriends.value.splice(idx, 1)
+  }
+}
+
+/**
+ * 提交创建群聊：
+ *  - 群名为空时自动取前三位好友昵称
+ *  - 创建成功后刷新会话列表 + 群聊列表
+ */
+const submitCreateGroup = async () => {
+  if (createGroupSelectedFriends.value.length === 0) {
+    uni.showToast({ title: '请至少选择 1 位好友', icon: 'none' })
+    return
+  }
+  if (isCreatingGroup.value) return
+  isCreatingGroup.value = true
+  try {
+    // 自动生成群名：取前 3 位好友昵称
+    const autoName =
+      createGroupSelectedFriends.value
+        .slice(0, 3)
+        .map((id) => friends.value.find((f) => f.userId === id)?.nickname || '')
+        .filter(Boolean)
+        .join('、') + '的群聊'
+    const res = await service.post('/group/create', {
+      groupName: createGroupName.value.trim() || autoName,
+      groupAvatar: createGroupAvatarPath.value || '',
+      joinType: 2, // 免审核
+      memberIds: createGroupSelectedFriends.value,
+    })
+    if (res.code === 200) {
+      uni.showToast({ title: '群聊创建成功', icon: 'success' })
+      showMobileCreateGroup.value = false
+      createGroupName.value = ''
+      createGroupSelectedFriends.value = []
+      // 刷新会话列表和群聊列表
+      await loadSessionList()
+      loadGroups()
+    } else {
+      uni.showToast({ title: res.message || '创建群聊失败', icon: 'none' })
+    }
+  } catch (e) {
+    console.error('创建群聊异常', e)
+    uni.showToast({ title: '网络异常，请重试', icon: 'none' })
+  } finally {
+    isCreatingGroup.value = false
+  }
+}
+
+// ========== 聊天信息页“添加成员”==========
+const showAddMemberModal = ref(false)
+const addMemberSelectedFriends = ref([])
+const isAddingMember = ref(false)
+
+/**
+ * 可选成员列表：
+ *  - 单聊：全部好友（最终和对方一起发起新群聊）
+ *  - 群聊：好友列表（后端 addMembers 会自动去重已在群内的成员）
+ */
+const addMemberCandidates = computed(() => {
+  // 确保好友列表已加载
+  return friends.value || []
+})
+
+/** 打开“添加成员”弹窗，重置选中状态 */
+const openAddMemberModal = () => {
+  addMemberSelectedFriends.value = []
+  showAddMemberModal.value = true
+}
+
+/** 切换成员选中状态 */
+const toggleAddMemberSelect = (userId) => {
+  const idx = addMemberSelectedFriends.value.indexOf(userId)
+  if (idx === -1) {
+    addMemberSelectedFriends.value.push(userId)
+  } else {
+    addMemberSelectedFriends.value.splice(idx, 1)
+  }
+}
+
+/**
+ * 确认添加成员：
+ *  - 群聊会话：调用 /group/member/add 接口邀请好友入群
+ *  - 单聊会话：将对方 + 选中好友合并，发起新群聊
+ */
+const confirmAddMember = async () => {
+  if (addMemberSelectedFriends.value.length === 0) {
+    uni.showToast({ title: '请至少选择 1 位好友', icon: 'none' })
+    return
+  }
+  if (isAddingMember.value) return
+  isAddingMember.value = true
+  try {
+    // 使用当前会话（PC 或 Mobile）
+    const currentSessionForAdd = currentSession.value || currentMobileChat.value
+    const isGroupChat = currentSessionForAdd?.sessionType === SESSION_TYPE.GROUP
+    if (isGroupChat) {
+      // 群聊：邀请选中好友加入当前群
+      const res = await service.post('/group/member/add', {
+        groupId: currentSessionForAdd.targetId,
+        userIds: addMemberSelectedFriends.value,
+        addType: 2, // 邀请加入
+      })
+      if (res.code === 200) {
+        uni.showToast({ title: '邀请发送成功', icon: 'success' })
+        showAddMemberModal.value = false
+        addMemberSelectedFriends.value = []
+      } else {
+        uni.showToast({ title: res.message || '邀请失败', icon: 'none' })
+      }
+    } else {
+      // 单聊：将对方 + 选中好友一起发起新群聊
+      const allMembers = [
+        currentSessionForAdd.targetId,
+        ...addMemberSelectedFriends.value,
+      ]
+      const autoName =
+        allMembers
+          .slice(0, 3)
+          .map((id) => {
+            if (id === currentSessionForAdd.targetId) return currentSessionForAdd.sessionName
+            return friends.value.find((f) => f.userId === id)?.nickname || ''
+          })
+          .filter(Boolean)
+          .join('、') + '的群聊'
+      const res = await service.post('/group/create', {
+        groupName: autoName,
+        groupAvatar: '',
+        joinType: 2, // 免审核
+        memberIds: allMembers,
+      })
+      if (res.code === 200) {
+        uni.showToast({ title: '群聊创建成功', icon: 'success' })
+        showAddMemberModal.value = false
+        addMemberSelectedFriends.value = []
+        // 如果是移动端，关闭聊天信息页
+        if (currentMobileChat.value) {
+          mobileChatInfoPage.value = false
+        }
+        await loadSessionList()
+        loadGroups()
+      } else {
+        uni.showToast({ title: res.message || '发起群聊失败', icon: 'none' })
+      }
+    }
+  } catch (e) {
+    console.error('添加成员异常', e)
+    uni.showToast({ title: '网络异常，请重试', icon: 'none' })
+  } finally {
+    isAddingMember.value = false
+  }
+}
+
+// ========== 消息长按菜单 + 撤回 ==========
+const mobileContextMenu = ref({ visible: false, msg: null })
+
+/** 长按消息气泡，显示上下文菜单 */
+const showMsgContextMenu = (msg) => {
+  if (!msg || msg.status === 3) return // 已撤回的消息不展示菜单
+  mobileContextMenu.value = { visible: true, msg }
+}
+
+/** 关闭上下文菜单 */
+const closeMsgContextMenu = () => {
+  mobileContextMenu.value.visible = false
+}
+
+/** 复制消息文本 */
+const copyMobileMsg = () => {
+  const msg = mobileContextMenu.value.msg
+  if (!msg) return
+  const text = msg.content || ''
+  // #ifdef H5
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => {
+      uni.showToast({ title: '已复制', icon: 'success' })
+    })
+  } else {
+    uni.showToast({ title: '复制失败', icon: 'none' })
+  }
+  // #endif
+  // #ifndef H5
+  uni.setClipboardData({
+    data: text,
+    success: () => uni.showToast({ title: '已复制', icon: 'success' }),
+  })
+  // #endif
+  closeMsgContextMenu()
+}
+
+/**
+ * 撤回消息：调用后端接口，成功后就地更新消息状态
+ * 同时支持 PC 端右键撤回和移动端长按撤回
+ */
+const revokeMessage = async (msg) => {
+  if (!msg || !msg.id) return
+  // 关闭移动端菜单（如果已开启）
+  closeMsgContextMenu()
+  try {
+    const res = await service.put('/chat/message/revoke?messageId=' + encodeURIComponent(msg.id))
+    if (res.code === 200) {
+      // 就地更新消息状态，无需重新拉取
+      const idx = messages.value.findIndex((m) => String(m.id) === String(msg.id))
+      if (idx !== -1) {
+        messages.value[idx] = {
+          ...messages.value[idx],
+          status: 3,
+          content_replaced: '[消息已撤回]',
+        }
+      }
+      uni.showToast({ title: '消息已撤回', icon: 'success' })
+    } else {
+      uni.showToast({ title: res.message || '撤回失败', icon: 'none' })
+    }
+  } catch (e) {
+    const errMsg = e?.message || e?.data?.message || '撤回失败'
+    uni.showToast({ title: errMsg, icon: 'none' })
+  }
+}
+
+/** PC 端复制消息提示 */
+const handlePcCopy = (text) => {
+  uni.showToast({ title: '已复制', icon: 'success' })
+}
+
+/**
+ * 扫一扫：原生 APP 使用 uni.scanCode；
+ * H5 环境调用浏览器摄像头 API（需要 HTTPS）或提示引导安装 APP
+ */
+const mobileScan = () => {
+  showMobilePlusMenu.value = false
+  // #ifndef H5
+  uni.scanCode({
+    success: (res) => {
+      uni.showModal({
+        title: '扫码结果',
+        content: res.result,
+        showCancel: false,
+      })
+    },
+    fail: () => uni.showToast({ title: '扫码失败', icon: 'none' }),
+  })
+  // #endif
+  // #ifdef H5
+  uni.showToast({ title: '请在手机 APP 中使用扫一扫', icon: 'none', duration: 2000 })
+  // #endif
+}
+
+// ========== 移动端方法（H5 + Native 共用） ==========
 
 // 进入聊天详情
 const enterMobileChat = (session) => {
@@ -2121,13 +3084,18 @@ const enterMobileChat = (session) => {
   scrollToView.value = ''
 }
 
-// 返回会话列表或退出详情页
+// 返回上一级：聊天信息页 → 聊天详情 → 会话列表
 const backToMobileList = () => {
+  if (mobileChatInfoPage.value) {
+    mobileChatInfoPage.value = false
+    return
+  }
   if (currentMobileChat.value) {
     currentMobileChat.value = null
     messages.value = []
     inputMsg.value = ''
     showEmojiMobile.value = false
+    showMobileTools.value = false
   } else {
     mobileCurrentTab.value = 'chat'
   }
@@ -2187,10 +3155,8 @@ const chooseMobileImage = () => {
 
 // 开始录音
 const startMobileRecord = () => {
-  console.log('语音录制功能')
+  uni.showToast({ title: '语音功能开发中', icon: 'none' })
 }
-
-// #endif
 
 // ========== 生命周期 ==========
 onMounted(async () => {
@@ -3400,6 +4366,7 @@ onUnmounted(() => {
   background: #fff;
   font-family:
     -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  position: relative; /* 使内部 absolute 子元素相对定位正确 */
 }
 
 /* 会话列表页 */
@@ -3584,45 +4551,56 @@ onUnmounted(() => {
 
 .mobile-message-bubble {
   display: flex;
-  margin-bottom: 12px;
-  align-items: flex-end;
-  gap: 8px;
+  margin-bottom: 16px;
+  /* 头像与气泡对齐顶部 */
+  align-items: flex-start;
+  gap: 10px;
 }
 .mobile-message-sender {
   font-size: 12px;
   color: #666;
-  margin-bottom: 2px;
+  margin-bottom: 3px;
 }
+/* 自己的消息：反转排列，头像在右、气泡在右对齐 */
 .mobile-message-bubble.mobile-own {
-  justify-content: flex-end;
   flex-direction: row-reverse;
 }
 
 .mobile-bubble-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 4px;
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
   flex-shrink: 0;
 }
 
 .mobile-bubble-content {
   display: flex;
   flex-direction: column;
-  max-width: 70%;
+  max-width: 65%;
+}
+/* 自己的气泡内容右对齐 */
+.mobile-message-bubble.mobile-own .mobile-bubble-content {
+  align-items: flex-end;
 }
 
+/* 其他人：白底气泡 */
 .mobile-text-msg {
   background: #fff;
-  padding: 8px 12px;
-  border-radius: 8px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border-top-left-radius: 2px;
   word-wrap: break-word;
-  font-size: 14px;
-  line-height: 1.4;
-  color: #000;
+  font-size: 16px;
+  line-height: 1.55;
+  color: #111;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
-
+/* 自己：绿色气泡 */
 .mobile-message-bubble.mobile-own .mobile-text-msg {
   background: #95ec69;
+  border-radius: 10px;
+  border-top-right-radius: 2px;
+  border-top-left-radius: 10px;
 }
 
 .mobile-emoji-msg {
@@ -3670,80 +4648,126 @@ onUnmounted(() => {
   color: #666;
 }
 
-/* 输入栏 */
+/* 输入栏：仿微信移动端风格 */
 .mobile-input-bar {
   background: #f5f5f5;
-  padding: 8px 16px;
+  padding: 8px 12px;
   padding-bottom: max(8px, env(safe-area-inset-bottom));
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  border-top: 1px solid #e5e5e5;
+  border-top: 1px solid #e0e0e0;
   flex-shrink: 0;
 }
 
-.mobile-input-tools {
+/* 主输入行：[语音] [输入框] [表情] [发送/更多] */
+.mobile-input-row {
   display: flex;
-  gap: 12px;
+  align-items: center;
+  gap: 6px;
 }
 
-.mobile-tool-icon {
-  font-size: 20px;
+/* 工具图标按鈕 */
+.mobile-input-action {
+  font-size: 24px;
   cursor: pointer;
   padding: 4px;
+  flex-shrink: 0;
+  user-select: none;
 }
-
-.mobile-input-field {
-  display: flex;
-  gap: 8px;
-  align-items: center;
+.mobile-input-more {
+  font-size: 22px;
 }
 
 .mobile-text-input {
   flex: 1;
-  height: 36px;
-  border: 1px solid #e5e5e5;
-  border-radius: 18px;
+  min-width: 0;
+  height: 38px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
   padding: 0 12px;
-  font-size: 14px;
+  font-size: 16px;
   background: #fff;
+  outline: none;
 }
 
 .mobile-send-btn {
-  padding: 6px 16px;
+  padding: 8px 16px;
   background: #07c160;
   color: #fff;
-  border: none;
-  border-radius: 4px;
-  font-size: 14px;
+  border-radius: 5px;
+  font-size: 15px;
+  font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
+  flex-shrink: 0;
+  user-select: none;
 }
 
 /* 表情选择器 */
 .mobile-emoji-picker {
   background: #fff;
   border-top: 1px solid #e5e5e5;
-  padding: 8px 0;
-  max-height: 150px;
+  height: 200px;
+  margin-top: 8px;
+  border-radius: 8px;
   overflow: hidden;
 }
 
 .mobile-emoji-scroll {
   width: 100%;
+  height: 100%;
 }
 
 .mobile-emoji-grid {
   display: flex;
   flex-wrap: wrap;
   padding: 8px 12px;
-  gap: 8px;
+  gap: 6px;
 }
 
 .mobile-emoji-item {
-  font-size: 24px;
+  font-size: 26px;
   cursor: pointer;
   padding: 4px;
+  border-radius: 4px;
+}
+.mobile-emoji-item:active {
+  background: #f0f0f0;
+}
+
+/* 工具面板：图片、文件等 */
+.mobile-tools-grid {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 16px 4px 8px;
+  gap: 24px;
+}
+
+.mobile-tool-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.mobile-tool-icon-wrap {
+  width: 56px;
+  height: 56px;
+  background: #fff;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+.mobile-tool-icon-wrap:active {
+  background: #f5f5f5;
+}
+
+.mobile-tool-label {
+  font-size: 11px;
+  color: #666;
+  text-align: center;
 }
 
 /* ===== ➕ 按钮与下拉菜单 ===== */
@@ -3949,7 +4973,7 @@ onUnmounted(() => {
   color: #bbb;
 }
 
-/* 移动端 ➕ 下拉菜单：仿微信深色圆角风格 */
+/* 移动端 ➕ 下拉菜单：白底圆角卡片风格，与 PC 端一致 */
 .mobile-plus-wrapper {
   position: relative;
   flex-shrink: 0;
@@ -3959,50 +4983,193 @@ onUnmounted(() => {
 }
 .mobile-plus-dropdown {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + 10px);
   right: -4px;
-  background: #3a3a3a;
+  background: #fff;
   border-radius: 8px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-  min-width: 150px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  min-width: 160px;
   z-index: 1000;
   overflow: hidden;
-  /* 小三角指向按钮 */
+  border: 1px solid #f0f0f0;
 }
+/* 小三角箭头 */
 .mobile-plus-dropdown::before {
   content: '';
   position: absolute;
   top: -6px;
-  right: 12px;
+  right: 14px;
   width: 0;
   height: 0;
   border-left: 6px solid transparent;
   border-right: 6px solid transparent;
-  border-bottom: 6px solid #3a3a3a;
+  border-bottom: 6px solid #f0f0f0;
+}
+.mobile-plus-dropdown::after {
+  content: '';
+  position: absolute;
+  top: -5px;
+  right: 14px;
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 6px solid #fff;
 }
 .mobile-plus-item {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 18px;
+  padding: 13px 16px;
   cursor: pointer;
   transition: background 0.15s;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid #f5f5f5;
 }
 .mobile-plus-item:last-child {
   border-bottom: none;
 }
 .mobile-plus-item:active {
-  background: rgba(255, 255, 255, 0.12);
+  background: #f5f5f5;
 }
 .mobile-plus-icon {
-  font-size: 20px;
+  font-size: 18px;
   flex-shrink: 0;
+  width: 24px;
+  text-align: center;
 }
 .mobile-plus-text {
-  font-size: 15px;
-  color: #fff;
+  font-size: 14px;
+  color: #333;
   flex: 1;
+}
+
+/* 全屏聊天信息页 */
+.mobile-chat-info-full {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #f5f5f5;
+  overflow: hidden;
+}
+.mobile-chat-title {
+  flex: 1;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 600;
+  color: #000;
+}
+.mobile-chat-info-scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+/* 成员头像区 */
+.mobile-chat-info-members {
+  background: #fff;
+  padding: 24px 16px 20px;
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 10px;
+}
+.mobile-chat-info-member {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.mobile-info-member-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  background: #ddd;
+}
+.mobile-info-member-name {
+  font-size: 12px;
+  color: #555;
+  max-width: 64px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mobile-chat-info-add {
+  width: 56px;
+  height: 56px;
+  border: 1.5px dashed #ccc;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.mobile-chat-info-add-icon {
+  font-size: 30px;
+  color: #ccc;
+  line-height: 1;
+}
+/* 设置列表分组 */
+.mobile-chat-info-section {
+  background: #fff;
+  margin-bottom: 10px;
+  border-top: 1px solid #f0f0f0;
+  border-bottom: 1px solid #f0f0f0;
+}
+.mobile-chat-info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid #f5f5f5;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.mobile-chat-info-row:last-child {
+  border-bottom: none;
+}
+.mobile-chat-info-row:active {
+  background: #f5f5f5;
+}
+.mobile-chat-info-label {
+  font-size: 16px;
+  color: #111;
+}
+.mobile-chat-info-danger {
+  color: #ff3b30 !important;
+}
+.mobile-chat-info-arrow {
+  font-size: 20px;
+  color: #c7c7cc;
+  font-weight: 300;
+}
+/* 自定义 Toggle 开关（仳 iOS 风格） */
+.mobile-switch {
+  width: 51px;
+  height: 31px;
+  border-radius: 16px;
+  background: #e5e5ea;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.25s;
+  flex-shrink: 0;
+}
+.mobile-switch.mobile-switch-on {
+  background: #34c759;
+}
+.mobile-switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: left 0.25s;
+}
+.mobile-switch.mobile-switch-on .mobile-switch-thumb {
+  left: 22px;
 }
 /* ===== 移动端页面 ===== */
 .mobile-contact-page {
@@ -4194,5 +5361,373 @@ onUnmounted(() => {
 
 .mobile-tab-label {
   font-size: 11px;
+}
+
+/* ===== 发起群聊全屏选人弹窗 ===== */
+/* position absolute 覆盖整个 mobile-container，实现全屏安碪页 */
+.mobile-create-group-page {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  background: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 顶部操作栏中的“完成”按钮 */
+.mobile-confirm-btn {
+  font-size: 15px;
+  color: #c7c7cc;
+  cursor: pointer;
+  padding: 4px 0;
+  white-space: nowrap;
+  min-width: 60px;
+  text-align: right;
+}
+.mobile-confirm-active {
+  color: #07c160 !important;
+  font-weight: 500;
+}
+
+/* 群名输入框区域 */
+.mobile-cg-name-wrap {
+  background: #fff;
+  padding: 0 16px;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 10px;
+  border-top: 1px solid #f0f0f0;
+}
+.mobile-cg-name-input {
+  width: 100%;
+  height: 50px;
+  font-size: 15px;
+  color: #111;
+  border: none;
+  outline: none;
+  background: transparent;
+  box-sizing: border-box;
+}
+
+/* 好友列表滚动区 */
+.mobile-cg-scroll {
+  flex: 1;
+  overflow-y: auto;
+  background: #fff;
+  border-top: 1px solid #f0f0f0;
+}
+
+/* 单个好友条目 */
+.mobile-cg-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #f5f5f5;
+  cursor: pointer;
+  transition: background 0.15s;
+  user-select: none;
+}
+.mobile-cg-item:active {
+  background: #f5f5f5;
+}
+
+/* 自定义圆形 Checkbox */
+.mobile-cg-checkbox {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid #d0d0d0;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 14px;
+  flex-shrink: 0;
+  transition: border-color 0.2s, background 0.2s;
+}
+.cg-checked {
+  border-color: #07c160 !important;
+  background: #07c160 !important;
+}
+.cg-check-mark {
+  color: #fff;
+  font-size: 13px;
+  font-weight: bold;
+  line-height: 1;
+}
+
+/* 好友头像 */
+.mobile-cg-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 6px;
+  background: #e0e0e0;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+/* 好友名称 */
+.mobile-cg-name {
+  font-size: 15px;
+  color: #111;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 空状态提示 */
+.mobile-cg-empty {
+  text-align: center;
+  padding: 50px 16px;
+  color: #999;
+  font-size: 14px;
+}
+
+/* 底部确认按钮区 */
+.mobile-cg-footer {
+  background: #fff;
+  padding: 12px 16px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+  border-top: 1px solid #f0f0f0;
+}
+.mobile-cg-submit-btn {
+  background: #07c160;
+  color: #fff;
+  border-radius: 8px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s;
+  user-select: none;
+}
+.mobile-cg-submit-btn:active {
+  opacity: 0.8;
+}
+.cg-submit-disabled {
+  background: #b2b2b2 !important;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* ===== 群头像上传区 ===== */
+.mobile-cg-avatar-section {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: #fff;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.mobile-cg-avatar-section:active {
+  opacity: 0.8;
+}
+.mobile-cg-avatar-preview {
+  width: 72px;
+  height: 72px;
+  border-radius: 10px;
+  object-fit: cover;
+  display: block;
+}
+.mobile-cg-avatar-placeholder {
+  width: 72px;
+  height: 72px;
+  border-radius: 10px;
+  border: 2px dashed #c8c8c8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #fafafa;
+  gap: 4px;
+}
+.mobile-cg-avatar-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+.mobile-cg-avatar-hint {
+  font-size: 11px;
+  color: #999;
+  text-align: center;
+  line-height: 1.3;
+}
+
+/* ===== 添加好友全屏页 ===== */
+.mobile-add-friend-page {
+  position: absolute;
+  inset: 0;
+  z-index: 200;
+  background: #f5f5f5;
+  display: flex;
+  flex-direction: column;
+}
+.mobile-af-search-bar {
+  display: flex;
+  align-items: center;
+  margin: 12px 16px;
+  background: #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #e8e8e8;
+  flex-shrink: 0;
+}
+.mobile-af-search-input {
+  flex: 1;
+  height: 44px;
+  padding: 0 12px;
+  font-size: 15px;
+  color: #111;
+  border: none;
+  outline: none;
+  background: transparent;
+  box-sizing: border-box;
+}
+.mobile-af-search-btn {
+  padding: 0 16px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #07c160;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.mobile-af-search-btn:active {
+  opacity: 0.8;
+}
+.mobile-af-loading {
+  text-align: center;
+  padding: 40px 16px;
+  color: #999;
+  font-size: 14px;
+}
+.mobile-af-empty {
+  text-align: center;
+  padding: 50px 16px;
+  color: #999;
+  font-size: 14px;
+}
+.mobile-af-result {
+  flex: 1;
+  padding: 0 16px;
+  overflow-y: auto;
+}
+.mobile-af-user-card {
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  margin-top: 4px;
+  gap: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.mobile-af-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #e0e0e0;
+  flex-shrink: 0;
+}
+.mobile-af-user-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: hidden;
+}
+.mobile-af-nickname {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mobile-af-username {
+  font-size: 13px;
+  color: #999;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mobile-af-apply-btn {
+  padding: 8px 16px;
+  background: #07c160;
+  color: #fff;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+.mobile-af-apply-btn:active {
+  opacity: 0.75;
+}
+
+/* ===== 消息撤回显示 ===== */
+.mobile-revoke-msg {
+  font-size: 13px;
+  color: #999;
+  padding: 8px 12px;
+  background: transparent;
+  font-style: italic;
+}
+
+/* ===== 消息长按上下文菜单 ===== */
+.mobile-ctx-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.mobile-ctx-menu {
+  width: 100%;
+  max-width: 480px;
+  background: #fff;
+  border-radius: 14px 14px 0 0;
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+  overflow: hidden;
+}
+.mobile-ctx-item {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 54px;
+  font-size: 17px;
+  color: #111;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  transition: background 0.1s;
+  user-select: none;
+}
+.mobile-ctx-item:last-child {
+  border-bottom: none;
+}
+.mobile-ctx-item:active {
+  background: #f5f5f5;
+}
+.mobile-ctx-revoke {
+  color: #e74c3c;
+}
+.mobile-ctx-cancel {
+  color: #999;
+  font-size: 15px;
+  border-top: 6px solid #f5f5f5;
+  margin-top: 2px;
 }
 </style>

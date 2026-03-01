@@ -104,9 +104,21 @@ public class ChatUserServiceImpl extends ServiceImpl<ChatUserMapper, ChatUser>
         chatUserMapper.insert(chatUser);
     }
 
+    /**
+     * 获取当前用户信息。
+     * 每次实时从 DB 读取，避免 Sa-Token 会话缓存过期导致头像/昵称不同步。
+     */
     @Override
     public UserInfoVO getCurrentUserInfo() {
-        return UserContextUtil.getCurrentUser();
+        String userId = UserContextUtil.getCurrentUserId();
+        ChatUser chatUser = getById(userId);
+        if (chatUser == null) {
+            throw new BusinessException("用户不存在");
+        }
+        UserInfoVO vo = BeanConvertUtil.convert(chatUser, UserInfoVO.class);
+        // 同步刷新 Sa-Token 缓存（确保其他接口读到的也是最新数据）
+        UserContextUtil.setCurrentUser(vo);
+        return vo;
     }
 
     @Override
@@ -154,6 +166,12 @@ public class ChatUserServiceImpl extends ServiceImpl<ChatUserMapper, ChatUser>
         // 更新数据库
         this.updateById(updateUser);
         log.info("用户信息更新成功，userId: {}, 头像路径: {}", loginId, avatar);
+
+        // 刷新 Sa-Token 会话缓存，避免刷新页面后 getInfo 返回老数据
+        ChatUser refreshed = this.getById(loginId);
+        if (refreshed != null) {
+            UserContextUtil.setCurrentUser(BeanConvertUtil.convert(refreshed, UserInfoVO.class));
+        }
     }
     @Override
     public void updatePassword(UserUpdatePasswordDTO updatePasswordDTO) {

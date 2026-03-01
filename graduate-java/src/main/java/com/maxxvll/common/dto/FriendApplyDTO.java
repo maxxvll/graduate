@@ -1,5 +1,6 @@
 package com.maxxvll.common.dto;
 
+import com.maxxvll.common.annotation.NotRequired;
 import lombok.Data;
 
 /**
@@ -14,7 +15,8 @@ public class FriendApplyDTO {
     private String targetId;
 
     /**
-     * 申请备注
+     * 申请备注/申请原因（选填，最多100字）
      */
+    @NotRequired
     private String remark;
 }

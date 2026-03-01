@@ -31,4 +31,10 @@ public interface ChatMessageService extends IService<ChatMessage> {
     void deleteMessage(String messageId);
 
     void markMessageAsOffline(Long id);
+
+    /**
+     * 系统级直接保存消息（不依赖 UserContext，不处理文件，适用于后台自动发送系统通知等场景）
+     */
+    ChatMessage saveDirectly(String sessionId, String senderId, String receiverId,
+                             int sessionType, int messageType, String content);
 }

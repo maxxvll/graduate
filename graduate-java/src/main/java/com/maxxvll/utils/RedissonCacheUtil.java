@@ -30,6 +30,9 @@ public class RedissonCacheUtil {
     public String getQrCodeKey(String qrCOdeId){
         return RedisKeyConstants.buildKey(RedisKeyConstants.USER_PREFIX,RedisKeyConstants.USER_QR_LOGIN, qrCOdeId);
     }
+    public String getEmailCodeKey(String email) {
+        return RedisKeyConstants.buildKey(RedisKeyConstants.USER_PREFIX, RedisKeyConstants.USER_EMAIL_CODE, email);
+    }
     public Long getRemainingTime(String key){
         return redissonClient.getBucket(key).remainTimeToLive()/1000;
     }

@@ -19,6 +19,8 @@ public interface RedisKeyConstants {
     /** 聊天会话: chat:session:{sessionId} */
     String CHAT_SESSION = "session";
     String USER_CAPTCHA = "captcha";
+    /** 邮箱验证码: user:email:code:{email} */
+    String USER_EMAIL_CODE = "email:code";
     /**
      * 构建 Key
      */

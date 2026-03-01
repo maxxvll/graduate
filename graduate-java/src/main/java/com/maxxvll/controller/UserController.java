@@ -19,11 +19,15 @@ import com.wf.captcha.SpecCaptcha;
 import jakarta.annotation.Resource;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -37,6 +41,10 @@ public class UserController extends BaseController {
     private RedissonCacheUtil redissonCacheUtils;
     @Resource
     private MinioUtil minioUtil;
+    @Resource
+    private JavaMailSender mailSender;
+    @Value("${spring.mail.username}")
+    private String mailFrom;
 
     // ==================== 登录相关 ====================
     @PostMapping("/login")
@@ -57,19 +65,66 @@ public class UserController extends BaseController {
     }
 
     // ==================== 注册相关 ====================
+    /**
+     * 发送邮箱验证码，60s内不允许重复发送，验证码有效期5分钟
+     */
+    @PostMapping("/sendEmailCode")
+    public Result<Void> sendEmailCode(@RequestBody Map<String, String> body) {
+        String email = body.get("email");
+        if (StrUtil.isBlank(email)) {
+            throw new BusinessException("邮箱不能为空");
+        }
+        // 防止60s内重复发送：检查是否已存在未过期的Key
+        String redisKey = redissonCacheUtils.getEmailCodeKey(email);
+        if (redissonCacheUtils.exists(redisKey)) {
+            Long remainTime = redissonCacheUtils.getRemainingTime(redisKey);
+            if (remainTime != null && remainTime > 240) { // 5min TTL > 4min: sent within 60s
+                throw new BusinessException("发送过于频繁，请60秒后重试");
+            }
+        }
+        // 生成6位随机数字验证码
+        String code = String.format("%06d", new Random().nextInt(1000000));
+        // 存入Redis，5分钟过期
+        redissonCacheUtils.set(redisKey, code, 5, TimeUnit.MINUTES);
+        // 发送邮件
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom(mailFrom);
+            message.setTo(email);
+            message.setSubject("注册验证码");
+            message.setText("您好！\n\n您的注册验证码为：" + code + "\n\n验证码有效期5分钟，请勿泄露给他人。\n\n如非本人操作，请忽略此邮件。");
+            mailSender.send(message);
+            log.info("邮箱验证码已发送，email: {}", email);
+        } catch (Exception e) {
+            // 删除Redis Key，避免发送失败后用户无法重试
+            redissonCacheUtils.delete(redisKey);
+            log.error("邮箱验证码发送失败，email: {}", email, e);
+            throw new BusinessException("验证码发送失败，请检查邮箱地址是否正确");
+        }
+        return Result.success("验证码已发送，请查收邮箱");
+    }
+
     @PostMapping("/register")
     public Result<Void> register(@RequestBody UserRegisterDTO userRegisterDTO) {
-        String captchaKey = redissonCacheUtils.getCaptchaKey(userRegisterDTO.getCaptchaKey());
-        String captchaCode = redissonCacheUtils.get(captchaKey);
-
-        if (captchaCode == null) {
-            throw new BusinessException("验证码已过期");
+        // 校验邮箱验证码
+        String email = userRegisterDTO.getEmail();
+        if (StrUtil.isBlank(email)) {
+            throw new BusinessException("邮箱不能为空");
         }
-        if (!captchaCode.equalsIgnoreCase(userRegisterDTO.getCaptchaCode())) {
+        String emailCode = userRegisterDTO.getEmailCode();
+        if (StrUtil.isBlank(emailCode)) {
+            throw new BusinessException("请输入邮箱验证码");
+        }
+        String redisKey = redissonCacheUtils.getEmailCodeKey(email);
+        String storedCode = redissonCacheUtils.get(redisKey);
+        if (storedCode == null) {
+            throw new BusinessException("验证码已过期，请重新获取");
+        }
+        if (!storedCode.equals(emailCode)) {
             throw new BusinessException("验证码错误");
         }
-
-        redissonCacheUtils.delete(captchaKey);
+        // 校验通过，删除Redis中的验证码
+        redissonCacheUtils.delete(redisKey);
         chatUserService.register(userRegisterDTO);
         return Result.success("注册成功");
     }

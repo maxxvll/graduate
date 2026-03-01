@@ -3,18 +3,24 @@ package com.maxxvll.controller;
 import com.maxxvll.common.BaseController;
 import com.maxxvll.common.Result;
 import com.maxxvll.common.dto.*;
+import com.maxxvll.common.exception.BusinessException;
 import com.maxxvll.common.vo.GroupApplicationVO;
 import com.maxxvll.common.vo.GroupInfoVO;
 import com.maxxvll.common.vo.GroupMemberVO;
 import com.maxxvll.service.ChatGroupMemberService;
 import com.maxxvll.service.ChatGroupService;
 import com.maxxvll.service.GroupApplicationService;
+import com.maxxvll.utils.MinioUtil;
 import com.maxxvll.utils.UserContextUtil;
 import jakarta.annotation.Resource;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 群聊管理控制器
@@ -32,6 +38,40 @@ public class GroupController extends BaseController {
 
     @Resource
     private GroupApplicationService groupApplicationService;
+
+    @Resource
+    private MinioUtil minioUtil;
+
+    // ==================== 群头像上传 ====================
+
+    /**
+     * 上传群头像（创建群聊时使用）
+     */
+    @SneakyThrows
+    @PostMapping("/avatar/upload")
+    public Result<Map<String, String>> uploadGroupAvatar(@RequestParam MultipartFile file) {
+        if (file.isEmpty()) {
+            throw new BusinessException("上传失败：文件为空");
+        }
+        String originalFilename = file.getOriginalFilename();
+        if (originalFilename == null) {
+            throw new BusinessException("上传失败：文件名为空");
+        }
+        int dotIdx = originalFilename.lastIndexOf(".");
+        if (dotIdx < 0) {
+            throw new BusinessException("上传失败：文件格式不支持");
+        }
+        String suffix = originalFilename.substring(dotIdx).toLowerCase();
+        if (!suffix.matches("\\.(jpg|jpeg|png|gif)$")) {
+            throw new BusinessException("上传失败：仅支持 jpg/png/gif 格式");
+        }
+        String filePath = minioUtil.uploadGroupAvatar(file);
+        String previewUrl = minioUtil.getAvatarUrl(filePath);
+        Map<String, String> result = new HashMap<>();
+        result.put("filePath", filePath);
+        result.put("previewUrl", previewUrl);
+        return Result.success("群头像上传成功", result);
+    }
 
     // ==================== 群聊基础操作 ====================
 

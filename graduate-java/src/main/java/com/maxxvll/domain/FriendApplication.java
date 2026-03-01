@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import java.util.Date;
 import lombok.Data;
 
@@ -15,9 +17,10 @@ import lombok.Data;
 @Data
 public class FriendApplication {
     /**
-     * 主键ID
+     * 主键ID（雪花算法）
      */
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.ASSIGN_ID)
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
 
     /**
@@ -39,6 +42,11 @@ public class FriendApplication {
      * 拒绝原因（仅状态为2时填写）
      */
     private String rejectReason;
+
+    /**
+     * 申请备注（申请人所写的验证信息）
+     */
+    private String remark;
 
     /**
      * 申请创建时间

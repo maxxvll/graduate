@@ -104,7 +104,11 @@ export function useContacts({
    */
   const chatWithFriend = (friend) => {
     const myId = CURRENT_USER_ID.value || ''
-    const sessionId = `${Math.min(Number(myId), Number(friend.userId))}_${Math.max(Number(myId), Number(friend.userId))}`
+    // 使用 BigInt 比较，避免 Snowflake ID（18-19位数字）超过 JS Number.MAX_SAFE_INTEGER 导致精度丢失
+    // Number("1234567890123456789") 会变成 1234567890123456800，导致 sessionId 与后端不匹配
+    const id1 = BigInt(myId || '0')
+    const id2 = BigInt(friend.userId || '0')
+    const sessionId = id1 < id2 ? `${myId}_${friend.userId}` : `${friend.userId}_${myId}`
     let session = sessions.value.find((s) => s.sessionId === sessionId)
     if (!session) {
       session = {

@@ -1,6 +1,7 @@
 package com.maxxvll.common;
 
 
+import com.maxxvll.common.annotation.NotRequired;
 import com.maxxvll.common.exception.DtoValidationException;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -49,6 +50,10 @@ public class GlobalValidation {
         Map<String,String> errors=new HashMap<>();
         Field[] declaredFields = dto.getClass().getDeclaredFields();
         for(Field field :declaredFields){
+            // 带有 @NotRequired 注解的字段为可选字段，跳过校验
+            if (field.isAnnotationPresent(NotRequired.class)) {
+                continue;
+            }
             String filedName=field.getName();
             field.setAccessible(true);
             Object fieldValue = field.get(dto);

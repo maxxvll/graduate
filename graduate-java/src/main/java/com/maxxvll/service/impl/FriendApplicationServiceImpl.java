@@ -5,12 +5,17 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.maxxvll.common.dto.FriendApplyDTO;
 import com.maxxvll.common.dto.FriendApplyHandleDTO;
+import com.maxxvll.common.enums.MessageType;
+import com.maxxvll.common.enums.SessionType;
 import com.maxxvll.common.exception.BusinessException;
 import com.maxxvll.common.vo.FriendApplicationVO;
+import com.maxxvll.domain.ChatMessage;
 import com.maxxvll.domain.ChatUser;
 import com.maxxvll.domain.FriendApplication;
 import com.maxxvll.mapper.ChatUserMapper;
 import com.maxxvll.mapper.FriendApplicationMapper;
+import com.maxxvll.service.ChatMessageService;
+import com.maxxvll.service.ChatSessionService;
 import com.maxxvll.service.FriendApplicationService;
 import com.maxxvll.utils.BeanConvertUtil;
 import com.maxxvll.utils.MinioUtil;
@@ -38,6 +43,10 @@ public class FriendApplicationServiceImpl extends ServiceImpl<FriendApplicationM
     private ChatUserMapper chatUserMapper;
     @Resource
     private MinioUtil minioUtil;
+    @Resource
+    private ChatSessionService chatSessionService;
+    @Resource
+    private ChatMessageService chatMessageService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -76,6 +85,7 @@ public class FriendApplicationServiceImpl extends ServiceImpl<FriendApplicationM
         FriendApplication application = new FriendApplication();
         application.setApplicantId(Long.valueOf(applicantId));
         application.setTargetUserId(Long.valueOf(targetId));
+        application.setRemark(applyDTO.getRemark());  // 保存申请备注
         application.setStatus(0);
         application.setCreateTime(new Date());
         application.setUpdateTime(new Date());
@@ -130,6 +140,39 @@ public class FriendApplicationServiceImpl extends ServiceImpl<FriendApplicationM
         }
         application.setUpdateTime(new Date());
         this.updateById(application);
+
+        // 5. 好友申请通过：自动创建单聊会话 + 发送申请备注消息
+        if (handleDTO.getStatus() == 1) {
+            long id1 = application.getApplicantId();
+            long id2 = application.getTargetUserId();
+            // sessionId 格式：小 ID _ 大 ID（与前端 useContacts.js 一致）
+            String sessionId = Math.min(id1, id2) + "_" + Math.max(id1, id2);
+
+            ChatUser applicant = chatUserMapper.selectById(id1);
+            ChatUser handler  = chatUserMapper.selectById(id2);
+
+            // 5.1 为双方创建单聊会话（如果不存在）
+            if (applicant != null && handler != null) {
+                chatSessionService.initFriendSession(
+                        String.valueOf(id1), String.valueOf(id2), sessionId,
+                        applicant, handler);
+
+                // 5.2 如果有申请备注，将其作为第一条消息发送
+                if (StrUtil.isNotBlank(application.getRemark())) {
+                    ChatMessage msg = chatMessageService.saveDirectly(
+                            sessionId,
+                            String.valueOf(id1),          // 发送方：申请人
+                            String.valueOf(id2),          // 接收方：被申请人
+                            SessionType.SINGLE.getCode(),
+                            MessageType.TEXT.getCode(),
+                            application.getRemark()
+                    );
+                    // 更新双方会话的最后消息
+                    chatSessionService.refreshAllLastMessage(msg);
+                    log.info("申请备注已发送为第一条消息，sessionId={}, remark={}", sessionId, application.getRemark());
+                }
+            }
+        }
 
         log.info("用户[{}]处理好友申请[{}]，结果：{}",
                 handlerId, handleDTO.getApplyId(), handleDTO.getStatus() == 1 ? "接受" : "拒绝");

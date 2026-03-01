@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import java.util.Date;
 import lombok.Data;
 
@@ -15,9 +17,11 @@ import lombok.Data;
 @Data
 public class ChatMessage {
     /**
-     * 消息唯一主键ID（自增）
+     * 消息唯一主键ID（雪花算法，插入前生成，保证前端可直接使用）
+     * 使用 ToStringSerializer 序列化为字符串，防止 JS Number 精度丢失
      */
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.ASSIGN_ID)
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
 
     /**
@@ -150,6 +154,19 @@ public class ChatMessage {
      */
     private Date updatedAt;
     private Integer duration;
+
+    /**
+     * 发送人昵称（非DB字段，由 getMessages/sendMessage 动态填充，不入库）
+     */
+    @TableField(exist = false)
+    private String senderName;
+
+    /**
+     * 发送人头像完整URL（非DB字段，由 getMessages/sendMessage 动态填充，不入库）
+     */
+    @TableField(exist = false)
+    private String senderAvatar;
+
     @Override
     public boolean equals(Object that) {
         if (this == that) {

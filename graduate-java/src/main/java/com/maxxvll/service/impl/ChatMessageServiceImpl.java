@@ -13,7 +13,9 @@ import com.maxxvll.common.enums.SessionType;
 import com.maxxvll.common.exception.BusinessException;
 import com.maxxvll.common.vo.UserInfoVO;
 import com.maxxvll.domain.ChatMessage;
+import com.maxxvll.domain.ChatUser;
 import com.maxxvll.mapper.ChatMessageMapper;
+import com.maxxvll.mapper.ChatUserMapper;
 import com.maxxvll.service.ChatMessageService;
 import com.maxxvll.service.ChatSessionService;
 import com.maxxvll.utils.MinioUtil;
@@ -28,7 +30,11 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -39,6 +45,8 @@ public class ChatMessageServiceImpl extends ServiceImpl<ChatMessageMapper, ChatM
     private MinioUtil minioUtil;
     @Resource
     private ChatSessionService chatSessionService;
+    @Resource
+    private ChatUserMapper chatUserMapper;
 
     private static final DateTimeFormatter FILE_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
@@ -54,7 +62,12 @@ public class ChatMessageServiceImpl extends ServiceImpl<ChatMessageMapper, ChatM
         List<FileUploadResult> uploadResults = preUploadFiles(files, isPublicFile);
 
         // 3. 事务内只做数据库操作
-        return doSendMessageInTransaction(sendDTO, senderId, isPublicFile, uploadResults);
+        ChatMessage result = doSendMessageInTransaction(sendDTO, senderId, isPublicFile, uploadResults);
+
+        // 4. 填充发送人信息（非DB字段，供前端消息气泡展示头像）
+        result.setSenderName(currentUser.getNickname());
+        result.setSenderAvatar(minioUtil.getAvatarUrl(currentUser.getAvatar()));
+        return result;
     }
 
     /**
@@ -112,7 +125,6 @@ public class ChatMessageServiceImpl extends ServiceImpl<ChatMessageMapper, ChatM
         // 1. 处理文本消息
         if (StrUtil.isNotBlank(sendDTO.getContent()) && StrUtil.isBlank(sendDTO.getFileUrl())) {
             ChatMessage textMsg = buildMessage(sendDTO, senderId, MessageType.TEXT, sendDTO.getContent(), null);
-            textMsg.setMessageNo(IdUtil.simpleUUID());
             messageToSave.add(textMsg);
         }
 
@@ -122,7 +134,6 @@ public class ChatMessageServiceImpl extends ServiceImpl<ChatMessageMapper, ChatM
             String content = "[" + msgType.getDesc() + "]";
 
             ChatMessage fileMsg = buildMessage(sendDTO, senderId, msgType, content, sendDTO.getFileUrl());
-            fileMsg.setMessageNo(IdUtil.simpleUUID());
             fileMsg.setFileName(sendDTO.getFileName());
             fileMsg.setFileSize(sendDTO.getFileSize());
             if (msgType == MessageType.AUDIO && sendDTO.getDuration() != null) {
@@ -136,7 +147,6 @@ public class ChatMessageServiceImpl extends ServiceImpl<ChatMessageMapper, ChatM
             String content = "[" + uploadResult.msgType.getDesc() + "]";
             ChatMessage fileMsg = buildMessage(sendDTO, senderId, uploadResult.msgType,
                     content, uploadResult.newFileName);
-            fileMsg.setMessageNo(IdUtil.simpleUUID());
             fileMsg.setFileName(uploadResult.originalFilename);
             fileMsg.setFileType(uploadResult.suffix);
             fileMsg.setFileSize(uploadResult.fileSize);
@@ -187,6 +197,9 @@ public class ChatMessageServiceImpl extends ServiceImpl<ChatMessageMapper, ChatM
                 msg.setFileUrl(accessibleUrl);
             }
         }
+
+        // 批量填充发送人昵称和头像（非DB字段），供前端消息气泡展示真实头像
+        enrichSenderInfo(messages);
 
         log.info("查询消息成功，sessionId: {}, 数量: {}", sessionId, messages.size());
         return messages;
@@ -346,7 +359,64 @@ public class ChatMessageServiceImpl extends ServiceImpl<ChatMessageMapper, ChatM
         // 实际业务中可扩展 ext_info 字段
     }
 
+    // ==================== 系统级直接保存消息 ====================
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public ChatMessage saveDirectly(String sessionId, String senderId, String receiverId,
+                                    int sessionType, int messageType, String content) {
+        ChatMessage msg = new ChatMessage();
+        msg.setSessionId(sessionId);
+        msg.setSessionType(sessionType);
+        msg.setSenderId(senderId);
+        msg.setReceiverId(receiverId);
+        msg.setMessageType(messageType);
+        msg.setContent(content);
+        msg.setSendTime(new Date());
+        msg.setStatus(MessageStatus.SEND_SUCCESS.getCode());
+        msg.setMessageNo(IdUtil.simpleUUID());
+        msg.setIsSensitive(0);
+        msg.setIsDeleted(0);
+        save(msg);
+        log.info("系统消息保存成功，sessionId={}, type={}, content={}", sessionId, messageType, content);
+        return msg;
+    }
+
+    // ==================== 私有方法：批量填充发送人信息 ====================
+    /**
+     * 批量填充消息列表中的发送人昵称和头像 URL。
+     * 一次批量查询 chat_user 表，避免 N+1 问题。
+     */
+    private void enrichSenderInfo(List<ChatMessage> messages) {
+        if (messages == null || messages.isEmpty()) return;
+
+        Set<String> senderIds = messages.stream()
+                .map(ChatMessage::getSenderId)
+                .filter(StrUtil::isNotBlank)
+                .collect(Collectors.toSet());
+        if (senderIds.isEmpty()) return;
+
+        Map<String, ChatUser> senderMap = new HashMap<>();
+        chatUserMapper.selectList(
+                new LambdaQueryWrapper<ChatUser>()
+                        .in(ChatUser::getId, senderIds)
+                        .select(ChatUser::getId, ChatUser::getNickname, ChatUser::getAvatar)
+        ).forEach(u -> senderMap.put(u.getId(), u));
+
+        for (ChatMessage msg : messages) {
+            ChatUser sender = senderMap.get(msg.getSenderId());
+            if (sender != null) {
+                msg.setSenderName(sender.getNickname());
+                msg.setSenderAvatar(minioUtil.getAvatarUrl(sender.getAvatar()));
+            }
+        }
+    }
+
     // ==================== 私有方法：构建消息对象 ====================
+    /**
+     * 构建消息实体。
+     * messageNo 优先使用客户端传入的（保证前后端消息对应，撤回等操作可找到正确记录）；
+     * 客户端未传时自动生成 UUID。
+     */
     private ChatMessage buildMessage(ChatMessageSendDTO sendDTO, String senderId,
                                      MessageType msgType, String content, String fileUrl) {
         ChatMessage message = new ChatMessage();
@@ -361,6 +431,12 @@ public class ChatMessageServiceImpl extends ServiceImpl<ChatMessageMapper, ChatM
         message.setStatus(MessageStatus.SEND_SUCCESS.getCode());
         message.setIsSensitive(0);
         message.setIsDeleted(0);
+        // 优先使用客户端传入的 messageNo（确保前后端消息匹配），否则生成新 UUID
+        if (StrUtil.isNotBlank(sendDTO.getMessageNo())) {
+            message.setMessageNo(sendDTO.getMessageNo());
+        } else {
+            message.setMessageNo(IdUtil.simpleUUID());
+        }
         return message;
     }
 

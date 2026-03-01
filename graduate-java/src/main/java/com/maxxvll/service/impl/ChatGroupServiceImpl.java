@@ -7,6 +7,7 @@ import com.maxxvll.common.dto.GroupTransferDTO;
 import com.maxxvll.common.dto.GroupUpdateDTO;
 import com.maxxvll.common.exception.BusinessException;
 import com.maxxvll.utils.BeanConvertUtil;
+import com.maxxvll.utils.MinioUtil;
 import com.maxxvll.common.vo.GroupInfoVO;
 import com.maxxvll.domain.ChatGroup;
 import com.maxxvll.domain.ChatGroupMember;
@@ -48,6 +49,9 @@ public class ChatGroupServiceImpl extends ServiceImpl<ChatGroupMapper, ChatGroup
 
     @Resource
     private GroupApplicationMapper groupApplicationMapper;
+
+    @Resource
+    private MinioUtil minioUtil;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -192,6 +196,8 @@ public class ChatGroupServiceImpl extends ServiceImpl<ChatGroupMapper, ChatGroup
         }
 
         GroupInfoVO vo = BeanConvertUtil.convert(group, GroupInfoVO.class);
+        // 转换群头像为公共桶永久直链
+        vo.setGroupAvatar(minioUtil.getAvatarUrl(group.getGroupAvatar()));
 
         // 获取创建人昵称
         if (group.getCreatorId() != null) {
@@ -238,6 +244,8 @@ public class ChatGroupServiceImpl extends ServiceImpl<ChatGroupMapper, ChatGroup
 
         return groups.stream().map(group -> {
             GroupInfoVO vo = BeanConvertUtil.convert(group, GroupInfoVO.class);
+            // 转换群头像为公共桶永久直链
+            vo.setGroupAvatar(minioUtil.getAvatarUrl(group.getGroupAvatar()));
             // 获取创建人昵称
             if (group.getCreatorId() != null) {
                 com.maxxvll.domain.ChatUser creator = chatUserMapper.selectById(group.getCreatorId());
@@ -353,6 +361,8 @@ public class ChatGroupServiceImpl extends ServiceImpl<ChatGroupMapper, ChatGroup
 
         return groups.stream().map(group -> {
             GroupInfoVO vo = BeanConvertUtil.convert(group, GroupInfoVO.class);
+            // 转换群头像为公共桶永久直链
+            vo.setGroupAvatar(minioUtil.getAvatarUrl(group.getGroupAvatar()));
             vo.setCurrentMemberCount((int) chatGroupMemberService.getMemberCount(group.getId()));
 
             // 判断当前用户状态

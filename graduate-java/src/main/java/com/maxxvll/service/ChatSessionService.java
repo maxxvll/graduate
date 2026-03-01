@@ -2,8 +2,10 @@ package com.maxxvll.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.maxxvll.common.vo.SessionVO;
+import com.maxxvll.domain.ChatGroup;
 import com.maxxvll.domain.ChatMessage;
 import com.maxxvll.domain.ChatSession;
+import com.maxxvll.domain.ChatUser;
 
 import java.util.List;
 
@@ -45,4 +47,21 @@ public interface ChatSessionService extends IService<ChatSession> {
      * 更新会话免打扰状态
      */
     void updateMuteStatus(String sessionId, String userId, Integer isMute);
+
+    /**
+     * 初始化好友单聊会话：为双方各创建一条会话记录（不依赖 UserContext，好友申请通过时调用）
+     */
+    void initFriendSession(String applicantId, String handlerId, String sessionId,
+                           ChatUser applicantInfo, ChatUser handlerInfo);
+
+    /**
+     * 为新群成员创建群聊会话（不依赖 UserContext，入群时调用）
+     */
+    void initGroupMemberSession(String userId, String groupId, String sessionId,
+                                String groupName, String groupAvatar);
+
+    /**
+     * 更新该 sessionId 所有用户的最后一条消息（不依赖 UserContext，用于系统消息通知）
+     */
+    void refreshAllLastMessage(ChatMessage message);
 }

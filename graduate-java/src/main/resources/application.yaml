@@ -25,6 +25,14 @@ spring:
   web:
     resources:
       add-mappings: false
+  mail:
+    host: smtp.qq.com
+    username: 2057044770@qq.com
+    password: qlfvnwkdedlccabb
+    properties:
+      mail.smtp.ssl.enable: true
+      mail.smtp.port: 465
+
 
   # ========== MySQL 配置（匹配Docker Compose） ==========
   datasource:
@@ -129,6 +137,8 @@ minio:
   access-key: minioadmin
   secret-key: minioadmin
   default-bucket: file-storage-bucket
+  # 公共头像桶：匿名可读，头像使用永久直链（无签名、无过期、Firefox 完全兼容）
+  avatar-bucket: chat-avatars-public
   upload:
     chunk-size: 5242880
     max-file-size: 104857600

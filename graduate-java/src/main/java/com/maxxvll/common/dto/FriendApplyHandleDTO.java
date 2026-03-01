@@ -1,5 +1,6 @@
 package com.maxxvll.common.dto;
 
+import com.maxxvll.common.annotation.NotRequired;
 import lombok.Data;
 
 /**
@@ -19,7 +20,8 @@ public class FriendApplyHandleDTO {
     private Integer status;
 
     /**
-     * 拒绝原因（拒绝时填写）
+     * 拒绝原因（拒绝时选填，可为空）
      */
+    @NotRequired
     private String rejectReason;
 }

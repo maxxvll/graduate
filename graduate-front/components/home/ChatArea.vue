@@ -26,7 +26,7 @@
           />
           <text class="avatar-name">{{ friendForSession.nickname }}</text>
         </view>
-        <view class="avatar-item add-avatar">
+        <view class="avatar-item add-avatar" @click="$emit('addMember')">
           <text class="add-plus">+</text>
           <text class="avatar-name">添加</text>
         </view>
@@ -65,13 +65,23 @@
             {{ item.timeText }}
           </view>
 
+          <!-- 系统通知消息（type=7）：居中灰色文字，不显示头像气泡 -->
+          <view
+            v-else-if="item.type === 'msg' && item.msg.message_type === MESSAGE_TYPE.SYSTEM"
+            class="system-notify-msg"
+          >
+            <text class="system-notify-text">{{ item.msg.content }}</text>
+          </view>
+
           <view
             v-else-if="item.type === 'msg'"
             class="message-item"
             :class="isMyMessage(item.msg) ? 'self' : 'other'"
             :id="'msg-' + item.msg.id"
+            @contextmenu.prevent="showCtxMenu($event, item.msg)"
           >
             <image
+              v-show="item.msg.status !== 3"
               :src="item.msg.avatar || defaultAvatar"
               class="message-avatar"
               mode="aspectFill"
@@ -86,9 +96,17 @@
                 {{ item.msg.sender_name }}
               </view>
 
+              <!-- 已撤回消息 -->
+              <view
+                v-if="item.msg.status === 3"
+                class="message-revoked"
+              >
+                {{ item.msg.content_replaced || '[消息已撤回]' }}
+              </view>
+
               <!-- 文本消息 -->
               <view
-                v-if="item.msg.message_type === MESSAGE_TYPE.TEXT && item.msg.content && item.msg.content.trim()"
+                v-else-if="item.msg.message_type === MESSAGE_TYPE.TEXT && item.msg.content && item.msg.content.trim()"
                 class="message-content"
               >
                 {{ item.msg.content }}
@@ -150,10 +168,37 @@
       </view>
     </scroll-view>
 
-    <!-- 滚动到底部浮动按钮 -->
+    <!-- 滑动到底部浮动按鈕 -->
     <view v-if="showScrollToBottom" class="scroll-to-bottom-btn" @click="$emit('scrollToBottom')">
       <text class="scroll-icon">↓</text>
     </view>
+    
+    <!-- PC 右键菜单 -->
+    <teleport to="body">
+      <div
+        v-if="pcCtxMenu.visible"
+        class="pc-ctx-overlay"
+        @click="closePcCtxMenu"
+        @contextmenu.prevent
+      >
+        <div
+          class="pc-ctx-menu"
+          :style="{ top: pcCtxMenu.y + 'px', left: pcCtxMenu.x + 'px' }"
+          @click.stop
+        >
+          <div
+            v-if="pcCtxMenu.msg && pcCtxMenu.msg.message_type === MESSAGE_TYPE.TEXT"
+            class="pc-ctx-item"
+            @click="doPcCopy"
+          >复制</div>
+          <div
+            v-if="pcCtxMenu.msg && isMyMessage(pcCtxMenu.msg)"
+            class="pc-ctx-item pc-ctx-revoke"
+            @click="doPcRevoke"
+          >撤回</div>
+        </div>
+      </div>
+    </teleport>
 
     <!-- 语音录制全屏遮罩 -->
     <view v-if="isRecording" class="recording-mask" @click.stop>
@@ -271,7 +316,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 
 const props = defineProps({
   currentSession:    { type: Object,  required: true },
@@ -308,6 +353,8 @@ const emit = defineEmits([
   'chooseImage', 'chooseFile', 'removePendingFile',
   'dragEnter', 'dragOver', 'dragLeave', 'drop',
   'enterKey', 'ctrlEnter', 'send',
+  'revokeMsg', 'copyMsg',
+  'addMember',
 ])
 
 // v-model 双向绑定输入框内容
@@ -328,6 +375,41 @@ const isGroupSession = computed(() =>
   props.currentSession?.sessionType === props.SESSION_TYPE.GROUP,
 )
 
+// ========== PC 右键菜单 ==========
+const pcCtxMenu = ref({ visible: false, x: 0, y: 0, msg: null })
+
+/** 展示右键菜单 */
+const showCtxMenu = (event, msg) => {
+  if (msg.status === 3) return // 已撤回不展示菜单
+  // 计算菜单位置，防止超出屏幕边界
+  const x = Math.min(event.clientX, window.innerWidth - 140)
+  const y = Math.min(event.clientY, window.innerHeight - 100)
+  pcCtxMenu.value = { visible: true, x, y, msg }
+}
+
+/** 关闭右键菜单 */
+const closePcCtxMenu = () => {
+  pcCtxMenu.value.visible = false
+}
+
+/** PC 复制消息 */
+const doPcCopy = () => {
+  const text = pcCtxMenu.value.msg?.content || ''
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(text).then(() => {
+      emit('copyMsg', text)
+    })
+  }
+  closePcCtxMenu()
+}
+
+/** PC 撤回消息 */
+const doPcRevoke = () => {
+  const msg = pcCtxMenu.value.msg
+  closePcCtxMenu()
+  if (msg) emit('revokeMsg', msg)
+}
+
 /** 格式化文件大小：自动选择 B/KB/MB/GB */
 const formatFileSize = (bytes) => {
   if (!bytes) return '0B'
@@ -346,5 +428,629 @@ const formatFileSize = (bytes) => {
   background: #f5f5f5;
   position: relative;
   overflow: hidden;
+}
+
+/* 顶部标题栏 */
+.chat-header {
+  height: 52px;
+  border-bottom: 1px solid #e6e6e6;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  flex-shrink: 0;
+  background: #f0f0f0;
+}
+.chat-name {
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
+}
+.header-tools {
+  display: flex;
+  gap: 20px;
+}
+.header-tools .tool-icon {
+  font-size: 18px;
+  color: #666;
+  cursor: pointer;
+}
+
+/* 聊天信息侧栏 */
+.chat-info-panel {
+  position: absolute;
+  right: 20px;
+  top: 56px;
+  width: 320px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+  z-index: 2000;
+  overflow: hidden;
+  padding: 12px;
+}
+.chat-info-avatars {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f5f5f5;
+}
+.avatar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  position: relative;
+}
+.info-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  background: #eee;
+}
+.avatar-name {
+  font-size: 12px;
+  color: #333;
+  margin-top: 6px;
+}
+.add-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  border: 2px dashed #ddd;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-top: 0;
+}
+.add-plus {
+  font-size: 24px;
+  color: #ccc;
+  line-height: 1;
+}
+.chat-info-options {
+  margin-top: 8px;
+}
+.option-item {
+  padding: 10px 4px;
+  font-size: 13px;
+  color: #333;
+  cursor: pointer;
+  border-bottom: 1px solid #f5f5f5;
+}
+.option-item:hover {
+  color: #07c160;
+}
+.toggle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.option-danger {
+  color: #ff3b30;
+}
+.option-danger:hover {
+  color: #d93025;
+}
+
+/* 消息列表 */
+.chat-messages {
+  flex: 1;
+  background: #f0f0f0;
+  display: flex;
+  flex-direction: column;
+  height: 0;
+}
+.messages-inner-wrapper {
+  padding: 20px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.empty-tip {
+  text-align: center;
+  color: #999;
+  font-size: 14px;
+  margin-top: 100px;
+}
+
+/* 时间分隔线 */
+.time-separator {
+  text-align: center;
+  color: #999;
+  font-size: 12px;
+  margin: 16px 0;
+  line-height: 1;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.time-separator::before,
+.time-separator::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e6e6e6;
+  max-width: 60px;
+  margin: 0 12px;
+}
+
+/* 消息气泡 */
+.message-item {
+  display: flex;
+  margin-bottom: 16px;
+  width: 100%;
+  align-items: flex-start;
+}
+.message-item.other {
+  justify-content: flex-start;
+  flex-direction: row;
+}
+.message-item.self {
+  justify-content: flex-end;
+  flex-direction: row;
+}
+.message-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  background: #cccccc;
+}
+.message-sender {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 2px;
+}
+.message-item.other .message-avatar {
+  order: 1;
+  margin-right: 10px;
+}
+.message-item.self .message-avatar {
+  order: 2;
+  margin-left: 10px;
+}
+.message-content-wrapper {
+  display: flex;
+  flex-direction: column;
+  max-width: 60%;
+}
+.message-item.other .message-content-wrapper {
+  order: 2;
+  align-items: flex-start;
+}
+.message-item.self .message-content-wrapper {
+  order: 1;
+  align-items: flex-end;
+}
+.message-content {
+  padding: 9px 12px;
+  border-radius: 4px;
+  word-break: break-all;
+  font-size: 14px;
+  line-height: 1.5;
+  max-width: 500px;
+}
+.message-voice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: 4px;
+  min-width: 60px;
+  cursor: pointer;
+  position: relative;
+}
+.message-item.other .message-voice {
+  background: #fff;
+  border-top-left-radius: 0;
+}
+.message-item.self .message-voice {
+  background: #95ec69;
+  border-top-right-radius: 0;
+  flex-direction: row-reverse;
+}
+.voice-icon {
+  font-size: 16px;
+}
+.voice-duration {
+  font-size: 12px;
+  color: #666;
+}
+.downloading-text {
+  font-size: 10px;
+  color: #999;
+  position: absolute;
+  bottom: -18px;
+  right: 0;
+}
+.message-image {
+  max-width: 300px;
+  max-height: 300px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.message-video {
+  max-width: 300px;
+  max-height: 300px;
+  border-radius: 4px;
+}
+.message-file {
+  display: flex;
+  align-items: center;
+  width: 280px;
+  padding: 12px 16px;
+  border-radius: 4px;
+  position: relative;
+}
+.file-icon {
+  font-size: 32px;
+  margin-right: 12px;
+}
+.file-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+.file-name {
+  font-size: 14px;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.file-size {
+  font-size: 12px;
+  color: #999;
+}
+/* 对方消息：白底；自己消息：微信绿 */
+.message-item.other .message-content,
+.message-item.other .message-file,
+.message-item.other .message-voice {
+  background: #fff;
+  color: #333;
+  border-top-left-radius: 0;
+}
+.message-item.self .message-content,
+.message-item.self .message-file,
+.message-item.self .message-voice {
+  background: #95ec69;
+  color: #333;
+  border-top-right-radius: 0;
+}
+
+/* 滚动到底部按钮 */
+.scroll-to-bottom-btn {
+  position: absolute;
+  right: 20px;
+  bottom: 220px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 50;
+}
+
+/* 录音弹窗 */
+.recording-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.recording-modal {
+  background: #fff;
+  padding: 40px 60px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+.recording-wave {
+  font-size: 48px;
+}
+.recording-modal-text {
+  font-size: 16px;
+  color: #333;
+  font-weight: bold;
+}
+.recording-btns {
+  display: flex;
+  gap: 20px;
+}
+.cancel-voice-btn {
+  padding: 8px 24px;
+  background: #f5f5f5;
+  color: #333;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.send-voice-btn {
+  padding: 8px 24px;
+  background: #07c160;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* 底部输入区 */
+.chat-input-area {
+  border-top: 1px solid #e6e6e6;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 20px;
+  flex-shrink: 0;
+  background: #f0f0f0;
+  min-height: 180px;
+  max-height: 300px;
+  gap: 8px;
+}
+.pending-files {
+  display: flex;
+  gap: 10px;
+  padding: 0 0 4px 0;
+  flex-wrap: wrap;
+}
+.pending-file-item {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #fff;
+  border: 1px solid #e6e6e6;
+}
+.pending-file-image {
+  width: 100%;
+  height: 100%;
+}
+.pending-file-video,
+.pending-file-doc {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.remove-btn {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  cursor: pointer;
+}
+.input-tools {
+  display: flex;
+  flex-direction: row;
+  gap: 24px;
+  flex-shrink: 0;
+  padding: 0 4px;
+  align-items: center;
+}
+.tool-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 30px;
+  user-select: none;
+}
+.recording-btn-active {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: #ff3b30;
+  border-radius: 4px;
+}
+.recording-pulse {
+  font-size: 12px;
+  animation: pulse 1s infinite;
+}
+@keyframes pulse {
+  0%   { opacity: 1; transform: scale(1); }
+  50%  { opacity: 0.5; transform: scale(1.2); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.emoji-btn-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.input-tools .tool-icon {
+  font-size: 20px;
+  color: #666;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.input-tools .tool-icon:hover {
+  color: #07c160;
+}
+
+/* 拖拽输入容器 */
+.input-container {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  border: 2px dashed transparent;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+.input-container.drag-over {
+  border-color: #07c160;
+  background: rgba(7, 193, 96, 0.05);
+}
+.chat-input {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 4px;
+  padding: 10px 12px 45px 12px;
+  font-size: 14px;
+  background: #fff;
+  outline: none;
+  resize: none;
+  line-height: 1.5;
+  min-height: 80px;
+  max-height: 180px;
+  box-sizing: border-box;
+}
+.send-btn-wrapper {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  flex-shrink: 0;
+}
+.send-btn {
+  padding: 6px 20px;
+  background: #07c160;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.send-btn:disabled {
+  background: #cccccc;
+  cursor: not-allowed;
+}
+
+/* 表情面板 */
+.emoji-panel {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  width: 500px;
+  height: 280px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 8px;
+  overflow: hidden;
+  z-index: 100;
+}
+.emoji-section {
+  padding: 0 12px;
+}
+.emoji-title {
+  font-size: 12px;
+  color: #999;
+  margin: 12px 0 8px 0;
+}
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 8px;
+}
+.emoji-scroll {
+  flex: 1;
+  overflow-y: auto;
+}
+.emoji-item {
+  width: 100%;
+  aspect-ratio: 1/1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.emoji-item:hover {
+  background: #f5f5f5;
+}
+
+/* 已撤回消息显示 */
+.message-revoked {
+  font-size: 13px;
+  color: #aaa;
+  font-style: italic;
+  padding: 8px 12px;
+  user-select: none;
+}
+
+/* 系统通知消息：居中显示的灰色提示文字 */
+.system-notify-msg {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 6px 16px;
+  margin: 4px 0;
+}
+.system-notify-text {
+  font-size: 12px;
+  color: #999;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 20px;
+  padding: 3px 12px;
+  user-select: none;
+}
+
+/* PC 右键菜单過粖层 */
+.pc-ctx-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: transparent;
+}
+/* PC 右键菜单本体 */
+.pc-ctx-menu {
+  position: fixed;
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+  min-width: 120px;
+  overflow: hidden;
+  border: 1px solid #e8e8e8;
+  z-index: 10000;
+}
+.pc-ctx-item {
+  padding: 10px 18px;
+  font-size: 14px;
+  color: #333;
+  cursor: pointer;
+  transition: background 0.1s;
+  user-select: none;
+  white-space: nowrap;
+}
+.pc-ctx-item:hover {
+  background: #f5f5f5;
+}
+.pc-ctx-revoke {
+  color: #e74c3c;
+}
+.pc-ctx-revoke:hover {
+  background: #fff0ee;
 }
 </style>

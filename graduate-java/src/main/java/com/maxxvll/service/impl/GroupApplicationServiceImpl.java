@@ -4,11 +4,14 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.maxxvll.common.dto.GroupApplyDTO;
 import com.maxxvll.common.dto.GroupApplyHandleDTO;
+import com.maxxvll.common.enums.MessageType;
+import com.maxxvll.common.enums.SessionType;
 import com.maxxvll.common.exception.BusinessException;
 import com.maxxvll.utils.BeanConvertUtil;
 import com.maxxvll.common.vo.GroupApplicationVO;
 import com.maxxvll.domain.ChatGroup;
 import com.maxxvll.domain.ChatGroupMember;
+import com.maxxvll.domain.ChatMessage;
 import com.maxxvll.domain.ChatUser;
 import com.maxxvll.domain.GroupApplication;
 import com.maxxvll.mapper.ChatGroupMapper;
@@ -16,6 +19,8 @@ import com.maxxvll.mapper.ChatGroupMemberMapper;
 import com.maxxvll.mapper.ChatUserMapper;
 import com.maxxvll.mapper.GroupApplicationMapper;
 import com.maxxvll.service.ChatGroupMemberService;
+import com.maxxvll.service.ChatMessageService;
+import com.maxxvll.service.ChatSessionService;
 import com.maxxvll.service.GroupApplicationService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -47,6 +52,10 @@ public class GroupApplicationServiceImpl extends ServiceImpl<GroupApplicationMap
 
     @Resource
     private ChatGroupMemberService chatGroupMemberService;
+    @Resource
+    private ChatSessionService chatSessionService;
+    @Resource
+    private ChatMessageService chatMessageService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -126,9 +135,10 @@ public class GroupApplicationServiceImpl extends ServiceImpl<GroupApplicationMap
         application.setUpdateTime(new Date());
         this.updateById(application);
 
-        // 5. 如果通过，添加成员
+        // 5. 如果通过，添加成员并发送系统通知
         if (handleDTO.getStatus() == 1) {
             addMemberToGroup(String.valueOf(application.getGroupId()), String.valueOf(application.getApplicantId()), operatorId);
+            sendGroupJoinNotification(application.getGroupId(), application.getApplicantId());
         }
 
         log.info("用户[{}]处理申请[{}]，结果：[{}]", operatorId, handleDTO.getApplyId(), handleDTO.getStatus() == 1 ? "通过" : "拒绝");
@@ -230,6 +240,42 @@ public class GroupApplicationServiceImpl extends ServiceImpl<GroupApplicationMap
         member.setUpdatedAt(new Date());
 
         chatGroupMemberMapper.insert(member);
+    }
+
+    /**
+     * 入群成功后发送系统通知消息并创建/更新会话
+     */
+    private void sendGroupJoinNotification(Long groupId, Long applicantId) {
+        String groupIdStr = String.valueOf(groupId);
+        String applicantIdStr = String.valueOf(applicantId);
+        String sessionId = "group_" + groupIdStr;
+
+        // 获取群信息和申请人信息
+        ChatGroup group = chatGroupMapper.selectById(groupId);
+        ChatUser applicant = chatUserMapper.selectById(applicantId);
+        if (group == null || applicant == null) return;
+
+        String nickname = applicant.getNickname();
+        String content = nickname + " 加入了群聊";
+
+        // 1. 为新成员创建群聊会话（如果不存在）
+        chatSessionService.initGroupMemberSession(applicantIdStr, groupIdStr, sessionId,
+                group.getGroupName(), group.getGroupAvatar());
+
+        // 2. 保存系统消息（senderId = groupId 代表群系统）
+        ChatMessage sysMsg = chatMessageService.saveDirectly(
+                sessionId,
+                groupIdStr,       // 发送方：群系统
+                groupIdStr,       // 接收方：群
+                SessionType.GROUP.getCode(),
+                MessageType.SYSTEM.getCode(),
+                content
+        );
+
+        // 3. 更新所有群成员的会话最后消息
+        chatSessionService.refreshAllLastMessage(sysMsg);
+
+        log.info("群入群系统通知已发送，sessionId={}, 内容={}", sessionId, content);
     }
 
     /**

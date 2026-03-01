@@ -29,6 +29,9 @@ public class MinioUtil {
     private String secretKey;
     @Value("${minio.default-bucket}")
     private String bucketName;
+    /** 公共头像桶（匿名可读，头像直链永不过期） */
+    @Value("${minio.avatar-bucket:chat-avatars-public}")
+    private String avatarBucketName;
 
     private static final String CHUNK_TEMP_BUCKET = "chat-chunks-temp";
     private MinioClient minioClient;
@@ -41,55 +44,91 @@ public class MinioUtil {
                     .credentials(accessKey, secretKey)
                     .build();
 
+            // 主文件桶（私有）
             boolean bucketExists = minioClient.bucketExists(BucketExistsArgs.builder().bucket(bucketName).build());
             if (!bucketExists) {
                 minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucketName).build());
                 log.info("创建主Bucket成功: {}", bucketName);
             }
 
+            // 切片临时桶
             boolean chunkBucketExists = minioClient.bucketExists(BucketExistsArgs.builder().bucket(CHUNK_TEMP_BUCKET).build());
             if (!chunkBucketExists) {
                 minioClient.makeBucket(MakeBucketArgs.builder().bucket(CHUNK_TEMP_BUCKET).build());
                 log.info("创建切片Bucket成功: {}", CHUNK_TEMP_BUCKET);
             }
+
+            // 公共头像桶（匿名可读，无需签名 URL，彻底解决 Firefox CORS + 头像不更新问题）
+            boolean avatarBucketExists = minioClient.bucketExists(BucketExistsArgs.builder().bucket(avatarBucketName).build());
+            if (!avatarBucketExists) {
+                minioClient.makeBucket(MakeBucketArgs.builder().bucket(avatarBucketName).build());
+                log.info("创建头像公共Bucket成功: {}", avatarBucketName);
+            }
+            // 设置公共读策略：允许所有人匿名 GET（Head + Get）
+            String avatarBucketPolicy = String.format(
+                    "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"*\"]},"
+                  + "\"Action\":[\"s3:GetObject\",\"s3:HeadObject\"],\"Resource\":[\"arn:aws:s3:::%s/*\"]}]}",
+                    avatarBucketName);
+            minioClient.setBucketPolicy(SetBucketPolicyArgs.builder()
+                    .bucket(avatarBucketName)
+                    .config(avatarBucketPolicy)
+                    .build());
+            log.info("头像Bucket公共读策略已设置: {}", avatarBucketName);
         } catch (Exception e) {
             log.error("Minio初始化失败", e);
         }
     }
 
-    // ==================== 【新增】专门用于头像上传 ====================
+    // ==================== 头像上传（公共桶，永久直链）====================
     /**
-     * 上传头像
-     * @param file 文件
+     * 上传用户头像到公共头像桶。
+     * 使用固定路径 avatar/user/{userId}（无 UUID 后缀），每次上传都覆盖同一对象，
+     * 使得 URL 永不变化，所有持有此 URL 的地方自动看到最新头像，彻底解决头像不同步问题。
+     *
+     * @param file   头像文件
      * @param userId 用户ID
-     * @return 存储的相对路径 (如 avatar/123/uuid_filename.jpg)
+     * @return 存储的相对路径，如 avatar/user/123
      */
     public String uploadAvatar(MultipartFile file, String userId) throws Exception {
-        String originalFilename = file.getOriginalFilename();
-        String suffix = "";
-        String pureName = "avatar";
-
-        if (originalFilename != null && originalFilename.contains(".")) {
-            int lastDotIndex = originalFilename.lastIndexOf(".");
-            suffix = originalFilename.substring(lastDotIndex);
-            pureName = originalFilename.substring(0, lastDotIndex);
-            // 防止原始文件名过长
-            if (pureName.length() > 30) pureName = pureName.substring(0, 30);
-        }
-
-        // 生成路径: avatar/{userId}/{uuid}_{pureName}{suffix}
-        String fileName = String.format("avatar/%s/%s_%s%s", userId, IdUtil.simpleUUID(), pureName, suffix);
+        // 使用固定路径，覆盖旧头像，URL 永远不变
+        String fileName = "avatar/user/" + userId;
 
         minioClient.putObject(
                 PutObjectArgs.builder()
-                        .bucket(bucketName)
+                        .bucket(avatarBucketName)
                         .object(fileName)
                         .stream(file.getInputStream(), file.getSize(), -1)
                         .contentType(file.getContentType())
                         .build()
         );
-        log.info("头像上传成功: {}", fileName);
-        return fileName; // 【关键】只返回路径，不返回URL
+        log.info("用户头像上传成功（公共桶，固定路径）: {}/{}", avatarBucketName, fileName);
+        return fileName;
+    }
+
+    // ==================== 群头像上传（公共桶）====================
+    /**
+     * 上传群头像到公共头像桶（UUID 路径，每次创建新对象）。
+     *
+     * @param file 头像文件
+     * @return 存储的相对路径，如 avatar/group/{uuid}.jpg
+     */
+    public String uploadGroupAvatar(MultipartFile file) throws Exception {
+        String originalFilename = file.getOriginalFilename();
+        String suffix = ".jpg";
+        if (originalFilename != null && originalFilename.contains(".")) {
+            suffix = originalFilename.substring(originalFilename.lastIndexOf(".")).toLowerCase();
+        }
+        String fileName = String.format("avatar/group/%s%s", IdUtil.simpleUUID(), suffix);
+        minioClient.putObject(
+                PutObjectArgs.builder()
+                        .bucket(avatarBucketName)
+                        .object(fileName)
+                        .stream(file.getInputStream(), file.getSize(), -1)
+                        .contentType(file.getContentType())
+                        .build()
+        );
+        log.info("群头像上传成功（公共桶）: {}/{}", avatarBucketName, fileName);
+        return fileName;
     }
 
     public void uploadChatFile(MultipartFile file, String fileName, boolean isPublic) throws Exception {
@@ -123,9 +162,35 @@ public class MinioUtil {
         }
     }
 
-    // ==================== 【修改】获取头像URL ====================
+    // ==================== 获取头像永久直链 ====================
+    /**
+     * 获取头像 URL。
+     * <p>
+     * 路径格式说明：
+     * <ul>
+     *   <li>{@code avatar/user/{id}}：新格式用户头像（公共桶）→ 永久直链</li>
+     *   <li>{@code avatar/group/{uuid}.ext}：新格式群头像（公共桶）→ 永久直链</li>
+     *   <li>{@code avatar/{numericId}/{uuid}_name.ext}：旧格式用户头像（私有桶）→ 预签名 URL</li>
+     *   <li>{@code http...}：已是完整 URL，直接返回</li>
+     * </ul>
+     *
+     * @param fileName 数据库存储的相对路径或完整 URL
+     * @return 可直接在浏览器/img标签中使用的 URL
+     */
     public String getAvatarUrl(String fileName) {
-        return getChatFileUrl(fileName, true); // 头像通常是公开的
+        if (fileName == null || fileName.isBlank()) return "";
+        // 已经是完整 URL，直接返回（历史旧数据或外部 URL）
+        if (fileName.startsWith("http")) return fileName;
+
+        String base = endpoint.endsWith("/") ? endpoint.substring(0, endpoint.length() - 1) : endpoint;
+
+        // 新格式路径：第二节为 "user" 或 "group"，存放在公共桶，返回永久直链
+        if (fileName.startsWith("avatar/user/") || fileName.startsWith("avatar/group/")) {
+            return base + "/" + avatarBucketName + "/" + fileName;
+        }
+
+        // 旧格式路径（如 avatar/{numericId}/{uuid}_name.ext）：存在于私有桶，回退预签名 URL
+        return getChatFileUrl(fileName, true);
     }
 
     public String checkFileExistByMd5(String md5) {

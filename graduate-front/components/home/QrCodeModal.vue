@@ -18,16 +18,20 @@
         <text class="qr-nickname">{{ nickname }}</text>
         <text class="qr-subtitle">扫描二维码，添加为好友</text>
 
-        <!-- 二维码渲染区域：mounted 后写入 canvas -->
+        <!-- 二维码渲染区域：使用 toDataURL 生成 base64，用 <img> 显示，避免 uni-app 的 canvas 组件代理问题 -->
         <view class="qr-canvas-wrapper">
-          <canvas
-            id="qrCanvas"
-            ref="canvasRef"
+          <image
+            v-if="qrDataUrl && !generating"
+            :src="qrDataUrl"
             class="qr-canvas"
+            mode="aspectFill"
             :style="{ width: canvasSize + 'px', height: canvasSize + 'px' }"
           />
           <view v-if="generating" class="qr-loading">
             <text>生成中...</text>
+          </view>
+          <view v-if="!generating && !qrDataUrl" class="qr-loading">
+            <text>二维码生成失败</text>
           </view>
         </view>
 
@@ -43,8 +47,8 @@
 </template>
 
 <script setup>
-import { ref, watch, nextTick } from 'vue'
-// qrcode 支持浏览器 Canvas 渲染，toCanvas 方法直接操作 DOM canvas
+import { ref, watch } from 'vue'
+// 使用 toDataURL 生成 base64 字符串，避免 uni-app 中 canvas 组件代理无法调用 getContext 的问题
 import QRCode from 'qrcode'
 
 const props = defineProps({
@@ -56,48 +60,45 @@ const props = defineProps({
 
 defineEmits(['close'])
 
-const canvasRef  = ref(null)
+const qrDataUrl  = ref('')
 const generating = ref(false)
 const canvasSize = 220
 
 /**
- * 生成二维码到 Canvas。
- * 二维码内容为应用专属协议格式：chatapp://add?id=<wechatId>
- * 便于未来扫码后唤起 App 并自动跳转好友申请页。
+ * 生成二维码为 base64 data URL。
+ * 二维码内容为应用专属协议：chatapp://add?id=<wechatId>
+ * 使用 toDataURL 代替 toCanvas，彻底避免 uni-app canvas 组件代理问题。
  */
 const renderQrCode = async () => {
   if (!props.wechatId) return
   generating.value = true
-  await nextTick()
-
+  qrDataUrl.value  = ''
   try {
-    // #ifdef H5
-    const canvas = canvasRef.value?.$el ?? canvasRef.value
-    if (!canvas) return
-
-    await QRCode.toCanvas(canvas, `chatapp://add?id=${props.wechatId}`, {
-      width:  canvasSize,
-      margin: 2,
-      color:  { dark: '#1a1a1a', light: '#ffffff' },
+    qrDataUrl.value = await QRCode.toDataURL(`chatapp://add?id=${props.wechatId}`, {
+      width:         canvasSize,
+      margin:        2,
+      color:         { dark: '#1a1a1a', light: '#ffffff' },
+      errorCorrectionLevel: 'M',
     })
-    // #endif
   } catch (err) {
     console.error('QrCodeModal: 二维码生成失败', err)
+    qrDataUrl.value = ''
   } finally {
     generating.value = false
   }
 }
 
 /**
- * 将 canvas 内容导出为 PNG 并触发浏览器下载。
- * toDataURL 在 H5 环境中原生支持，App 端需做 plus.io 适配（预留）。
+ * 将 base64 data URL 触发浏览器下载为 PNG。
  */
 const saveQrCode = () => {
   // #ifdef H5
-  const canvas = canvasRef.value?.$el ?? canvasRef.value
-  if (!canvas) return
+  if (!qrDataUrl.value) {
+    uni.showToast({ title: '二维码尚未生成', icon: 'none' })
+    return
+  }
   const link = document.createElement('a')
-  link.href = canvas.toDataURL('image/png')
+  link.href = qrDataUrl.value
   link.download = `qrcode_${props.wechatId}.png`
   link.click()
   // #endif
@@ -107,7 +108,7 @@ const saveQrCode = () => {
   // #endif
 }
 
-// 每次弹窗打开时重新渲染二维码（wechatId 可能还未就绪）
+// 每次弹窗打开时重新生成二维码（wechatId 可能还未就绪）
 watch(
   () => props.show,
   (visible) => { if (visible) renderQrCode() },
