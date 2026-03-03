@@ -1,6 +1,8 @@
 package com.maxxvll.common.vo;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
 import lombok.Data;
 
 import java.util.Date;
@@ -12,13 +14,15 @@ import java.util.Date;
 public class GroupApplicationVO {
     
     /**
-     * 申请ID
+     * 申请 ID
      */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long id;
-    
+        
     /**
-     * 群ID
+     * 群 ID
      */
+    @JsonSerialize(using = ToStringSerializer.class)
     private Long groupId;
     
     /**

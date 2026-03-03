@@ -58,7 +58,7 @@ export function useNotifications(options = {}) {
   /**
    * 处理好友申请。
    * @param {number} applyId - 申请记录 ID
-   * @param {number} status  - 1=接受, 2=拒绝
+   * @param {number} status  - 1=接受，2=拒绝
    */
   const handleFriendApply = async (applyId, status) => {
     try {
@@ -72,22 +72,49 @@ export function useNotifications(options = {}) {
             status,
           }
         }
-        uni.showToast({ title: status === 1 ? '已添加为好友' : '已拒绝', icon: 'success' })
-        // 同意后触发回调（如刷新会话列表）
+        uni.showToast({ 
+          title: status === 1 ? '已添加为好友，即将打开聊天' : '已拒绝', 
+          icon: 'success',
+          duration: 1500
+        })
+        // 同意后触发回调（刷新会话列表并自动打开新会话）
         if (status === 1 && typeof onApproved === 'function') {
-          onApproved()
+          // 延迟执行，确保toast 显示完成
+          setTimeout(() => {
+            onApproved()
+          }, 300)
         }
       }
     } catch (e) {
       console.error('useNotifications: 处理好友申请失败', e)
-      uni.showToast({ title: '操作失败，请稍后重试', icon: 'none' })
+          
+      // 根据错误类型显示友好提示
+      let errorMsg = '操作失败，请稍后重试'
+      // 兼容多种错误对象格式
+      if (e?.msg) {
+        errorMsg = e.msg
+      } else if (e?.response?.data?.msg) {
+        errorMsg = e.response.data.msg
+      } else if (e?.message) {
+        errorMsg = e.message
+      }
+          
+      // 如果是"申请记录不存在"或"该申请已处理"，从列表中移除该申请
+      if (errorMsg.includes('申请记录不存在') || errorMsg.includes('该申请已处理')) {
+        notifications.value.friendApplies = notifications.value.friendApplies.filter(a => a.id !== applyId)
+        uni.showToast({ title: '该申请已被处理', icon: 'none' })
+        // 重新加载通知列表以获取最新状态
+        loadNotifications()
+      } else {
+        uni.showToast({ title: errorMsg, icon: 'none' })
+      }
     }
   }
 
   /**
    * 处理群聊申请（管理员/群主操作）。
    * @param {number} applyId - 申请记录 ID
-   * @param {number} status  - 1=同意, 2=拒绝
+   * @param {number} status  - 1=同意，2=拒绝
    */
   const handleGroupApply = async (applyId, status) => {
     try {
@@ -95,15 +122,42 @@ export function useNotifications(options = {}) {
       if (res.code === 200) {
         // 处理完成后从列表中移除，因为已处理的申请通常不在此展示
         notifications.value.groupApplies = notifications.value.groupApplies.filter(a => a.id !== applyId)
-        uni.showToast({ title: status === 1 ? '已同意入群' : '已拒绝', icon: 'success' })
-        // 同意后触发回调（如刷新会话列表）
+        uni.showToast({ 
+          title: status === 1 ? '已同意入群，即将打开聊天' : '已拒绝', 
+          icon: 'success',
+          duration: 1500
+        })
+        // 同意后触发回调（刷新会话列表并自动打开新会话）
         if (status === 1 && typeof onApproved === 'function') {
-          onApproved()
+          // 延迟执行，确保toast 显示完成
+          setTimeout(() => {
+            onApproved()
+          }, 300)
         }
       }
     } catch (e) {
       console.error('useNotifications: 处理群聊申请失败', e)
-      uni.showToast({ title: '操作失败，请稍后重试', icon: 'none' })
+          
+      // 根据错误类型显示友好提示
+      let errorMsg = '操作失败，请稍后重试'
+      // 兼容多种错误对象格式
+      if (e?.msg) {
+        errorMsg = e.msg
+      } else if (e?.response?.data?.msg) {
+        errorMsg = e.response.data.msg
+      } else if (e?.message) {
+        errorMsg = e.message
+      }
+          
+      // 如果是"申请记录不存在"或"该申请已处理"，从列表中移除该申请
+      if (errorMsg.includes('申请记录不存在') || errorMsg.includes('该申请已处理')) {
+        notifications.value.groupApplies = notifications.value.groupApplies.filter(a => a.id !== applyId)
+        uni.showToast({ title: '该申请已被处理', icon: 'none' })
+        // 重新加载通知列表以获取最新状态
+        loadNotifications()
+      } else {
+        uni.showToast({ title: errorMsg, icon: 'none' })
+      }
     }
   }
 

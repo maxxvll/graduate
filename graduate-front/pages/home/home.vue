@@ -501,6 +501,7 @@
       :showChatInfoPanel="showChatInfoPanel"
       :friendForSession="getFriendForCurrentSession()"
       :groupMembers="groupMembers"
+      :currentUserRole="getCurrentUserRole()"
       :doNotDisturb="doNotDisturb"
       :pinned="pinned"
       :scrollToView="scrollToView"
@@ -547,6 +548,9 @@
       @revokeMsg="revokeMessage"
       @copyMsg="handlePcCopy"
       @addMember="openAddMemberModal"
+      @removeMember="removeGroupMember"
+      @voiceCall="handleVoiceCall"
+      @videoCall="handleVideoCall"
     />
 
     <!-- 通讯录详情 -->
@@ -744,6 +748,16 @@
       :nickname="userInfo.nickname"
       :avatar="userInfo.avatar || defaultAvatar"
       @close="showQrCode = false"
+    />
+    
+    <!-- 语音通话组件 -->
+    <VoiceCall
+      v-if="showVoiceCall"
+      :visible="showVoiceCall"
+      :direction="voiceCallDirection"
+      :peer-info="voiceCallPeerInfo"
+      @close="handleVoiceCallClose"
+      @state-change="handleVoiceCallStateChange"
     />
     <!-- 个人资料模态（从聊天信息面板或头像点击打开） -->
     <view
@@ -981,8 +995,7 @@
                 <!-- 文件消息 -->
                 <view
                   v-else-if="
-                    item.msg.message_type === MESSAGE_TYPE.FILE &&
-                    item.msg.file_url
+                    item.msg.message_type === MESSAGE_TYPE.FILE
                   "
                   class="mobile-message-file"
                   @click="handleFileClick(item.msg)"
@@ -1103,6 +1116,14 @@
                 mode="aspectFill"
               />
               <text class="mobile-info-member-name">{{ member.nickname }}</text>
+              <!-- 移除成员按钮（仅管理员和群主显示） -->
+              <view 
+                v-if="canRemoveMemberInMobile(member)"
+                class="mobile-remove-member-btn"
+                @click.stop="removeGroupMember(member, currentMobileChat.targetId)"
+              >
+                ×
+              </view>
             </view>
           </template>
           
@@ -1834,8 +1855,7 @@
                 <!-- 文件消息 -->
                 <view
                   v-else-if="
-                    item.msg.message_type === MESSAGE_TYPE.FILE &&
-                    item.msg.file_url
+                    item.msg.message_type === MESSAGE_TYPE.FILE
                   "
                   class="mobile-message-file"
                   @click="handleFileClick(item.msg)"
@@ -2311,6 +2331,7 @@ import AddFriendModal from '@/components/home/AddFriendModal.vue'
 import JoinGroupModal from '@/components/home/JoinGroupModal.vue'
 import SettingsPanel from '@/components/home/SettingsPanel.vue'
 import ChatArea from '@/components/home/ChatArea.vue'
+import VoiceCall from '@/components/home/VoiceCall.vue'
 import { useNotifications } from '@/composables/useNotifications'
 import { useContacts } from '@/composables/useContacts'
 import { useSendMessage } from '@/composables/useSendMessage'
@@ -2319,6 +2340,7 @@ import {
   getUserInfoFromStorage,
   saveUserInfoToStorage,
 } from '@/utils/download-util'
+import { wsClient } from '@/utils/websocket'
 
 // 编辑弹窗
 const showEditProfile = ref(false)
@@ -2419,6 +2441,8 @@ const loadingGroupMembers = ref(false)
 const showProfilePopover = ref(false)
 const showMoreMenu = ref(false)
 const showPlusMenu = ref(false)
+const popoverSide = ref('right')
+const popoverStyle = ref({})
 // 添加好友 / 加入群聊弹窗：展开关由父组件控制，弹窗内部状态由子组件自管理
 const showAddFriendModal = ref(false)
 const showJoinGroupModal = ref(false)
@@ -2433,6 +2457,10 @@ const addFriendRemark = ref('')
 const showAddFriendRemark = ref(false)
 // 我的二维码弹窗显隐
 const showQrCode = ref(false)
+// 语音通话弹窗显隐
+const showVoiceCall = ref(false)
+const voiceCallPeerInfo = ref({}) // 对方用户信息
+const voiceCallDirection = ref('outgoing') // 'outgoing' - 呼出，'incoming' - 呼入
 // 通知状态：由 useNotifications composable 提供，包含好友申请 + 群聊申请
 // onApproved 回调：同意申请成功后立刻刷新会话列表
 const {
@@ -2667,6 +2695,104 @@ const loadGroupMembers = async (groupId) => {
   } finally {
     loadingGroupMembers.value = false
   }
+}
+
+/**
+ * 获取当前用户在当前群聊中的角色
+ * @returns {number} 角色：1-群主，2-管理员，3-普通成员
+ */
+const getCurrentUserRole = () => {
+  if (!currentSession.value || currentSession.value.sessionType !== SESSION_TYPE.GROUP) {
+    return 3 // 非群聊默认普通成员
+  }
+  
+  const currentUserMember = groupMembers.value.find(m => m.userId === CURRENT_USER_ID.value)
+  return currentUserMember ? currentUserMember.role : 3
+}
+
+/**
+ * 判断移动端当前用户是否有权限移除指定成员
+ * @param {Object} member - 要检查的成员对象
+ * @returns {boolean} 是否有权限移除
+ */
+const canRemoveMemberInMobile = (member) => {
+  if (!currentMobileChat.value || currentMobileChat.value.sessionType !== SESSION_TYPE.GROUP) {
+    return false
+  }
+  
+  const currentUserMember = groupMembers.value.find(m => m.userId === CURRENT_USER_ID.value)
+  const currentUserRole = currentUserMember ? currentUserMember.role : 3
+  
+  // 普通成员无权限
+  if (currentUserRole === 3) return false
+  
+  // 管理员不能移除群主和其他管理员
+  if (currentUserRole === 2 && member.role <= 2) return false
+  
+  // 不能移除自己
+  if (member.userId === CURRENT_USER_ID.value) return false
+  
+  return true
+}
+
+/**
+ * 移除群成员
+ * @param {Object} member - 要移除的成员对象
+ * @param {string} groupId - 群ID
+ */
+const removeGroupMember = async (member, groupId) => {
+  if (!member || !groupId) return
+  
+  // 获取当前用户在群中的角色
+  const currentUserMember = groupMembers.value.find(m => m.userId === CURRENT_USER_ID.value)
+  const currentUserRole = currentUserMember ? currentUserMember.role : 3 // 默认普通成员
+  
+  // 权限检查
+  if (currentUserRole === 3) {
+    uni.showToast({ title: '普通成员无权限移除他人', icon: 'none' })
+    return
+  }
+  
+  if (currentUserRole === 2 && member.role <= 2) {
+    uni.showToast({ title: '管理员无法移除群主或其他管理员', icon: 'none' })
+    return
+  }
+  
+  if (member.userId === CURRENT_USER_ID.value) {
+    uni.showToast({ title: '不能移除自己，请使用退出群聊功能', icon: 'none' })
+    return
+  }
+  
+  // 确认对话框
+  uni.showModal({
+    title: '确认移除',
+    content: `确定要将 ${member.nickname} 移出群聊吗？`,
+    success: async (res) => {
+      if (res.confirm) {
+        try {
+          const removeRes = await service.post('/group/member/remove', {
+            groupId: Number(groupId),
+            userId: member.userId,
+            reason: '管理员移除'
+          })
+          
+          if (removeRes.code === 200) {
+            // 从本地列表中移除
+            groupMembers.value = groupMembers.value.filter(m => m.userId !== member.userId)
+            uni.showToast({ title: '移除成功', icon: 'success' })
+            
+            // 发送系统消息通知（可选）
+            // 这里可以调用发送系统消息的函数
+          } else {
+            uni.showToast({ title: removeRes.msg || '移除失败', icon: 'none' })
+          }
+        } catch (error) {
+          console.error('移除成员失败', error)
+          uni.showToast({ title: '移除失败', icon: 'none' })
+        }
+      }
+    }
+  })
 }
 
 /**
@@ -3276,6 +3402,7 @@ const updateSessionLastMsg = (sessionId, content, sendTime) => {
  *  2. 非首次：先读本地缓存并立即渲染（避免空白页），再从服务端拉取最新/离线消息作为权威源刷新视图并回写缓存
  *  3. 首次或服务端请求成功后标记本设备已初始化，下次进入视为非首次
  *  4. 网络失败时若已有本地数据则保留展示，不重复读本地
+ *  5. 【新增】如果查询到 0 条消息，说明是新会话，清空之前会话残留的消息
  */
 const loadMessages = async (sessionId) => {
   if (!sessionId) return
@@ -3283,6 +3410,9 @@ const loadMessages = async (sessionId) => {
   const isFirstTime = ChatStorage.isFirstTimeOnDevice(userId)
 
   try {
+    // 切换会话时，先清空消息列表，避免显示上一个会话的消息
+    messages.value = []
+    
     if (!isFirstTime) {
       const localMsgs = await ChatStorage.queryMessages(sessionId)
       if (localMsgs.length > 0) {
@@ -3290,8 +3420,6 @@ const loadMessages = async (sessionId) => {
         await nextTick()
         scrollToBottom()
       }
-    } else {
-      messages.value = []
     }
 
     const res = await service.get('/chat/message/list', {
@@ -3365,6 +3493,262 @@ const performContactSearch = () => {
 }
 const performSessionSearch = () => {
   sidebarSearchQuery.value = sidebarSearchText.value.trim()
+}
+
+/**
+ * 处理 WebSocket 实时消息（核心方法）
+ * 接收后端 Netty 推送的新消息，并实时更新到聊天界面
+ */
+const handleWebSocketMessage = (data) => {
+  try {
+    // 1. 解析消息数据
+    const message = typeof data === 'string' ? JSON.parse(data) : data
+    
+    // 2. 判断消息类型
+    // 心跳包直接忽略
+    if (message.type === 'ping') {
+      return
+    }
+    
+    // 语音通话信令消息处理（callType: 1-发起呼叫，2-接听，3-拒绝，4-挂断，5-SDP 交换，6-ICE 交换）
+    if (message.callType && ['1', '2', '3', '4', '5', '6'].includes(message.callType)) {
+      handleVoiceCallSignal(message)
+      return
+    }
+    
+    // 普通聊天消息处理
+    if (!message.id) {
+      return
+    }
+
+    console.log('收到新消息:', message)
+
+    // 3. 获取消息的会话 ID
+    const messageSessionId = message.sessionId
+    
+    // 4. 判断是否是当前正在查看的会话
+    const isCurrentSession = currentSession.value && 
+                            currentSession.value.sessionId === messageSessionId
+    
+    // 5. 判断是否是自己发送的消息
+    const isSelfMessage = message.senderId === String(CURRENT_USER_ID.value)
+    
+    if (isSelfMessage) {
+      // 自己发送的消息已经在本地显示，更新状态为已读/成功
+      updateMessageStatus(message.id, SEND_STATUS.SUCCESS)
+      // 但依然需要更新会话列表（更新最后一条消息和时间）
+    } else {
+      // 6. 如果是当前会话，实时更新消息列表（他人消息）
+      if (isCurrentSession) {
+        // 将消息添加到当前消息列表
+        const newMessage = {
+          ...message,
+          senderName: message.senderName || '',
+          senderAvatar: message.senderAvatar || '',
+        }
+        
+        messages.value.push(newMessage)
+        
+        // 自动滚动到底部
+        setTimeout(() => {
+          scrollToBottom()
+        }, 100)
+      } else {
+        // 7. 播放提示音或显示通知（可选）
+        // 收到非当前会话的消息，显示通知
+        showNewMessageNotification(message)
+      }
+    }
+
+    // 8. 更新会话列表（置顶并更新最后一条消息）- 自己和对方的消息都要更新
+    updateSessionWithNewMessage(messageSessionId, message)
+
+  } catch (error) {
+    console.error('处理 WebSocket 消息失败:', error)
+  }
+}
+
+/**
+ * 更新会话列表中的指定会话（收到新消息时调用）
+ * 功能：更新最后一条消息、更新未读数、重新排序
+ */
+const updateSessionWithNewMessage = (sessionId, message) => {
+  const idx = sessions.value.findIndex((s) => s.sessionId === sessionId)
+  if (idx !== -1) {
+    // 1. 判断是否是当前正在查看的会话
+    const isCurrentSession = currentSession.value && 
+                            currentSession.value.sessionId === sessionId
+    
+    // 2. 更新会话信息
+    const updatedSession = {
+      ...sessions.value[idx],
+      lastMessageContent: message.content,
+      lastMessageTime: message.sendTime,
+      lastMessageSenderId: message.senderId,
+      // 如果不是当前会话，增加未读数
+      unreadCount: isCurrentSession 
+        ? 0 
+        : (sessions.value[idx].unreadCount || 0) + 1,
+    }
+    
+    // 3. 更新会话列表中的该条目
+    sessions.value.splice(idx, 1, updatedSession)
+    
+    // 4. 重新排序：置顶优先 + 时间倒序
+    sessions.value = [...sessions.value].sort((a, b) => {
+      if (a.isTop !== b.isTop) return b.isTop - a.isTop
+      return new Date(b.lastMessageTime) - new Date(a.lastMessageTime)
+    })
+    
+    console.log('会话列表已更新:', sessionId, '未读数:', updatedSession.unreadCount)
+  } else {
+    // 5. 如果是不存在的会话（可能是新会话），从服务端刷新会话列表
+    console.log('新会话，刷新会话列表:', sessionId)
+    loadSessionList()
+  }
+}
+
+/**
+ * 显示新消息通知（可选功能）
+ */
+const showNewMessageNotification = (message) => {
+  // 这里可以集成 uni.showToast 或者浏览器 Notification API
+  // 暂时只打印日志，后续可扩展
+  console.log('新消息通知:', message.senderName || '有人', '发来一条消息')
+}
+
+/**
+ * 处理语音通话信令消息
+ */
+const handleVoiceCallSignal = (message) => {
+  console.log('📞 home.vue 收到语音通话信令:', message)
+  
+  const { callType, targetId, sessionId } = message
+  
+  // 1. 收到对方发起的语音呼叫（callType = 1）- 只有呼入才需要处理
+  if (callType === '1') {
+    // 检查当前是否已经有语音通话组件在显示
+    if (!showVoiceCall.value) {
+      handleIncomingVoiceCall(targetId, sessionId)
+    } else {
+      console.log('⚠️ 语音通话组件已在显示，忽略此次呼叫')
+    }
+    return
+  }
+  
+  // 2. 其他信令（接听、拒绝、挂断、SDP、ICE）由 VoiceCall 组件自己处理
+  // home.vue 不干预，避免重复处理
+  console.log('ℹ️ 语音通话信令将交由 VoiceCall 组件处理，类型:', callType)
+}
+
+/**
+ * 处理收到的语音呼叫（被叫方）
+ */
+const handleIncomingVoiceCall = async (targetUserId, sessionId) => {
+  try {
+    console.log('收到语音呼叫，目标用户:', targetUserId, '会话 ID:', sessionId)
+    
+    // 1. 获取对方用户信息 - 优先从多个数据源获取完整信息
+    let peerUserInfo = null
+    
+    // 1.1 尝试从好友列表中查找（最可靠的数据源）
+    const friend = friends.value.find(f => f.userId === targetUserId)
+    if (friend) {
+      peerUserInfo = {
+        id: friend.userId,
+        nickname: friend.nickname || '未知用户',
+        avatar: friend.avatar || defaultAvatar,
+        wechatId: friend.wechatId || '',
+        signature: friend.signature || ''
+      }
+      console.log('从好友列表找到用户信息:', peerUserInfo)
+    }
+    
+    // 1.2 如果好友列表没有，尝试从当前会话中获取
+    if (!peerUserInfo) {
+      const currentSessionTarget = sessions.value.find(s => 
+        s.sessionType === SESSION_TYPE.SINGLE && s.targetId === targetUserId
+      )
+      if (currentSessionTarget) {
+        peerUserInfo = {
+          id: targetUserId,
+          nickname: currentSessionTarget.sessionName || '未知用户',
+          avatar: currentSessionTarget.sessionAvatar || defaultAvatar,
+          wechatId: '',
+          signature: ''
+        }
+        console.log('从会话列表找到用户信息:', peerUserInfo)
+      }
+    }
+    
+    // 1.3 如果都没有，使用默认信息
+    if (!peerUserInfo) {
+      peerUserInfo = {
+        id: targetUserId,
+        nickname: '未知用户',
+        avatar: defaultAvatar,
+        wechatId: '',
+        signature: ''
+      }
+      console.warn('未找到用户信息，使用默认值:', peerUserInfo)
+    }
+    
+    // 2. 查找或创建对应的会话
+    let targetSession = sessions.value.find(s => s.sessionId === `1_${targetUserId}`)
+    
+    if (!targetSession) {
+      // 如果不存在，创建临时会话信息
+      targetSession = {
+        sessionId: `1_${targetUserId}`,
+        sessionType: SESSION_TYPE.SINGLE,
+        targetId: targetUserId,
+        sessionName: peerUserInfo.nickname,
+        sessionAvatar: peerUserInfo.avatar,
+        lastMessageContent: '[语音通话]',
+        lastMessageTime: Date.now(),
+        unreadCount: 0
+      }
+      console.log('创建新会话:', targetSession)
+    }
+    
+    // 3. 切换到该会话的聊天界面
+    // PC 端：设置 currentSession
+    currentSession.value = targetSession
+    
+    // 移动端：设置 currentMobileChat 和 mobileCurrentTab
+    if (isMobileView.value) {
+      currentMobileChat.value = targetSession
+      mobileCurrentTab.value = 'chat'
+    }
+    
+    // 4. 加载该会话的消息历史
+    await switchSession(targetSession)
+    
+    // 5. 显示语音通话组件（呼入模式）- 确保传递完整的用户信息
+    voiceCallPeerInfo.value = { ...peerUserInfo }
+    voiceCallDirection.value = 'incoming'
+    showVoiceCall.value = true
+    
+    console.log('✅ 已切换到语音呼叫会话，显示语音通话界面')
+    console.log('📞 对方用户信息:', voiceCallPeerInfo.value)
+    
+  } catch (error) {
+    console.error('❌ 处理语音呼叫失败:', error)
+    uni.showToast({
+      title: '语音呼叫处理失败',
+      icon: 'none'
+    })
+  }
+}
+
+/**
+ * 更新消息状态（用于确认自己发送的消息已成功送达）
+ */
+const updateMessageStatus = (messageId, status) => {
+  const msg = messages.value.find((m) => m.id === messageId)
+  if (msg) {
+    msg.status = status
+  }
 }
 
 /**
@@ -3639,13 +4023,20 @@ const submitCreateGroup = async () => {
   if (isCreatingGroup.value) return
   isCreatingGroup.value = true
   try {
-    // 自动生成群名：取前 3 位好友昵称
+    // 自动生成群名：将所有成员昵称按拼音/字典序排序，取前 3 位
+    const memberNames = createGroupSelectedFriends.value
+      .map((id) => {
+        const friend = friends.value.find((f) => f.userId === id)
+        return friend?.nickname || ''
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.localeCompare(b, 'zh-Hans-CN', { sensitivity: 'accent' }))
+    
     const autoName =
-      createGroupSelectedFriends.value
+      memberNames
         .slice(0, 3)
-        .map((id) => friends.value.find((f) => f.userId === id)?.nickname || '')
-        .filter(Boolean)
         .join('、') + '的群聊'
+    
     const res = await service.post('/group/create', {
       groupName: createGroupName.value.trim() || autoName,
       groupAvatar: createGroupAvatarPath.value || '',
@@ -3753,15 +4144,22 @@ const confirmAddMember = async () => {
         currentSessionForAdd.targetId,
         ...addMemberSelectedFriends.value,
       ]
+      
+      // 获取所有成员昵称并按拼音/字典序排序
+      const memberNames = allMembers
+        .map((id) => {
+          if (id === currentSessionForAdd.targetId) {
+            return currentSessionForAdd.sessionName
+          }
+          const friend = friends.value.find((f) => f.userId === id)
+          return friend?.nickname || ''
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b, 'zh-Hans-CN', { sensitivity: 'accent' }))
+      
       const autoName =
-        allMembers
+        memberNames
           .slice(0, 3)
-          .map((id) => {
-            if (id === currentSessionForAdd.targetId)
-              return currentSessionForAdd.sessionName
-            return friends.value.find((f) => f.userId === id)?.nickname || ''
-          })
-          .filter(Boolean)
           .join('、') + '的群聊'
       const res = await service.post('/group/create', {
         groupName: autoName,
@@ -3865,6 +4263,143 @@ const revokeMessage = async (msg) => {
 /** PC 端复制消息提示 */
 const handlePcCopy = (text) => {
   uni.showToast({ title: '已复制', icon: 'success' })
+}
+
+/**
+ * 处理语音通话请求
+ * 仅支持单聊，通过 WebSocket 发送呼叫请求
+ */
+const handleVoiceCall = async (session) => {
+  if (!session) return
+  
+  // 检查是否为单聊
+  if (session.sessionType === SESSION_TYPE.GROUP) {
+    uni.showToast({
+      title: '群聊暂不支持语音通话',
+      icon: 'none'
+    })
+    return
+  }
+  
+  try {
+    // 获取好友详细信息（用于显示头像等）
+    const friend = getFriendForCurrentSession()
+    if (!friend) {
+      uni.showToast({
+        title: '未找到好友信息',
+        icon: 'none'
+      })
+      return
+    }
+    
+    // 设置通话参数
+    voiceCallPeerInfo.value = {
+      id: session.targetId,
+      nickname: session.sessionName,
+      avatar: session.sessionAvatar || friend.avatar || defaultAvatar
+    }
+    voiceCallDirection.value = 'outgoing' // 呼出
+    
+    // 显示语音通话组件
+    showVoiceCall.value = true
+    
+    console.log('发起语音通话:', session)
+  } catch (error) {
+    console.error('发起语音通话失败:', error)
+    uni.showToast({
+      title: '发起通话失败',
+      icon: 'none'
+    })
+  }
+}
+
+/**
+ * 处理视频通话请求
+ * 仅支持单聊，通过 WebSocket 发送呼叫请求
+ */
+const handleVideoCall = async (session) => {
+  if (!session) return
+  
+  // 检查是否为单聊
+  if (session.sessionType === SESSION_TYPE.GROUP) {
+    uni.showToast({
+      title: '群聊暂不支持视频通话',
+      icon: 'none'
+    })
+    return
+  }
+  
+  try {
+    // 获取好友详细信息（用于显示头像等）
+    const friend = getFriendForCurrentSession()
+    if (!friend) {
+      uni.showToast({
+        title: '未找到好友信息',
+        icon: 'none'
+      })
+      return
+    }
+    
+    // 设置通话参数
+    voiceCallPeerInfo.value = {
+      id: session.targetId,
+      nickname: session.sessionName,
+      avatar: session.sessionAvatar || friend.avatar || defaultAvatar
+    }
+    voiceCallDirection.value = 'outgoing' // 呼出
+    
+    // TODO: 暂时使用语音通话组件，后续实现视频通话组件
+    // 显示语音通话组件
+    showVoiceCall.value = true
+    
+    console.log('发起视频通话:', session)
+  } catch (error) {
+    console.error('发起视频通话失败:', error)
+    uni.showToast({
+      title: '发起通话失败',
+      icon: 'none'
+    })
+  }
+}
+
+/**
+ * 取消语音通话
+ */
+const cancelVoiceCall = (session) => {
+  console.log('取消语音通话:', session)
+  // 关闭通话组件
+  showVoiceCall.value = false
+  // TODO: 发送取消信号到 WebSocket
+}
+
+/**
+ * 取消视频通话
+ */
+const cancelVideoCall = (session) => {
+  console.log('取消视频通话:', session)
+  // 关闭通话组件
+  showVoiceCall.value = false
+  // TODO: 发送取消信号到 WebSocket
+}
+
+/**
+ * 语音通话组件关闭回调
+ */
+const handleVoiceCallClose = () => {
+  showVoiceCall.value = false
+  voiceCallPeerInfo.value = {}
+  voiceCallDirection.value = 'outgoing'
+}
+
+/**
+ * 语音通话状态变化回调
+ */
+const handleVoiceCallStateChange = (state) => {
+  console.log('语音通话状态变化:', state)
+  // 如果通话结束，关闭组件
+  if (state === 'ended') {
+    handleVoiceCallClose()
+  }
 }
 
 /**
@@ -3980,6 +4515,8 @@ const startMobileRecord = () => {
 }
 
 // ========== 生命周期 ==========
+let wsMessageListener = null
+
 onMounted(async () => {
   // #ifdef H5
   initDeviceDetection()
@@ -3992,13 +4529,44 @@ onMounted(async () => {
   loadFriends()
   loadGroups()
   loadNotifications()
+
+  // 使用 nextTick 确保 DOM 更新完成后再连接WebSocket
+  // 并使用延时确保token 存储完成
+  setTimeout(() => {
+    try {
+      // 确保token已存储后再连接
+      const token = uni.getStorageSync('satoken')
+      if (token && typeof token === 'string' && token.trim() !== '') {
+        wsClient.connect()
+      } else {
+        console.warn('用户未登录，无法连接WebSocket')
+      }
+    } catch (error) {
+      console.error('WebSocket 连接失败:', error)
+    }
+  }, 500) // 延迟 500 毫秒，确保token 存储完成
+
+  // 监听 WebSocket 消息（实时接收新消息）
+  wsMessageListener = (data) => {
+    handleWebSocketMessage(data)
+  }
+  uni.$on('wsMessage', wsMessageListener)
 })
+
 onUnmounted(() => {
   // #ifdef H5
   cleanupDeviceDetection()
   // #endif
 
   cleanupSendMessage()
+  
+  // 移除 WebSocket 消息监听
+  if (wsMessageListener) {
+    uni.$off('wsMessage', wsMessageListener)
+  }
+  
+  // 关闭 WebSocket 连接
+  wsClient.close()
 })
 </script>
 <style scoped>
@@ -5008,6 +5576,11 @@ onUnmounted(() => {
   font-size: 18px;
   color: #666;
   cursor: pointer;
+  transition: all 0.2s ease;
+}
+.header-tools .tool-icon:hover {
+  transform: scale(1.1);
+  opacity: 0.8;
 }
 .chat-messages {
   flex: 1;
@@ -6325,6 +6898,37 @@ onUnmounted(() => {
   font-size: 30px;
   color: #ccc;
   line-height: 1;
+}
+
+/* 移动端移除成员按钮 */
+.mobile-remove-member-btn {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #ff4757;
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+}
+
+.mobile-chat-info-member:hover .mobile-remove-member-btn,
+.mobile-chat-info-member:active .mobile-remove-member-btn {
+  opacity: 1;
+}
+
+.mobile-remove-member-btn:active {
+  background: #ff2e42;
+  transform: scale(1.1);
 }
 /* 设置列表分组 */
 .mobile-chat-info-section {

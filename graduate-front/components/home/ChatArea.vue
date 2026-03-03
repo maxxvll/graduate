@@ -4,8 +4,8 @@
     <view class="chat-header">
       <text class="chat-name">{{ currentSession.sessionName }}</text>
       <view class="header-tools">
-        <text class="tool-icon">📞</text>
-        <text class="tool-icon">📹</text>
+        <text class="tool-icon" @click.stop="handleVoiceCall">📞</text>
+        <text class="tool-icon" @click.stop="handleVideoCall">📹</text>
         <text class="tool-icon" @click.stop="$emit('toggleChatInfo')">···</text>
       </view>
     </view>
@@ -43,6 +43,15 @@
             mode="aspectFill"
           />
           <text class="avatar-name">{{ member.nickname }}</text>
+          <!-- 移除成员按钮（仅管理员和群主显示） -->
+          <view 
+            v-if="canRemoveMember(member)"
+            class="remove-member-btn"
+            @click.stop="$emit('removeMember', member, currentSession.targetId)"
+            title="移除成员"
+          >
+            ×
+          </view>
         </view>
         
         <!-- 添加成员按钮 -->
@@ -164,7 +173,7 @@
 
               <!-- 文件消息 -->
               <view
-                v-else-if="item.msg.message_type === MESSAGE_TYPE.FILE && item.msg.file_url"
+                v-else-if="item.msg.message_type === MESSAGE_TYPE.FILE"
                 class="message-file"
                 @click="$emit('fileClick', item.msg)"
               >
@@ -362,6 +371,8 @@ const props = defineProps({
   currentUserId:     { type: [String, Number], default: '' },
   // 群成员列表（用于群聊显示）
   groupMembers:      { type: Array,   default: () => [] },
+  // 当前用户在群中的角色（1-群主，2-管理员，3-普通成员）
+  currentUserRole:   { type: Number,  default: 3 },
 })
 
 const emit = defineEmits([
@@ -377,6 +388,7 @@ const emit = defineEmits([
   'enterKey', 'ctrlEnter', 'send',
   'revokeMsg', 'copyMsg',
   'addMember',
+  'voiceCall', 'videoCall',
 ])
 
 // v-model 双向绑定输入框内容
@@ -433,6 +445,40 @@ const doPcRevoke = () => {
 }
 
 /**
+ * 处理语音通话请求
+ * 仅支持单聊，群聊暂不支持
+ */
+const handleVoiceCall = () => {
+  if (props.currentSession?.sessionType === props.SESSION_TYPE.GROUP) {
+    uni.showToast({
+      title: '群聊暂不支持语音通话',
+      icon: 'none'
+    })
+    return
+  }
+  
+  // 触发语音通话事件，由父组件处理具体逻辑
+  emit('voiceCall', props.currentSession)
+}
+
+/**
+ * 处理视频通话请求
+ * 仅支持单聊，群聊暂不支持
+ */
+const handleVideoCall = () => {
+  if (props.currentSession?.sessionType === props.SESSION_TYPE.GROUP) {
+    uni.showToast({
+      title: '群聊暂不支持视频通话',
+      icon: 'none'
+    })
+    return
+  }
+  
+  // 触发视频通话事件，由父组件处理具体逻辑
+  emit('videoCall', props.currentSession)
+}
+
+/**
  * 获取当前会话的成员信息（单聊好友或群成员）
  * 用于聊天信息面板显示
  */
@@ -456,6 +502,28 @@ const formatFileSize = (bytes) => {
   const sizes = ['B', 'KB', 'MB', 'GB']
   const i     = Math.floor(Math.log(bytes) / Math.log(k))
   return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i]
+}
+
+/**
+ * 判断当前用户是否有权限移除指定成员
+ * @param {Object} member - 要检查的成员对象
+ * @returns {boolean} 是否有权限移除
+ */
+const canRemoveMember = (member) => {
+  // 需要传入当前用户的群角色信息
+  // 这里假设通过props传入currentUserRole
+  if (!props.currentUserRole) return false
+  
+  // 普通成员无权限
+  if (props.currentUserRole === 3) return false
+  
+  // 管理员不能移除群主和其他管理员
+  if (props.currentUserRole === 2 && member.role <= 2) return false
+  
+  // 不能移除自己
+  if (member.userId === props.currentUserId) return false
+  
+  return true
 }
 </script>
 
@@ -532,6 +600,37 @@ const formatFileSize = (bytes) => {
   font-size: 12px;
   color: #333;
   margin-top: 6px;
+}
+
+/* 移除成员按钮 */
+.remove-member-btn {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #ff4757;
+  color: white;
+  font-size: 14px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+}
+
+.avatar-item:hover .remove-member-btn {
+  opacity: 1;
+}
+
+.remove-member-btn:hover {
+  background: #ff2e42;
+  transform: scale(1.1);
 }
 .add-avatar {
   display: flex;

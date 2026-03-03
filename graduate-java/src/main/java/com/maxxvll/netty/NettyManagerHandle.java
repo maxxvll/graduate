@@ -33,6 +33,8 @@ public class NettyManagerHandle extends SimpleChannelInboundHandler<TextWebSocke
     @Override
     protected void channelRead0(ChannelHandlerContext channelHandlerContext, TextWebSocketFrame textWebSocketFrame) throws Exception {
         log.info("收到消息：{}", textWebSocketFrame.text());
+        // 在这里处理收到的消息
+        // 可以解析消息并做相应的处理
     }
 
     @Override
@@ -51,7 +53,13 @@ public class NettyManagerHandle extends SimpleChannelInboundHandler<TextWebSocke
 
             try {
                 // 验证 token 并获取 userId
-                userId = StpUtil.getLoginIdByToken(token).toString();
+                Object userIdObj = StpUtil.getLoginIdByToken(token);
+                if (userIdObj == null) {
+                    log.warn("连接失败：token无效（getLoginIdByToken返回null），关闭连接");
+                    ctx.close();
+                    return;
+                }
+                userId = userIdObj.toString();
             } catch (Exception e) {
                 log.error("连接失败：token无效，关闭连接", e);
                 ctx.close();
@@ -105,7 +113,7 @@ public class NettyManagerHandle extends SimpleChannelInboundHandler<TextWebSocke
         for (String param : params) {
             String[] keyValue = param.split("=");
             if (keyValue.length == 2 && "token".equals(keyValue[0])) {
-                return keyValue[1];
+                return keyValue[1]; // 返回值，即使是空字符串
             }
         }
         return null;

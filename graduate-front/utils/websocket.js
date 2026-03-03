@@ -25,9 +25,12 @@ class WebSocketClient {
       this.wsTask.close()
     }
 
+    // 获取当前URL（如果是函数则执行获取动态URL）
+    const currentUrl = typeof this.url === 'function' ? this.url() : this.url
+    
     // 创建新连接
     this.wsTask = uni.connectSocket({
-      url: this.url,
+      url: currentUrl,
       header: this.header,
       success: () => {
         console.log('WS连接请求已发送')
@@ -130,9 +133,12 @@ class WebSocketClient {
 
 // 导出实例（单例模式，全局唯一WS连接）
 export const wsClient = new WebSocketClient({
-  url: 'wss://echo.websocket.org', // 替换为你的WS服务地址
-  header: {
-    'Authorization': 'Bearer ' + uni.getStorageSync('token')
+  url: () => {
+    const token = uni.getStorageSync('satoken')
+    if (!token || typeof token !== 'string' || token.trim() === '') {
+      throw new Error('用户未登录，无法连接WebSocket')
+    }
+    return `ws://localhost:8877/ws?token=${token}` // 连到后端Netty服务，带token参数
   },
   // 消息回调：页面中可重写
   onMessage: (data) => {
@@ -147,6 +153,7 @@ export const wsClient = new WebSocketClient({
     uni.$u.toast('WS连接关闭：' + res.reason)
   },
   onError: (err) => {
-    uni.$u.toast('WS错误：' + err.errMsg)
+    console.error('WS错误：', err)
+    uni.$u.toast('WS错误：' + (err.errMsg || '连接失败'))
   }
 })
