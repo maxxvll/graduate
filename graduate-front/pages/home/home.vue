@@ -16,7 +16,7 @@
         </view>
         <view
           class="sidebar-item"
-          :class="{ active: currentSidebarTab === 'chat' }"
+          :class="{ active: currentSidebarTab === 'chat' && !showCloudDrive }"
           @click.stop="switchSidebarTab('chat')"
         >
           <text class="icon">💬</text>
@@ -32,7 +32,7 @@
             pendingNotifyCount
           }}</view>
         </view>
-        <view class="sidebar-item" @click.stop="openCloudDrive">
+        <view class="sidebar-item" :class="{ active: showCloudDrive }" @click.stop="openCloudDrive">
           <text class="icon">📁</text>
         </view>
       </view>
@@ -1438,6 +1438,24 @@
       </scroll-view>
     </view>
 
+    <!-- 移动端网盘页面（H5） -->
+    <view
+      v-else-if="mobileCurrentTab === 'cloud'"
+      class="mobile-cloud-drive-page"
+    >
+      <!-- 网盘头部栏 -->
+      <view class="mobile-chat-header">
+        <text class="mobile-back-btn" @click="mobileCurrentTab = 'chat'">← 文件</text>
+        <text class="mobile-more-icon">···</text>
+      </view>
+      <!-- 网盘内容容器 -->
+      <view class="mobile-cloud-content">
+        <view class="mobile-cloud-wrapper">
+          <CloudDrive :key="'mobile-cloud-h5-' + CURRENT_USER_ID" />
+        </view>
+      </view>
+    </view>
+
     <view
       class="mobile-bottom-tab-bar"
       v-show="!(mobileCurrentTab === 'chat' && currentMobileChat)"
@@ -1698,19 +1716,6 @@
         class="mobile-af-empty"
       >
         <text>未找到用户，换个关键词试试</text>
-      </view>
-    </view>
-
-    <!-- 移动端网盘页面（H5） -->
-    <view v-else-if="mobileCurrentTab === 'cloud'" class="mobile-cloud-drive-page">
-      <!-- 网盘头部栏 -->
-      <view class="mobile-chat-header">
-        <text class="mobile-back-btn" @click="mobileCurrentTab = 'chat'">← 文件</text>
-        <text class="mobile-more-icon">···</text>
-      </view>
-      <!-- 网盘内容容器 -->
-      <view class="mobile-cloud-content">
-        <CloudDrive :key="'mobile-cloud-h5-' + CURRENT_USER_ID" />
       </view>
     </view>
 
@@ -2248,7 +2253,9 @@
       </view>
       <!-- 网盘内容容器 -->
       <view class="mobile-cloud-content">
-        <CloudDrive :key="'mobile-cloud-app-' + CURRENT_USER_ID" />
+        <view class="mobile-cloud-wrapper">
+          <CloudDrive :key="'mobile-cloud-app-' + CURRENT_USER_ID" />
+        </view>
       </view>
     </view>
 
@@ -4688,10 +4695,10 @@ const cancelVoiceCall = (session) => {
 
 // 打开网盘
 const openCloudDrive = () => {
-  // 切换到聊天标签页
+  // 确保进入 chat tab 的上下文
   currentSidebarTab.value = 'chat'
-  // 切换网盘显示状态
-  showCloudDrive.value = !showCloudDrive.value
+  // 显示网盘（不是toggle，直接设为true）
+  showCloudDrive.value = true
 }
 
 // 从消息上传到网盘
@@ -4745,7 +4752,7 @@ const handleVoiceCallStateChange = (state) => {
 }
 
 /**
- * 扫一扫：原生 APP 使用 uni.scanCode；
+ * 扫一扫：原生 APP 使用 uni.scanCode；支持识别QR登录二维码
  * H5 环境调用浏览器摄像头 API（需要 HTTPS）或提示引导安装 APP
  */
 const mobileScan = () => {
@@ -4753,13 +4760,36 @@ const mobileScan = () => {
   // #ifndef H5
   uni.scanCode({
     success: (res) => {
-      uni.showModal({
-        title: '扫码结果',
-        content: res.result,
-        showCancel: false,
-      })
+      const scannedResult = res.result
+      console.log('扫描结果:', scannedResult)
+      
+      // 判断是否为QR登录二维码（包含qrCodeId的UUID格式）
+      const qrCodeIdPattern = /^[a-f0-9]{32}$/i
+      if (qrCodeIdPattern.test(scannedResult)) {
+        // 是QR登录码，自动确认登录
+        confirmQrLoginFromScan(scannedResult)
+      } else {
+        // 其他二维码类型，显示结果和选项
+        uni.showModal({
+          title: '扫码结果',
+          content: scannedResult,
+          cancelText: '关闭',
+          confirmText: '复制',
+          success: (modalRes) => {
+            if (modalRes.confirm) {
+              uni.setClipboardData({
+                data: scannedResult,
+                success: () => uni.showToast({ title: '已复制', icon: 'success' })
+              })
+            }
+          }
+        })
+      }
     },
-    fail: () => uni.showToast({ title: '扫码失败', icon: 'none' }),
+    fail: (err) => {
+      console.error('扫码失败:', err)
+      uni.showToast({ title: '扫码失败，请重试', icon: 'none' })
+    },
   })
   // #endif
   // #ifdef H5
@@ -4769,6 +4799,53 @@ const mobileScan = () => {
     duration: 2000,
   })
   // #endif
+}
+
+/**
+ * 扫描识别到QR登录二维码时的处理函数
+ * 获取当前用户信息，然后调用后端API确认登录
+ */
+const confirmQrLoginFromScan = async (qrCodeId) => {
+  try {
+    // 获取当前用户ID（确保用户已登录）
+    const userId = CURRENT_USER_ID.value
+    if (!userId) {
+      uni.showToast({
+        title: '请先登录',
+        icon: 'none'
+      })
+      return
+    }
+
+    // 调用后端确认QR登录接口
+    const res = await service({
+      url: '/user/qrcode/confirm',
+      method: 'post',
+      data: { qrCodeId }
+    })
+
+    if (res.code === 0 && res.data?.token) {
+      // 登录成功
+      uni.showToast({
+        title: 'QR登录成功！设备已登录',
+        icon: 'success'
+      })
+      console.log('QR登录成功，已登录设备:', qrCodeId)
+      // 可选：刷新聊天列表或其他操作
+      await loadSessions()
+    } else {
+      uni.showToast({
+        title: res.msg || 'QR登录失败',
+        icon: 'none'
+      })
+    }
+  } catch (err) {
+    console.error('QR登录确认失败:', err)
+    uni.showToast({
+      title: '登录确认失败：' + (err.message || '未知错误'),
+      icon: 'none'
+    })
+  }
 }
 
 // ========== 移动端方法（H5 + Native 共用） ==========
@@ -7496,22 +7573,35 @@ onUnmounted(() => {
 .mobile-bottom-tab-bar {
   display: flex;
   justify-content: space-around;
+  align-items: center;
   height: 50px;
   background: #fff;
   border-top: 1px solid #f0f0f0;
   padding-bottom: max(0, env(safe-area-inset-bottom));
   flex-shrink: 0;
+  position: relative;
+  z-index: 100;
 }
 
 .mobile-cloud-drive-page {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  height: 100%;
+  overflow: hidden;
   background: #fff;
 }
 
 .mobile-cloud-content {
   flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* 关键：允许flex子元素缩小 */
+}
+
+.mobile-cloud-wrapper {
+  flex: 1;
+  min-height: 0; /* 关键：约束内部CloudDrive组件高度 */
   overflow: hidden;
   display: flex;
   flex-direction: column;

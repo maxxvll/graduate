@@ -41,10 +41,7 @@ spring:
       mail.smtp.ssl.enable: true
       mail.smtp.port: 465
 
-
-  # ========== MySQL 配置（匹配Docker Compose） ==========
   datasource:
-    # 注意：数据库名改为了graduateChat，需先在MySQL中创建该库
     url: jdbc:mysql://192.168.164.128:3306/chat?serverTimezone=GMT%2B8&useUnicode=true&characterEncoding=utf8&autoReconnect=true&allowMultiQueries=true&useSSL=false&allowPublicKeyRetrieval=true
     username: root
     password: root123  # 匹配Docker的MySQL root密码
@@ -59,7 +56,6 @@ spring:
       connection-timeout: 30000
       connection-test-query: SELECT 1
 
-  # ========== Redis 配置（匹配Docker Compose） ==========
   data:
     redis:
       database: 0
