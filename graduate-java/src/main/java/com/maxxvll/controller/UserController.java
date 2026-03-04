@@ -146,6 +146,10 @@ public class UserController extends BaseController {
     }
 
     // ==================== 二维码相关 ====================
+    /**
+     * 生成二维码
+     * 返回二维码Base64编码和二维码ID，前端使用qrCodeId轮询查询状态
+     */
     @GetMapping(value = "/qrcode/generate")
     public Result<QrCodeGenerateVO> generateQrCode() {
         String qrCodeId = UUID.randomUUID().toString().replace("-", "");
@@ -163,6 +167,64 @@ public class UserController extends BaseController {
                 .qrCodeId(qrCodeId)
                 .qrCodeBase64(base64Data)
                 .build());
+    }
+
+    /**
+     * 查询二维码状态（前端轮询用）
+     * 返回状态和登录token
+     */
+    @GetMapping("/qrcode/status")
+    public Result<QrCodeStatusVO> checkQrCodeStatus(@RequestParam String qrCodeId) {
+        String redisKey = redissonCacheUtils.getQrCodeKey(qrCodeId);
+        QrCodeStatusVO statusVO = (QrCodeStatusVO) redissonCacheUtils.get(redisKey);
+
+        if (statusVO == null) {
+            return Result.fail("二维码不存在或已过期");
+        }
+
+        // 检查是否到期
+        long ttl = redissonCacheUtils.getRemainingTime(redisKey) != null ? 
+                   redissonCacheUtils.getRemainingTime(redisKey) : 0;
+        if (ttl <= 0) {
+            statusVO.setStatus(QrCodeStatus.EXPIRED.getCode());
+            redissonCacheUtils.delete(redisKey);
+            return Result.fail("二维码已过期");
+        }
+
+        return Result.success(statusVO);
+    }
+
+    /**
+     * 扫码确认（已登录用户点击确认登录）
+     * 将二维码状态更新为已确认，并生成登录token
+     */
+    @PostMapping("/qrcode/confirm")
+    public Result<QrCodeStatusVO> confirmQrCodeLogin(@RequestParam String qrCodeId) {
+        String redisKey = redissonCacheUtils.getQrCodeKey(qrCodeId);
+        QrCodeStatusVO statusVO = (QrCodeStatusVO) redissonCacheUtils.get(redisKey);
+
+        if (statusVO == null) {
+            throw new BusinessException("二维码不存在或已过期");
+        }
+
+        // 获取当前登录用户信息
+        String userId = UserContextUtil.getCurrentUserId();
+        if (StrUtil.isBlank(userId)) {
+            throw new BusinessException("请先登录");
+        }
+
+        // 更新状态为已确认
+        statusVO.setStatus(QrCodeStatus.CONFIRMED.getCode());
+        
+        // 生成登录token（使用Sa-Token框架的logout后再login）
+        String token = StpUtil.getTokenValue();
+        statusVO.setToken(token);
+
+        // 重新设置到Redis（保持5分钟过期时间，给客户端时间拉取）
+        redissonCacheUtils.set(redisKey, statusVO, 5, TimeUnit.MINUTES);
+
+        log.info("用户[{}]通过二维码[{}]确认登录", userId, qrCodeId);
+        return Result.success("确认登录成功", statusVO);
     }
 
     // ==================== 用户信息相关 ====================

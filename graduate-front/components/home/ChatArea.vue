@@ -225,6 +225,11 @@
             class="pc-ctx-item pc-ctx-revoke"
             @click="doPcRevoke"
           >撤回</div>
+          <div
+            v-if="pcCtxMenu.msg && [props.MESSAGE_TYPE.FILE, props.MESSAGE_TYPE.IMAGE, props.MESSAGE_TYPE.VIDEO, props.MESSAGE_TYPE.AUDIO].includes(pcCtxMenu.msg.message_type)"
+            class="pc-ctx-item"
+            @click="doUploadToCloud"
+          >上传到网盘</div>
         </div>
       </div>
     </teleport>
@@ -442,6 +447,13 @@ const doPcRevoke = () => {
   const msg = pcCtxMenu.value.msg
   closePcCtxMenu()
   if (msg) emit('revokeMsg', msg)
+}
+
+/** 上传到网盘（通过父组件实现具体上传逻辑） */
+const doUploadToCloud = () => {
+  const msg = pcCtxMenu.value.msg
+  closePcCtxMenu()
+  if (msg) emit('uploadToCloud', msg)
 }
 
 /**

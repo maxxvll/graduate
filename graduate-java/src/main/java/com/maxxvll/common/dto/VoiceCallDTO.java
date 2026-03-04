@@ -21,6 +21,24 @@ public class VoiceCallDTO {
     private String targetId;
 
     /**
+     * 主叫人 ID（发送方）
+     */
+    @NotRequired
+    private String fromId;
+
+    /**
+     * 主叫人昵称（用于来电展示）
+     */
+    @NotRequired
+    private String fromNickname;
+
+    /**
+     * 主叫人头像 URL（用于来电展示）
+     */
+    @NotRequired
+    private String fromAvatar;
+
+    /**
      * 会话 ID（用于标识一次通话）
      */
     @NotRequired
@@ -43,4 +61,10 @@ public class VoiceCallDTO {
      */
     @NotRequired
     private String extraInfo;
+
+    /**
+     * 通话模式：audio/video
+     */
+    @NotRequired
+    private String mode;
 }

@@ -5,6 +5,7 @@ import com.maxxvll.common.dto.VoiceCallDTO;
 import com.maxxvll.common.BaseController;
 import com.maxxvll.component.NettyChannelManager;
 import com.maxxvll.utils.UserContextUtil;
+import com.maxxvll.common.vo.UserInfoVO;
 import io.netty.channel.Channel;
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
 import jakarta.annotation.Resource;
@@ -38,8 +39,19 @@ public class VoiceCallController extends BaseController {
             return Result.fail("对方不在线");
         }
 
-        // 2. 构造呼叫信令
+        // 2. 构造呼叫信令，并注入主叫人信息，方便被叫端展示来电者
         callDTO.setCallType("1"); // 1-发起呼叫
+        // 注入 caller 信息
+        callDTO.setFromId(currentUserId);
+        try {
+            UserInfoVO caller = UserContextUtil.getCurrentUser();
+            if (caller != null) {
+                callDTO.setFromNickname(caller.getNickname());
+                callDTO.setFromAvatar(caller.getAvatar());
+            }
+        } catch (Exception e) {
+            log.warn("获取主叫用户信息失败，跳过注入昵称/头像", e);
+        }
         String messageJson = JSON.toJSONString(callDTO);
 
         // 3. 发送给被呼叫人

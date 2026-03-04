@@ -31,4 +31,25 @@ public interface ChatUserService extends IService<ChatUser> {
      * @return 用户信息，未找到返回null
      */
     UserInfoVO searchUser(String keyword);
+
+    /**
+     * 根据账号（用户名）或邮箱查询用户
+     * @param account 账号或邮箱
+     * @return 用户对象，未找到返回null
+     */
+    ChatUser queryByAccountOrEmail(String account);
+
+    /**
+     * 检查用户名是否存在
+     * @param username 用户名
+     * @return 是否存在
+     */
+    boolean existsByUsername(String username);
+
+    /**
+     * 检查邮箱是否存在
+     * @param email 邮箱
+     * @return 是否存在
+     */
+    boolean existsByEmail(String email);
 }

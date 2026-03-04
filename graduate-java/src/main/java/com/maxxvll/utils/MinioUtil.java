@@ -14,7 +14,9 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -198,6 +200,90 @@ public class MinioUtil {
         return null;
     }
 
+    // ================ 云盘相关辅助 ===================
+    /**
+     * 列出指定用户云盘下的所有对象及大小
+     */
+    public List<Map<String, Object>> listCloudFiles(String userId) throws Exception {
+        List<Map<String, Object>> list = new ArrayList<>();
+        String prefix = "cloud/" + userId + "/";
+        Iterable<Result<Item>> results = minioClient.listObjects(
+                ListObjectsArgs.builder().bucket(bucketName).prefix(prefix).recursive(true).build()
+        );
+        for (Result<Item> r : results) {
+            Item item = r.get();
+            Map<String, Object> m = new HashMap<>();
+            m.put("name", item.objectName().substring(prefix.length()));
+            m.put("size", item.size());
+            // lastModified may be null but typically present
+            if (item.lastModified() != null) {
+                m.put("modifyTime", item.lastModified().toString());
+            }
+            list.add(m);
+        }
+        return list;
+    }
+
+    /**
+     * 上传任意文件到用户的云盘目录
+     * @return 存储的对象名
+     */
+    public String uploadToCloud(MultipartFile file, String userId) throws Exception {
+        String suffix = "";
+        String original = file.getOriginalFilename();
+        if (original != null && original.contains(".")) {
+            suffix = original.substring(original.lastIndexOf("."));
+        }
+        String objectName = String.format("cloud/%s/%s%s", userId, IdUtil.simpleUUID(), suffix);
+        minioClient.putObject(
+                PutObjectArgs.builder()
+                        .bucket(bucketName)
+                        .object(objectName)
+                        .stream(file.getInputStream(), file.getSize(), -1)
+                        .contentType(file.getContentType())
+                        .build()
+        );
+        return objectName;
+    }
+
+    /**
+     * 从远程链接拉取内容并存到用户云盘
+     */
+    public String importToCloudByUrl(String url, String userId) throws Exception {
+        // 简化实现：使用 Java URL 读取流
+        try (InputStream in = new java.net.URL(url).openStream()) {
+            String suffix = "";
+            String path = new java.net.URL(url).getPath();
+            if (path.contains(".")) suffix = path.substring(path.lastIndexOf("."));
+            String objectName = String.format("cloud/%s/%s%s", userId, IdUtil.simpleUUID(), suffix);
+            minioClient.putObject(
+                    PutObjectArgs.builder()
+                            .bucket(bucketName)
+                            .object(objectName)
+                            .stream(in, -1, 10485760) // unknown size
+                            .build()
+            );
+            return objectName;
+        }
+    }
+
+    public String getCloudFileUrl(String objectName) {
+        if (objectName == null || objectName.isEmpty()) return "";
+        try {
+            return minioClient.getPresignedObjectUrl(
+                    GetPresignedObjectUrlArgs.builder()
+                            .bucket(bucketName)
+                            .object(objectName)
+                            .method(Method.GET)
+                            .expiry(7, TimeUnit.DAYS)
+                            .build()
+            );
+        } catch (Exception e) {
+            log.error("获取云盘文件 URL 失败: {}", objectName, e);
+            return "";
+        }
+    }
+
     public List<Integer> listUploadedChunks(String md5) {
         List<Integer> chunkIndexList = new ArrayList<>();
         try {
@@ -324,6 +410,19 @@ public class MinioUtil {
                         .build()
         );
         log.info("通用文件上传成功: {}", fileName);
+    }
+
+    /**
+     * 删除指定对象（用于网盘删除文件）
+     */
+    public void removeObject(String objectName) throws Exception {
+        minioClient.removeObject(
+                RemoveObjectArgs.builder()
+                        .bucket(bucketName)
+                        .object(objectName)
+                        .build()
+        );
+        log.info("删除对象成功: {}", objectName);
     }
 
     public String getPublicUrl(String fileName) {

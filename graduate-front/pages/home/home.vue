@@ -32,7 +32,7 @@
             pendingNotifyCount
           }}</view>
         </view>
-        <view class="sidebar-item">
+        <view class="sidebar-item" @click.stop="openCloudDrive">
           <text class="icon">📁</text>
         </view>
       </view>
@@ -72,7 +72,7 @@
     </view>
 
     <!-- 会话列表 -->
-    <view class="session-list" v-if="currentSidebarTab === 'chat'">
+    <view class="session-list" v-if="currentSidebarTab === 'chat' && !showCloudDrive">
       <view class="search-bar">
         <text class="search-icon">🔍</text>
         <input
@@ -493,9 +493,15 @@
       />
     </view>
 
+    <!-- 网盘区域：根据 showCloudDrive 状态显示 -->
+    <CloudDrive
+      v-if="currentSidebarTab === 'chat' && showCloudDrive"
+      :key="'cloud-drive-' + CURRENT_USER_ID"
+    />
+
     <!-- 聊天区域：输入/发送/录音/拖拽由 ChatArea 组件 + useSendMessage composable 统一管理 -->
     <ChatArea
-      v-if="currentSidebarTab === 'chat' && currentSession"
+      v-else-if="currentSidebarTab === 'chat' && !showCloudDrive && currentSession"
       :currentSession="currentSession"
       :messagesWithTime="messagesWithTime"
       :showChatInfoPanel="showChatInfoPanel"
@@ -551,6 +557,7 @@
       @removeMember="removeGroupMember"
       @voiceCall="handleVoiceCall"
       @videoCall="handleVideoCall"
+      @uploadToCloud="handleUploadToCloud"
     />
 
     <!-- 通讯录详情 -->
@@ -756,6 +763,8 @@
       :visible="showVoiceCall"
       :direction="voiceCallDirection"
       :peer-info="voiceCallPeerInfo"
+      :session-id="voiceCallSessionId"
+      :mode="voiceCallMode"
       @close="handleVoiceCallClose"
       @state-change="handleVoiceCallStateChange"
     />
@@ -1451,6 +1460,14 @@
       </view>
       <view
         class="mobile-tab-item"
+        :class="{ 'mobile-active': mobileCurrentTab === 'cloud' }"
+        @click="setMobileTab('cloud')"
+      >
+        <text class="mobile-tab-icon">📁</text>
+        <text class="mobile-tab-label">网盘</text>
+      </view>
+      <view
+        class="mobile-tab-item"
         :class="{ 'mobile-active': mobileCurrentTab === 'profile' }"
         @click="setMobileTab('profile')"
       >
@@ -1681,6 +1698,19 @@
         class="mobile-af-empty"
       >
         <text>未找到用户，换个关键词试试</text>
+      </view>
+    </view>
+
+    <!-- 移动端网盘页面（H5） -->
+    <view v-else-if="mobileCurrentTab === 'cloud'" class="mobile-cloud-drive-page">
+      <!-- 网盘头部栏 -->
+      <view class="mobile-chat-header">
+        <text class="mobile-back-btn" @click="mobileCurrentTab = 'chat'">← 文件</text>
+        <text class="mobile-more-icon">···</text>
+      </view>
+      <!-- 网盘内容容器 -->
+      <view class="mobile-cloud-content">
+        <CloudDrive :key="'mobile-cloud-h5-' + CURRENT_USER_ID" />
       </view>
     </view>
 
@@ -1991,21 +2021,268 @@
       </scroll-view>
     </view>
 
+    <!-- App端通讯录页面 -->
+    <view v-else-if="mobileCurrentTab === 'contact'" class="mobile-contact-page">
+      <!-- 顶部栏 -->
+      <view class="mobile-chat-header">
+        <text class="mobile-back-btn" @click="mobileCurrentTab = 'chat'">← 通讯录</text>
+        <text class="mobile-more-icon">···</text>
+      </view>
+      <!-- 搜索框 -->
+      <view class="mobile-search-box">
+        <input
+          v-model="contactSearchText"
+          class="mobile-search-input"
+          placeholder="搜索"
+          @keyup.enter="performContactSearch"
+        />
+      </view>
+      <!-- 好友/群聊/通知切换 -->
+      <view class="mobile-contact-tab-bar">
+        <view
+          class="mobile-tab-item"
+          :class="{ 'mobile-active': selectedFriendTab === 'friends' }"
+          @click="selectedFriendTab = 'friends'"
+        >
+          <text>好友</text>
+        </view>
+        <view
+          class="mobile-tab-item"
+          :class="{ 'mobile-active': selectedFriendTab === 'groups' }"
+          @click="selectedFriendTab = 'groups'"
+        >
+          <text>群聊</text>
+        </view>
+        <view
+          class="mobile-tab-item mobile-notify-tab"
+          :class="{ 'mobile-active': selectedFriendTab === 'notify' }"
+          @click="selectedFriendTab = 'notify'"
+        >
+          <text>通知</text>
+          <view class="mobile-tab-badge" v-if="pendingNotifyCount > 0">{{
+            pendingNotifyCount
+          }}</view>
+        </view>
+      </view>
+      <scroll-view scroll-y class="mobile-contacts-scroll">
+        <!-- 好友列表 -->
+        <view v-if="selectedFriendTab === 'friends'">
+          <view
+            class="mobile-contact-item"
+            v-for="friend in filteredFriends"
+            :key="friend.userId"
+            @click="chatWithFriend(friend)"
+          >
+            <image
+              :src="friend.avatar || defaultAvatar"
+              class="mobile-avatar"
+              mode="aspectFill"
+            />
+            <view class="mobile-session-content">
+              <text class="mobile-session-name">{{ friend.nickname }}</text>
+              <text class="mobile-last-msg">{{ friend.signature }}</text>
+            </view>
+          </view>
+        </view>
+        <!-- 群聊列表 -->
+        <view v-else-if="selectedFriendTab === 'groups'">
+          <view
+            class="mobile-contact-item"
+            v-for="group in filteredGroups"
+            :key="group.groupId"
+            @click="chatWithGroup(group)"
+          >
+            <image
+              :src="group.groupAvatar || defaultAvatar"
+              class="mobile-avatar"
+              mode="aspectFill"
+            />
+            <view class="mobile-session-content">
+              <text class="mobile-session-name">{{ group.groupName }}</text>
+              <text class="mobile-last-msg">{{ group.memberCount }} 个成员</text>
+            </view>
+          </view>
+        </view>
+        <!-- 通知列表 -->
+        <view v-else-if="selectedFriendTab === 'notify'">
+          <view class="notify-loading" v-if="notifyLoading">
+            <text>加载中...</text>
+          </view>
+          <template v-else>
+            <view
+              class="notify-section"
+              v-if="notifications.friendApplies.length > 0"
+            >
+              <view class="notify-section-title">好友申请</view>
+              <view
+                class="notify-item"
+                v-for="apply in notifications.friendApplies"
+                :key="'friend_' + apply.id"
+              >
+                <image
+                  :src="apply.applicantAvatar || defaultAvatar"
+                  class="notify-avatar"
+                  mode="aspectFill"
+                />
+                <view class="notify-info">
+                  <text class="notify-name">{{ apply.applicantNickname }}</text>
+                  <text class="notify-time">{{
+                    formatMessageTime(apply.createTime)
+                  }}</text>
+                </view>
+                <view class="notify-actions" v-if="apply.status === 0">
+                  <button
+                    class="notify-btn accept-btn"
+                    @click.stop="handleFriendApply(apply.id, 1)"
+                  >
+                    接受
+                  </button>
+                  <button
+                    class="notify-btn reject-btn"
+                    @click.stop="handleFriendApply(apply.id, 2)"
+                  >
+                    拒绝
+                  </button>
+                </view>
+              </view>
+            </view>
+            <view
+              class="notify-section"
+              v-if="notifications.groupApplies.length > 0"
+            >
+              <view class="notify-section-title">群聊申请</view>
+              <view
+                class="notify-item"
+                v-for="apply in notifications.groupApplies"
+                :key="'group_' + apply.id"
+              >
+                <image
+                  :src="apply.applicantAvatar || defaultAvatar"
+                  class="notify-avatar"
+                  mode="aspectFill"
+                />
+                <view class="notify-info">
+                  <text class="notify-name">{{ apply.applicantNickname }}</text>
+                  <text class="notify-group-name">申请加入 「{{ apply.groupName }}」</text>
+                  <text class="notify-time">{{
+                    formatMessageTime(apply.createTime)
+                  }}</text>
+                </view>
+                <view class="notify-actions">
+                  <button
+                    class="notify-btn accept-btn"
+                    @click.stop="handleGroupApply(apply.id, 1)"
+                  >
+                    同意
+                  </button>
+                  <button
+                    class="notify-btn reject-btn"
+                    @click.stop="handleGroupApply(apply.id, 2)"
+                  >
+                    拒绝
+                  </button>
+                </view>
+              </view>
+            </view>
+            <view
+              class="notify-empty"
+              v-if="
+                !notifications.friendApplies.length &&
+                !notifications.groupApplies.length
+              "
+            >
+              <text class="notify-empty-icon">🔔</text>
+              <text class="notify-empty-text">暂无新通知</text>
+            </view>
+          </template>
+        </view>
+      </scroll-view>
+    </view>
+
+    <!-- App端个人资料页面 -->
+    <view v-else-if="mobileCurrentTab === 'profile'" class="mobile-profile-page">
+      <!-- 顶部栏 -->
+      <view class="mobile-chat-header">
+        <text class="mobile-back-btn" @click="backToMobileList">← 我</text>
+        <text class="mobile-more-icon">···</text>
+      </view>
+      <!-- 个人资料内容 -->
+      <scroll-view scroll-y class="mobile-profile-content">
+        <!-- 个人信息卡片 -->
+        <view class="mobile-profile-card">
+          <image
+            :src="userInfo.avatar || defaultAvatar"
+            class="mobile-profile-avatar"
+            mode="aspectFill"
+          ></image>
+          <view class="mobile-profile-base-info">
+            <text class="mobile-profile-nickname">{{ userInfo.nickname }}</text>
+            <text class="mobile-profile-wechat-id">微信号：{{ userInfo.wechatId }}</text>
+            <view class="mobile-profile-edit-btn" @click="openEditProfile">编辑资料</view>
+          </view>
+        </view>
+        <!-- 基本信息 -->
+        <view class="mobile-profile-section">
+          <view class="mobile-profile-item" @click="openEditProfile">
+            <text class="mobile-profile-label">昵称</text>
+            <text class="mobile-profile-value">{{ userInfo.nickname }}</text>
+          </view>
+          <view class="mobile-profile-item" @click="openEditProfile">
+            <text class="mobile-profile-label">个性签名</text>
+            <text class="mobile-profile-value">{{ userInfo.signature || '这个人很懒，什么都没写' }}</text>
+          </view>
+          <view class="mobile-profile-item">
+            <text class="mobile-profile-label">地区</text>
+            <text class="mobile-profile-value">{{ userInfo.region || '未设置' }}</text>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+
+    <!-- App端网盘页面 -->
+    <view v-else-if="mobileCurrentTab === 'cloud'" class="mobile-cloud-drive-page">
+      <!-- 网盘头部栏 -->
+      <view class="mobile-chat-header">
+        <text class="mobile-back-btn" @click="mobileCurrentTab = 'chat'">← 文件</text>
+        <text class="mobile-more-icon">···</text>
+      </view>
+      <!-- 网盘内容容器 -->
+      <view class="mobile-cloud-content">
+        <CloudDrive :key="'mobile-cloud-app-' + CURRENT_USER_ID" />
+      </view>
+    </view>
+
     <!-- 底部导航栏 -->
-    <view class="mobile-bottom-tab-bar">
+    <view class="mobile-bottom-tab-bar" v-if="mobileCurrentTab !== 'chat' || !currentMobileChat">
       <view
         class="mobile-tab-item"
-        :class="{ 'mobile-active': !currentMobileChat }"
-        @click="currentMobileChat = null"
+        :class="{ 'mobile-active': mobileCurrentTab === 'chat' }"
+        @click="setMobileTab('chat')"
       >
         <text class="mobile-tab-icon">💬</text>
         <text class="mobile-tab-label">聊天</text>
       </view>
-      <view class="mobile-tab-item">
+      <view
+        class="mobile-tab-item"
+        :class="{ 'mobile-active': mobileCurrentTab === 'contact' }"
+        @click="setMobileTab('contact')"
+      >
         <text class="mobile-tab-icon">👥</text>
         <text class="mobile-tab-label">通讯录</text>
       </view>
-      <view class="mobile-tab-item">
+      <view
+        class="mobile-tab-item"
+        :class="{ 'mobile-active': mobileCurrentTab === 'cloud' }"
+        @click="setMobileTab('cloud')"
+      >
+        <text class="mobile-tab-icon">📁</text>
+        <text class="mobile-tab-label">网盘</text>
+      </view>
+      <view
+        class="mobile-tab-item"
+        :class="{ 'mobile-active': mobileCurrentTab === 'profile' }"
+        @click="setMobileTab('profile')"
+      >
         <text class="mobile-tab-icon">👤</text>
         <text class="mobile-tab-label">我</text>
       </view>
@@ -2332,6 +2609,7 @@ import JoinGroupModal from '@/components/home/JoinGroupModal.vue'
 import SettingsPanel from '@/components/home/SettingsPanel.vue'
 import ChatArea from '@/components/home/ChatArea.vue'
 import VoiceCall from '@/components/home/VoiceCall.vue'
+import CloudDrive from '@/components/home/CloudDrive.vue'
 import { useNotifications } from '@/composables/useNotifications'
 import { useContacts } from '@/composables/useContacts'
 import { useSendMessage } from '@/composables/useSendMessage'
@@ -2457,10 +2735,14 @@ const addFriendRemark = ref('')
 const showAddFriendRemark = ref(false)
 // 我的二维码弹窗显隐
 const showQrCode = ref(false)
-// 语音通话弹窗显隐
+// 语音/视频通话弹窗显隐
 const showVoiceCall = ref(false)
 const voiceCallPeerInfo = ref({}) // 对方用户信息
 const voiceCallDirection = ref('outgoing') // 'outgoing' - 呼出，'incoming' - 呼入
+const voiceCallSessionId = ref('') // 通话 sessionId
+const voiceCallMode = ref('audio') // 'audio' 或 'video'
+// 网盘界面
+const showCloudDrive = ref(false)
 // 通知状态：由 useNotifications composable 提供，包含好友申请 + 群聊申请
 // onApproved 回调：同意申请成功后立刻刷新会话列表
 const {
@@ -3240,6 +3522,8 @@ const handleLogout = async () => {
 }
 
 const switchSidebarTab = (tab) => {
+  // 切换标签页时关闭网盘面板
+  showCloudDrive.value = false
   currentSidebarTab.value = tab
   showMoreMenu.value = false
   showEmojiPanel.value = false
@@ -3627,9 +3911,11 @@ const handleVoiceCallSignal = (message) => {
   
   // 1. 收到对方发起的语音呼叫（callType = 1）- 只有呼入才需要处理
   if (callType === '1') {
+    // signal may include caller info injected by server: fromId/fromNickname/fromAvatar
+    const callerId = message.fromId || message.from || message.callerId || targetId
     // 检查当前是否已经有语音通话组件在显示
     if (!showVoiceCall.value) {
-      handleIncomingVoiceCall(targetId, sessionId)
+      handleIncomingVoiceCall(callerId, sessionId, message)
     } else {
       console.log('⚠️ 语音通话组件已在显示，忽略此次呼叫')
     }
@@ -3644,71 +3930,84 @@ const handleVoiceCallSignal = (message) => {
 /**
  * 处理收到的语音呼叫（被叫方）
  */
-const handleIncomingVoiceCall = async (targetUserId, sessionId) => {
+const handleIncomingVoiceCall = async (targetUserId, sessionId, rawMessage = {}) => {
   try {
-    console.log('收到语音呼叫，目标用户:', targetUserId, '会话 ID:', sessionId)
+    console.log('📞 收到语音呼叫，主叫用户:', targetUserId, '会话 ID:', sessionId, 'raw:', rawMessage)
     
-    // 1. 获取对方用户信息 - 优先从多个数据源获取完整信息
-    let peerUserInfo = null
+    // 1. 获取主叫方（对方）用户信息 - 从好友列表或会话列表中查找
+    let callerUserInfo = null
+
+    // 如果信令里直接带了 from 信息，优先使用
+    if (rawMessage && (rawMessage.fromId || rawMessage.fromNickname || rawMessage.fromAvatar)) {
+      callerUserInfo = {
+        id: rawMessage.fromId || targetUserId,
+        nickname: rawMessage.fromNickname || '未知用户',
+        avatar: rawMessage.fromAvatar || defaultAvatar,
+        wechatId: '',
+        signature: ''
+      }
+      console.log('✅ 使用信令中的主叫信息:', callerUserInfo)
+    }
     
     // 1.1 尝试从好友列表中查找（最可靠的数据源）
-    const friend = friends.value.find(f => f.userId === targetUserId)
+    const friend = friends.value.find(f => f.userId === targetUserId || (callerUserInfo && f.userId === callerUserInfo.id))
     if (friend) {
-      peerUserInfo = {
+      callerUserInfo = callerUserInfo || {
         id: friend.userId,
         nickname: friend.nickname || '未知用户',
         avatar: friend.avatar || defaultAvatar,
         wechatId: friend.wechatId || '',
         signature: friend.signature || ''
       }
-      console.log('从好友列表找到用户信息:', peerUserInfo)
+      console.log('✅ 从好友列表找到主叫方信息:', callerUserInfo)
     }
     
-    // 1.2 如果好友列表没有，尝试从当前会话中获取
-    if (!peerUserInfo) {
+    // 1.2 如果好友列表没有，再尝试从当前会话中获取（兼容旧数据）
+    if (!callerUserInfo) {
       const currentSessionTarget = sessions.value.find(s => 
-        s.sessionType === SESSION_TYPE.SINGLE && s.targetId === targetUserId
+        s.sessionType === SESSION_TYPE.SINGLE && (s.targetId === targetUserId || (rawMessage && s.targetId === rawMessage.fromId))
       )
       if (currentSessionTarget) {
-        peerUserInfo = {
-          id: targetUserId,
+        callerUserInfo = {
+          id: currentSessionTarget.targetId,
           nickname: currentSessionTarget.sessionName || '未知用户',
           avatar: currentSessionTarget.sessionAvatar || defaultAvatar,
           wechatId: '',
           signature: ''
         }
-        console.log('从会话列表找到用户信息:', peerUserInfo)
+        console.log('✅ 从会话列表找到主叫方信息:', callerUserInfo)
       }
     }
     
     // 1.3 如果都没有，使用默认信息
-    if (!peerUserInfo) {
-      peerUserInfo = {
+    if (!callerUserInfo) {
+      callerUserInfo = {
         id: targetUserId,
         nickname: '未知用户',
         avatar: defaultAvatar,
         wechatId: '',
         signature: ''
       }
-      console.warn('未找到用户信息，使用默认值:', peerUserInfo)
+      console.warn('⚠️ 未找到主叫方信息，使用默认值:', callerUserInfo)
     }
     
-    // 2. 查找或创建对应的会话
-    let targetSession = sessions.value.find(s => s.sessionId === `1_${targetUserId}`)
+    // 2. 查找或创建对应的会话（sessionId 格式：single -> 1_{userId}）
+    const expectedSessionId = `1_${callerUserInfo.id}`
+    let targetSession = sessions.value.find(s => s.sessionId === expectedSessionId)
     
     if (!targetSession) {
       // 如果不存在，创建临时会话信息
       targetSession = {
-        sessionId: `1_${targetUserId}`,
+        sessionId: expectedSessionId,
         sessionType: SESSION_TYPE.SINGLE,
-        targetId: targetUserId,
-        sessionName: peerUserInfo.nickname,
-        sessionAvatar: peerUserInfo.avatar,
+        targetId: callerUserInfo.id,
+        sessionName: callerUserInfo.nickname,
+        sessionAvatar: callerUserInfo.avatar,
         lastMessageContent: '[语音通话]',
         lastMessageTime: Date.now(),
         unreadCount: 0
       }
-      console.log('创建新会话:', targetSession)
+      console.log('🆕 创建新会话:', targetSession)
     }
     
     // 3. 切换到该会话的聊天界面
@@ -3724,13 +4023,16 @@ const handleIncomingVoiceCall = async (targetUserId, sessionId) => {
     // 4. 加载该会话的消息历史
     await switchSession(targetSession)
     
-    // 5. 显示语音通话组件（呼入模式）- 确保传递完整的用户信息
-    voiceCallPeerInfo.value = { ...peerUserInfo }
+    // 5. 显示语音通话组件（呼入模式）- 确保传递完整的用户信息和 sessionId
+    voiceCallPeerInfo.value = { ...callerUserInfo }
     voiceCallDirection.value = 'incoming'
+    voiceCallSessionId.value = sessionId // 使用后端生成的 sessionId
+    voiceCallMode.value = rawMessage.mode === 'video' ? 'video' : 'audio' // 根据信令选择
     showVoiceCall.value = true
     
     console.log('✅ 已切换到语音呼叫会话，显示语音通话界面')
-    console.log('📞 对方用户信息:', voiceCallPeerInfo.value)
+    console.log('👤 主叫方用户信息:', voiceCallPeerInfo.value)
+    console.log('🔖 使用的 sessionId:', voiceCallSessionId.value)
     
   } catch (error) {
     console.error('❌ 处理语音呼叫失败:', error)
@@ -3839,6 +4141,13 @@ const setMobileTab = (tab) => {
   mobileCurrentTab.value = tab
   if (tab === 'chat') {
     currentMobileChat.value = null
+  }
+  if (tab === 'cloud') {
+    // 进入网盘时确保网盘面板显示
+    showCloudDrive.value = true
+  } else {
+    // 离开网盘时关闭网盘面板
+    showCloudDrive.value = false
   }
 }
 
@@ -4292,18 +4601,23 @@ const handleVoiceCall = async (session) => {
       return
     }
     
-    // 设置通话参数
+    // 生成统一的 sessionId，确保整个通话过程中使用同一个 ID
+    const callSessionId = `voice_${Date.now()}`
+    
+    // 设置通话参数（优先使用会话名，其次好友昵称，避免显示“未知用户”）
     voiceCallPeerInfo.value = {
       id: session.targetId,
-      nickname: session.sessionName,
+      nickname: session.sessionName || friend.nickname || '未知用户',
       avatar: session.sessionAvatar || friend.avatar || defaultAvatar
     }
     voiceCallDirection.value = 'outgoing' // 呼出
+    voiceCallSessionId.value = callSessionId // 传递 sessionId
+    voiceCallMode.value = 'audio' // 默认语音
     
     // 显示语音通话组件
     showVoiceCall.value = true
     
-    console.log('发起语音通话:', session)
+    console.log('📞 发起语音通话，sessionId:', callSessionId, '对方信息:', voiceCallPeerInfo.value)
   } catch (error) {
     console.error('发起语音通话失败:', error)
     uni.showToast({
@@ -4340,19 +4654,19 @@ const handleVideoCall = async (session) => {
       return
     }
     
-    // 设置通话参数
+    // 设置通话参数，优先会话名称再好友昵称
     voiceCallPeerInfo.value = {
       id: session.targetId,
-      nickname: session.sessionName,
+      nickname: session.sessionName || friend.nickname || '未知用户',
       avatar: session.sessionAvatar || friend.avatar || defaultAvatar
     }
     voiceCallDirection.value = 'outgoing' // 呼出
+    voiceCallMode.value = 'video'
     
-    // TODO: 暂时使用语音通话组件，后续实现视频通话组件
-    // 显示语音通话组件
+    // 显示通话组件（语音/视频共用）
     showVoiceCall.value = true
     
-    console.log('发起视频通话:', session)
+    console.log('发起视频通话，目标:', voiceCallPeerInfo.value)
   } catch (error) {
     console.error('发起视频通话失败:', error)
     uni.showToast({
@@ -4372,6 +4686,33 @@ const cancelVoiceCall = (session) => {
   // TODO: 发送取消信号到 WebSocket
 }
 
+// 打开网盘
+const openCloudDrive = () => {
+  // 切换到聊天标签页
+  currentSidebarTab.value = 'chat'
+  // 切换网盘显示状态
+  showCloudDrive.value = !showCloudDrive.value
+}
+
+// 从消息上传到网盘
+const handleUploadToCloud = async (msg) => {
+  if (!msg || !msg.file_url) return uni.showToast({ title: '无可上传文件', icon: 'none' })
+  try {
+    const res = await service.post('/cloud/import', { fileUrl: msg.file_url })
+    if (res.code === 200) {
+      uni.showToast({ title: '已发送到网盘', icon: 'success' })
+      // 自动切换到聊天标签页并打开网盘
+      currentSidebarTab.value = 'chat'
+      showCloudDrive.value = true
+    } else {
+      uni.showToast({ title: res.message || '上传失败', icon: 'none' })
+    }
+  } catch (e) {
+    console.error('上传到网盘异常', e)
+    uni.showToast({ title: '上传失败', icon: 'none' })
+  }
+}
+
 /**
  * 取消视频通话
  */
@@ -4389,6 +4730,7 @@ const handleVoiceCallClose = () => {
   showVoiceCall.value = false
   voiceCallPeerInfo.value = {}
   voiceCallDirection.value = 'outgoing'
+  voiceCallSessionId.value = '' // 清空 sessionId
 }
 
 /**
@@ -7159,6 +7501,20 @@ onUnmounted(() => {
   border-top: 1px solid #f0f0f0;
   padding-bottom: max(0, env(safe-area-inset-bottom));
   flex-shrink: 0;
+}
+
+.mobile-cloud-drive-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #fff;
+}
+
+.mobile-cloud-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .mobile-tab-item {

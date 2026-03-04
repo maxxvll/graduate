@@ -274,6 +274,66 @@ public class ChatUserServiceImpl extends ServiceImpl<ChatUserMapper, ChatUser>
         redissonCacheUtils.delete(failKey);
         redissonCacheUtils.delete(lockKey);
     }
+
+    /**
+     * 根据账号（用户名）或邮箱查询用户
+     */
+    @Override
+    public ChatUser queryByAccountOrEmail(String account) {
+        if (account == null || account.isEmpty()) {
+            return null;
+        }
+
+        // 先尝试用用户名查询
+        ChatUser user = chatUserMapper.selectOne(
+                new LambdaQueryWrapper<ChatUser>()
+                        .eq(ChatUser::getUsername, account)
+        );
+
+        // 如果用户名没找到，尝试用邮箱查询
+        if (user == null && account.contains("@")) {
+            user = chatUserMapper.selectOne(
+                    new LambdaQueryWrapper<ChatUser>()
+                            .eq(ChatUser::getEmail, account)
+            );
+        }
+
+        return user;
+    }
+
+    /**
+     * 检查用户名是否存在
+     */
+    @Override
+    public boolean existsByUsername(String username) {
+        if (username == null || username.isEmpty()) {
+            return false;
+        }
+
+        Long count = chatUserMapper.selectCount(
+                new LambdaQueryWrapper<ChatUser>()
+                        .eq(ChatUser::getUsername, username)
+        );
+
+        return count > 0;
+    }
+
+    /**
+     * 检查邮箱是否存在
+     */
+    @Override
+    public boolean existsByEmail(String email) {
+        if (email == null || email.isEmpty()) {
+            return false;
+        }
+
+        Long count = chatUserMapper.selectCount(
+                new LambdaQueryWrapper<ChatUser>()
+                        .eq(ChatUser::getEmail, email)
+        );
+
+        return count > 0;
+    }
 }
 
 

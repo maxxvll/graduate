@@ -10,44 +10,59 @@
         ></image>
       </view>
       
-      <u-form :model="formData" :rules="formRules" ref="formRef">
-        <!-- 账号：核心修改1 - customStyle用px单位 -->
-        		  <!-- #ifdef H5 -->
-                <view class="form-row">
-                  <text class="form-label">账号</text>
-                  <u-form-item prop="account" class="form-item-wrap" :border="false">
-                    <u-input
-                      ref="test"
-                      v-model="formData.account"
-                      class="form-input"
-                      bgColor="transparent"
-                      :custom-style="inputStyle"
-                    ></u-input>
-                  </u-form-item>
-                </view>
-        		  <!-- #endif -->
-        		  
-        		  <!-- #ifdef MP-WEIXIN -->
-                  <text class="form-label">账号</text>
-                  <u-form-item prop="account" class="form-item-wrap" :border="false">
-                    <u-input
-                      ref="test"
-                      v-model="formData.account"
-                      placeholder="请输入账号"
-                      class="form-input"
-                      bgColor="transparent"
-                      :custom-style="inputStyle"
-                    ></u-input>
-                  </u-form-item>
-        		  <!-- #endif -->
+      <!-- 密码登录模式 -->
+      <view v-if="loginMode === 'password'" class="login-form-wrapper">
+        <u-form :model="formData" :rules="formRules" ref="formRef">
+          <!-- 账号 -->
+          <!-- #ifdef H5 -->
+          <view class="form-row">
+            <text class="form-label">账号</text>
+            <u-form-item prop="account" class="form-item-wrap" :border="false">
+              <u-input
+                v-model="formData.account"
+                class="form-input"
+                bgColor="transparent"
+                :custom-style="inputStyle"
+              ></u-input>
+            </u-form-item>
+          </view>
+          <!-- #endif -->
+          
+          <!-- #ifdef MP-WEIXIN -->
+          <text class="form-label">账号</text>
+          <u-form-item prop="account" class="form-item-wrap" :border="false">
+            <u-input
+              v-model="formData.account"
+              placeholder="请输入账号"
+              class="form-input"
+              bgColor="transparent"
+              :custom-style="inputStyle"
+            ></u-input>
+          </u-form-item>
+          <!-- #endif -->
 
-        <!-- 密码：和账号一致 -->
-		 <!-- #ifdef H5 -->
-        <view class="form-row">
+          <!-- 密码 -->
+          <!-- #ifdef H5 -->
+          <view class="form-row">
+            <text class="form-label">密码</text>
+            <u-form-item prop="password" class="form-item-wrap" :border="false">
+              <u-input 
+                v-model="formData.password"
+                class="form-input"
+                password  
+                show-password
+                bgColor="transparent"
+                :custom-style="inputStyle"
+              ></u-input>
+            </u-form-item>
+          </view>
+          <!-- #endif -->
+          <!-- #ifdef MP-WEIXIN -->
           <text class="form-label">密码</text>
           <u-form-item prop="password" class="form-item-wrap" :border="false">
-            <u-input 
+            <u-input
               v-model="formData.password"
+              placeholder="请输入密码"
               class="form-input"
               password  
               show-password
@@ -55,49 +70,91 @@
               :custom-style="inputStyle"
             ></u-input>
           </u-form-item>
+          <!-- #endif -->
+
+          <!-- 提交按钮 -->
+          <u-button 
+            type="primary" 
+            @click="submitForm" 
+            class="submit-btn"
+            :loading="isLoading"
+            :disabled="isLoading"
+          >
+            登录
+          </u-button>
+        </u-form>
+
+        <!-- 登录页脚 -->
+        <view class="login-footer">
+          <text 
+            class="login-link-text" 
+            @click="switchLoginMode('qrcode')"
+          >扫码登录</text>
+          
+          <text 
+            class="login-link-text" 
+            style="margin-left: 20rpx;"
+            @click="() => uni.navigateTo({ url: '/pages/register/register' })"
+          >注册账号</text>
         </view>
-		 <!-- #endif -->
-		<!-- #ifdef MP-WEIXIN -->
-                  <text class="form-label">账号</text>
-                  <u-form-item prop="password" class="form-item-wrap" :border="false">
-                    <u-input
-                      ref="test"
-                      v-model="formData.password"
-                      placeholder="请输入密码"
-                      class="form-input"
-                      password  
-                      show-password
-                      bgColor="transparent"
-                      :custom-style="inputStyle"
-                    ></u-input>
-                  </u-form-item>
-        		  <!-- #endif -->
-        <!-- 提交按钮 -->
+      </view>
+
+      <!-- 二维码登录模式 -->
+      <view v-else class="qrcode-login-wrapper">
+        <!-- 二维码显示区域 -->
+        <view class="qrcode-container">
+          <image 
+            v-if="qrCodeBase64" 
+            :src="qrCodeBase64"
+            class="qrcode-image"
+            mode="aspectFit"
+          ></image>
+          <view v-else class="qrcode-placeholder">
+            <text class="qrcode-loading">生成二维码中...</text>
+          </view>
+        </view>
+
+        <!-- 倒计时和状态提示 -->
+        <view class="qrcode-status">
+          <text v-if="qrCodeStatus === 'waiting'" class="status-text">
+            请使用已登录设备扫描二维码
+          </text>
+          <text v-else-if="qrCodeStatus === 'scanned'" class="status-text scanned">
+            ✓ 已扫描，请在设备上确认
+          </text>
+          <text v-else-if="qrCodeStatus === 'confirmed'" class="status-text confirmed">
+            ✓ 登录成功，即将跳转...
+          </text>
+          <text v-else-if="qrCodeStatus === 'expired'" class="status-text expired">
+            二维码已过期，请重新生成
+          </text>
+
+          <!-- 倒计时显示 -->
+          <view class="countdown">
+            <text class="countdown-text">{{ timeRemaining }}s</text>
+          </view>
+        </view>
+
+        <!-- 返回密码登录按钮 -->
         <u-button 
           type="primary" 
-          @click="submitForm" 
+          @click="switchLoginMode('password')"
           class="submit-btn"
-          :loading="isLoading"
-          :disabled="isLoading"
         >
-          登录
+          返回密码登录
         </u-button>
-      </u-form>
-	  
-      <view class="login-footer">
-	     <!-- 扫码登录：手动跳转 -->
-	     	     <text 
-	                class="login-link-text" 
-	                @click="() => uni.navigateTo({ url: '/pages/login/scan-login' })"
-	              >扫码登录</text>
-	     	     
-	              <!-- 注册账号：手动跳转 -->
-	     	     <text 
-	                class="login-link-text" 
-	                style="margin-left: 20rpx;"
-	                @click="() => uni.navigateTo({ url: '/pages/register/register' })"
-	              >注册账号</text>
-	   </view>
+
+        <!-- 重新生成二维码按钮 -->
+        <u-button 
+          v-if="qrCodeStatus === 'expired'" 
+          type="primary" 
+          @click="regenerateQrCode"
+          class="submit-btn"
+          style="margin-top: 20rpx;"
+        >
+          重新生成二维码
+        </u-button>
+      </view>
     </view>
   </view>
 </template>
@@ -106,10 +163,12 @@
 import { ref, reactive } from 'vue'
 import service from '@/utils/request'
 
+// 登录模式：'password' 或 'qrcode'
+const loginMode = ref('password')
+
+// 密码登录相关
 const isLoading = ref(false)
 const formData = ref({ account: '', password: '' })
-
-// 核心修改2：customStyle里全部用px单位，不能用rpx！
 const inputStyle = reactive({
   backgroundColor: 'rgba(255, 255, 255, 0.5)',
   border: '1px solid rgba(200, 200, 200, 0.2)',
@@ -132,6 +191,142 @@ const formRules = ref({
 })
 const formRef = ref(null)
 
+// 二维码登录相关
+const qrCodeBase64 = ref('')
+const qrCodeId = ref('')
+const qrCodeStatus = ref('waiting') // waiting, scanned, confirmed, expired
+const timeRemaining = ref(300)
+const pollingTimer = ref(null)
+const countdownTimer = ref(null)
+
+/**
+ * 切换登录模式
+ */
+const switchLoginMode = (mode) => {
+  if (mode === 'qrcode') {
+    loginMode.value = 'qrcode'
+    generateQrCode()
+  } else {
+    loginMode.value = 'password'
+    // 停止轮询和倒计时
+    stopPolling()
+    stopCountdown()
+    qrCodeStatus.value = 'waiting'
+    timeRemaining.value = 300
+  }
+}
+
+/**
+ * 生成二维码
+ */
+const generateQrCode = async () => {
+  try {
+    qrCodeStatus.value = 'waiting'
+    timeRemaining.value = 300
+    
+    const res = await service({
+      url: '/user/qrcode/generate',
+      method: 'get'
+    })
+    
+    qrCodeBase64.value = res.data.qrCodeBase64
+    qrCodeId.value = res.data.qrCodeId
+    
+    // 开始轮询和倒计时
+    startPolling()
+    startCountdown()
+  } catch (err) {
+    uni.$u.toast('生成二维码失败：' + (err.message || '未知错误'))
+  }
+}
+
+/**
+ * 重新生成二维码
+ */
+const regenerateQrCode = () => {
+  stopPolling()
+  stopCountdown()
+  generateQrCode()
+}
+
+/**
+ * 开始轮询检查二维码状态
+ */
+const startPolling = () => {
+  stopPolling() // 先清除之前的轮询
+  
+  pollingTimer.value = setInterval(async () => {
+    try {
+      const res = await service({
+        url: `/user/qrcode/status?qrCodeId=${qrCodeId.value}`,
+        method: 'get'
+      })
+      
+      const status = res.data.status
+      qrCodeStatus.value = status
+      
+      if (status === 'confirmed') {
+        // 登录成功，保存token
+        const token = res.data.token
+        uni.setStorageSync('satoken', token)
+        
+        stopPolling()
+        stopCountdown()
+        
+        uni.$u.toast('登录成功，即将进入首页')
+        setTimeout(() => {
+          uni.redirectTo({ url: '/pages/home/home' })
+        }, 1500)
+      } else if (status === 'expired') {
+        stopPolling()
+        stopCountdown()
+      }
+    } catch (err) {
+      console.error('轮询失败:', err)
+    }
+  }, 1000) // 每1秒轮询一次
+}
+
+/**
+ * 停止轮询
+ */
+const stopPolling = () => {
+  if (pollingTimer.value) {
+    clearInterval(pollingTimer.value)
+    pollingTimer.value = null
+  }
+}
+
+/**
+ * 开始倒计时
+ */
+const startCountdown = () => {
+  stopCountdown() // 先清除之前的倒计时
+  
+  countdownTimer.value = setInterval(() => {
+    timeRemaining.value--
+    
+    if (timeRemaining.value <= 0) {
+      qrCodeStatus.value = 'expired'
+      stopCountdown()
+      stopPolling()
+    }
+  }, 1000)
+}
+
+/**
+ * 停止倒计时
+ */
+const stopCountdown = () => {
+  if (countdownTimer.value) {
+    clearInterval(countdownTimer.value)
+    countdownTimer.value = null
+  }
+}
+
+/**
+ * 密码登录提交
+ */
 const submitForm = async () => {
   try {
     const valid = await formRef.value.validate()
@@ -195,7 +390,7 @@ page, view, text, input {
 .form-container {
   width: 80%;
   max-width: 1000rpx;
-  height: 800rpx;
+  min-height: 800rpx;
   background: rgba(255, 255, 255, 0.65);
   backdrop-filter: blur(12rpx);
   -webkit-backdrop-filter: blur(12rpx);
@@ -222,6 +417,15 @@ page, view, text, input {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* 登录模式容器 */
+.login-form-wrapper,
+.qrcode-login-wrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 /* 行布局 */
@@ -297,21 +501,6 @@ page, view, text, input {
   padding-left: 20rpx !important;
 }
 
-/* 登录页脚 */
-.login-footer {
-  display: flex;
-  margin-top: 20rpx;
-}
-:deep(u-input:-webkit-autofill){
-  color: white !important;
-  background-color: transparent !important;
-  -webkit-text-fill-color: white !important;
-  transition: background-color 5000s ease-in-out 0s !important;
-  -webkit-box-shadow: 0 0 0 400px transparent inset;
-}
-u-input:-webkit-autofill {
-  transition: background-color 5000s ease-in-out 0s;
-}
 /* 提交按钮样式 */
 .submit-btn {
   margin-top: 20rpx;
@@ -323,14 +512,111 @@ u-input:-webkit-autofill {
   background: rgba(0, 122, 255, 0.8) !important;
   border: none !important;
 }
->>> .uni-input-input {
-  height: 0;
-  padding: 1.2em 0.5em;
-  background-clip: content-box;
+
+/* 登录页脚 */
+.login-footer {
+  display: flex;
+  margin-top: 20rpx;
 }
+
 .login-link-text {
   color: #007AFF;
   font-size: 28rpx;
   text-decoration: underline;
+  cursor: pointer;
+}
+
+/* 二维码相关样式 */
+.qrcode-container {
+  width: 300rpx;
+  height: 300rpx;
+  border: 2rpx solid #ddd;
+  border-radius: 8rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  margin-bottom: 40rpx;
+}
+
+.qrcode-image {
+  width: 100%;
+  height: 100%;
+  border-radius: 6rpx;
+}
+
+.qrcode-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.qrcode-loading {
+  font-size: 28rpx;
+  color: #999;
+}
+
+/* 二维码状态信息 */
+.qrcode-status {
+  width: 100%;
+  text-align: center;
+  margin-bottom: 40rpx;
+}
+
+.status-text {
+  display: block;
+  font-size: 28rpx;
+  color: #333;
+  margin-bottom: 20rpx;
+}
+
+.status-text.scanned {
+  color: #07c160;
+}
+
+.status-text.confirmed {
+  color: #07c160;
+}
+
+.status-text.expired {
+  color: #fa5151;
+}
+
+.countdown {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100rpx;
+  height: 100rpx;
+  border: 2rpx solid #ddd;
+  border-radius: 50%;
+  margin: 0 auto;
+}
+
+.countdown-text {
+  font-size: 48rpx;
+  font-weight: bold;
+  color: #007AFF;
+}
+
+/* 自动填充样式 */
+:deep(u-input:-webkit-autofill) {
+  color: white !important;
+  background-color: transparent !important;
+  -webkit-text-fill-color: white !important;
+  transition: background-color 5000s ease-in-out 0s !important;
+  -webkit-box-shadow: 0 0 0 400px transparent inset;
+}
+
+u-input:-webkit-autofill {
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+.uni-input-input {
+  height: 0;
+  padding: 1.2em 0.5em;
+  background-clip: content-box;
 }
 </style>
