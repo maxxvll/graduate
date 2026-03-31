@@ -1,5 +1,6 @@
 package com.maxxvll.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.maxxvll.common.dto.GroupCreateDTO;
 import com.maxxvll.common.dto.GroupTransferDTO;
 import com.maxxvll.common.dto.GroupUpdateDTO;
@@ -75,4 +76,38 @@ public interface ChatGroupService extends IService<ChatGroup> {
      * @return 群列表
      */
     List<GroupInfoVO> searchGroup(String keyword, String currentUserId);
+
+    /**
+     * 分页搜索群聊（按群名模糊匹配）
+     * @param keyword 关键词
+     * @param currentUserId 当前用户ID
+     * @param current 当前页
+     * @param size 每页大小
+     * @return 分页群列表
+     */
+    Page<GroupInfoVO> searchGroupPage(String keyword, String currentUserId, int current, int size);
+
+    // ==================== 群公告功能 ====================
+
+    /**
+     * 发布/更新群公告
+     * @param groupId 群ID
+     * @param notice 公告内容
+     * @param operatorId 操作人ID
+     */
+    void publishNotice(Long groupId, String notice, String operatorId);
+
+    /**
+     * 获取群公告
+     * @param groupId 群ID
+     * @return 公告内容
+     */
+    String getNotice(Long groupId);
+
+    /**
+     * 删除群公告（仅群主/管理员）
+     * @param groupId 群ID
+     * @param operatorId 操作人ID
+     */
+    void deleteNotice(Long groupId, String operatorId);
 }

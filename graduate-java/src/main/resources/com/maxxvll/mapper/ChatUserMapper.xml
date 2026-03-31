@@ -14,8 +14,8 @@
             <result property="password" column="password" />
             <result property="status" column="status" />
             <result property="extInfo" column="ext_info" />
-            <result property="createdAt" column="created_at" />
-            <result property="updatedAt" column="updated_at" />
+            <result property="createTime" column="created_at" />
+            <result property="updateTime" column="updated_at" />
     </resultMap>
 
     <sql id="Base_Column_List">

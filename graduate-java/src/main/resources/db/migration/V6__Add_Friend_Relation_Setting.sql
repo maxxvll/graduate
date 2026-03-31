@@ -1,0 +1,13 @@
+-- ============================================================================
+-- V6: 好友关系设置增强
+-- 执行顺序: 6
+-- 创建日期: 2026-03-22
+-- 描述: 好友关系设置表已在 V1 中创建，此处确认索引配置
+-- 备注: friend_relation_setting 表已在 V1__Init_Schema.sql 中创建
+-- ============================================================================
+
+-- 此版本保留用于未来扩展
+-- 当前表结构已包含必要的索引：
+-- - uk_owner_friend: (owner_user_id, friend_user_id) 唯一约束
+-- - idx_owner_active: (owner_user_id, is_deleted, is_blacklisted, is_starred, updated_at DESC)
+-- - idx_friend_owner: (friend_user_id, owner_user_id)

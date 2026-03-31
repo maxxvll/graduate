@@ -7,73 +7,122 @@ import cn.dev33.satoken.router.SaRouter;
 import cn.dev33.satoken.stp.StpLogic;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.dev33.satoken.util.SaResult;
+import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * [Sa-Token 权限认证] 配置类
+ * Sa-Token 认证配置
+ *
+ * 配置说明：
+ * - 使用 JWT 简单模式
+ * - 白名单通过配置文件 satoken.exclude-paths 配置
+ * - 支持跨域配置
+ * - 安全头配置
+ *
+ * @author Claude Code
  */
+@Slf4j
 @Configuration
 public class SaTokenConfigure {
+
+    @Resource
+    private SaTokenProperties saTokenProperties;
+
+    /**
+     * 使用 JWT 简单模式
+     */
     @Bean
     public StpLogic getStpLogicJwt() {
         return new StpLogicJwtForSimple();
     }
 
     /**
-     * 注册 [Sa-Token全局过滤器]
+     * Sa-Token Servlet 过滤器
+     * 配置认证白名单、跨域、安全头等
      */
     @Bean
     public SaServletFilter getSaServletFilter() {
-        return new SaServletFilter()
+        SaServletFilter filter = new SaServletFilter();
 
-                // 指定 拦截路由 与 放行路由
-                .addInclude("/**").addExclude("/favicon.ico")
-                .addExclude("/user/login",
-                        "/user/register",
-                        "/user/check-username",
-                        "/user/qrcode",
-                        "/user/sendEmailCode",
-                        "/test/**") // 把测试接口和发送验证码也加上
+        // 配置包含路径
+        if (!saTokenProperties.getIncludePaths().isEmpty()) {
+            filter.addInclude(saTokenProperties.getIncludePaths().toArray(new String[0]));
+        } else {
+            filter.addInclude("/**");
+        }
 
-                // 认证函数: 每次请求执行
-                .setAuth(obj -> {
-                    System.out.println("---------- 进入Sa-Token全局认证 -----------");
-                    SaRouter.match("/**", () -> StpUtil.checkLogin());
-                })
+        // 配置排除路径（白名单）
+        configureExcludePaths(filter);
 
-                // 异常处理函数：每次认证函数发生异常时执行此函数
-                .setError(e -> {
-                    System.out.println("---------- 进入Sa-Token异常处理 -----------");
-                    return SaResult.error(e.getMessage());
-                })
+        // 配置认证逻辑
+        filter.setAuth(obj -> {
+            log.debug("Sa-Token 全局认证检查");
+            SaRouter.match("/**", () -> StpUtil.checkLogin());
+        });
 
-                .setBeforeAuth(r -> {
+        // 配置异常处理
+        filter.setError(e -> {
+            log.warn("Sa-Token 认证异常: {}", e.getMessage());
+            return SaResult.error(e.getMessage());
+        });
 
-                    SaHolder.getResponse()
-                            // 允许的前端地址
-                            .setHeader("Access-Control-Allow-Origin", "http://localhost:5100")
-                            // 允许所有请求头
-                            .setHeader("Access-Control-Allow-Headers", "*")
-                            // 允许所有请求方法
-                            .setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS, DELETE, PUT")
-                            // 允许携带凭证（Token）
-                            .setHeader("Access-Control-Allow-Credentials", "true")
-                            // 预检请求缓存 1 小时
-                            .setHeader("Access-Control-Max-Age", "3600");
+        // 配置请求前处理（跨域、安全头）
+        filter.setBeforeAuth(r -> {
+            configureHeaders();
+            handleOptionsRequest();
+        });
 
-                    if ("OPTIONS".equals(SaHolder.getRequest().getMethod())) {
-                        // 设置响应状态码为200，直接返回
-                        SaHolder.getResponse().setStatus(200);
-                        // 停止后续执行
-                        SaRouter.back();
-                    }
+        log.info("Sa-Token 配置初始化完成，白名单路径: {}", saTokenProperties.getExcludePaths());
+        return filter;
+    }
 
-                    SaHolder.getResponse()
-                            .setServer("sa-server")
-                            .setHeader("X-Frame-Options", "SAMEORIGIN")
-                            .setHeader("X-XSS-Protection", "1; mode=block")
-                            .setHeader("X-Content-Type-Options", "nosniff");
-                });
+    /**
+     * 配置排除路径（白名单）
+     */
+    private void configureExcludePaths(SaServletFilter filter) {
+        // 默认排除路径
+        filter.addExclude(
+                "/favicon.ico",
+                "/test/**"
+        );
+
+        // 从配置文件读取的排除路径
+        if (!saTokenProperties.getExcludePaths().isEmpty()) {
+            filter.addExclude(saTokenProperties.getExcludePaths().toArray(new String[0]));
+        }
+    }
+
+    /**
+     * 配置响应头
+     */
+    private void configureHeaders() {
+        if (saTokenProperties.getAllowCrossOrigin()) {
+            SaHolder.getResponse()
+                    .setHeader("Access-Control-Allow-Origin", saTokenProperties.getAllowOrigin())
+                    .setHeader("Access-Control-Allow-Credentials", "true")
+                    .setHeader("Access-Control-Allow-Methods", "POST, GET, OPTIONS, DELETE, PUT")
+                    .setHeader("Access-Control-Allow-Headers", "*")
+                    .setHeader("Access-Control-Max-Age", "3600");
+        }
+
+        // 安全头配置
+        SaHolder.getResponse()
+                .setServer("sa-server")
+                .setHeader("X-Frame-Options", "SAMEORIGIN")
+                .setHeader("X-XSS-Protection", "1; mode=block")
+                .setHeader("X-Content-Type-Options", "nosniff")
+                .setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    }
+
+    /**
+     * 处理 OPTIONS 预检请求
+     */
+    private void handleOptionsRequest() {
+        if ("OPTIONS".equals(SaHolder.getRequest().getMethod())) {
+            SaHolder.getResponse().setStatus(200);
+            SaRouter.back();
+        }
     }
 }

@@ -1,0 +1,422 @@
+<template>
+  <view class="scan-login-page">
+    <!-- 如果还没有生成二维码或选择了切换模式，显示方式选择 -->
+    <view v-if="loginMode === 'choice'" class="choice-container">
+      <view class="choice-header">
+        <text class="choice-title">选择登录方式</text>
+      </view>
+
+      <view class="choice-options">
+        <!-- 扫码登录选项 -->
+        <view @click="switchMode('qr')" class="choice-option qr-option">
+          <text class="option-icon">📱</text>
+          <text class="option-title">扫码登录</text>
+          <text class="option-desc">用已登录设备扫描二维码</text>
+        </view>
+
+        <!-- 密码登录选项 -->
+        <view
+          @click="switchMode('password')"
+          class="choice-option password-option"
+        >
+          <text class="option-icon">🔐</text>
+          <text class="option-title">密码登录</text>
+          <text class="option-desc">使用账号密码登录</text>
+        </view>
+      </view>
+
+      <!-- 返回按钮 -->
+      <view class="back-button">
+        <text @click="goBackToIndex">← 返回</text>
+      </view>
+    </view>
+
+    <!-- 扫码登录界面 -->
+    <QRLogin
+      v-else-if="loginMode === 'qr'"
+      @login-success="handleLoginSuccess"
+      @switch-method="handleSwitchMethod"
+    />
+
+    <!-- 密码登录界面 -->
+    <view v-else-if="loginMode === 'password'" class="password-login-container">
+      <view class="password-header">
+        <text class="password-title">密码登录</text>
+      </view>
+
+      <u-form
+        :model="formData"
+        :rules="formRules"
+        ref="formRef"
+        class="password-form"
+      >
+        <!-- 账号 -->
+        <view class="form-row">
+          <text class="form-label">账号</text>
+          <u-form-item prop="account" class="form-item-wrap" :border="false">
+            <u-input
+              v-model="formData.account"
+              placeholder="请输入账号或邮箱"
+              class="form-input"
+              bgColor="transparent"
+              :custom-style="inputStyle"
+            ></u-input>
+          </u-form-item>
+        </view>
+
+        <!-- 密码 -->
+        <view class="form-row">
+          <text class="form-label">密码</text>
+          <u-form-item prop="password" class="form-item-wrap" :border="false">
+            <u-input
+              v-model="formData.password"
+              placeholder="请输入密码"
+              class="form-input"
+              password
+              show-password
+              bgColor="transparent"
+              :custom-style="inputStyle"
+            ></u-input>
+          </u-form-item>
+        </view>
+
+        <!-- 提交按钮 -->
+        <u-button
+          type="primary"
+          @click="submitPasswordLogin"
+          class="submit-btn"
+          :loading="isLoading"
+          :disabled="isLoading"
+        >
+          登录
+        </u-button>
+      </u-form>
+
+      <!-- 底部链接 -->
+      <view class="password-footer">
+        <text @click="handleSwitchMethod('choice')" class="link">
+          返回选择
+        </text>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script setup>
+import { ref, reactive } from 'vue'
+import service from '@/utils/request'
+import QRLogin from '@/components/QRLogin.vue'
+import { getLoginToken, saveLoginToken } from '@/utils/qr-login'
+
+// 登录模式：choice(选择), qr(扫码), password(密码)
+const loginMode = ref('choice')
+
+// 密码登录表单数据
+const formData = ref({
+  account: '',
+  password: '',
+})
+
+const isLoading = ref(false)
+const formRef = ref(null)
+
+// 输入框样式
+const inputStyle = reactive({
+  backgroundColor: 'rgba(255, 255, 255, 0.5)',
+  border: '1px solid rgba(200, 200, 200, 0.2)',
+  borderRadius: '8px',
+  height: '40px',
+  padding: '0 10px',
+  fontSize: '16px',
+  color: '#333',
+})
+
+// 表单验证规则
+const formRules = ref({
+  account: [{ required: true, message: '请输入账号或邮箱', trigger: 'blur' }],
+  password: [{ required: true, message: '请输入密码', trigger: 'blur' }],
+})
+
+/**
+ * 切换登录方式
+ */
+const switchMode = (mode) => {
+  loginMode.value = mode
+}
+
+/**
+ * 处理切换登录方式
+ */
+const handleSwitchMethod = (mode) => {
+  loginMode.value = mode
+}
+
+/**
+ * 密码登录提交
+ */
+const submitPasswordLogin = async () => {
+  try {
+    // 表单验证
+    await formRef.value.validate()
+
+    isLoading.value = true
+
+    // 调用后端登录接口
+    const res = await service.post('/auth/login', {
+      account: formData.value.account,
+      password: formData.value.password,
+    })
+
+    if (res.code === 200) {
+      const { token, userInfo } = res.data
+
+      // 保存 token
+      saveLoginToken(token)
+
+      // 显示成功提示
+      uni.$u.toast('登录成功')
+
+      // 延迟跳转到首页
+      setTimeout(() => {
+        uni.reLaunch({
+          url: '/pages/home/home',
+        })
+      }, 1000)
+    } else {
+      uni.$u.toast(res.message || '登录失败')
+    }
+  } catch (error) {
+    if (error.message !== '表单验证失败') {
+      uni.$u.toast('登录出错，请重试')
+      console.error('密码登录异常', error)
+    }
+  } finally {
+    isLoading.value = false
+  }
+}
+
+/**
+ * 处理扫码登录成功
+ */
+const handleLoginSuccess = (data) => {
+  // 显示成功提示
+  uni.$u.toast('登录成功')
+
+  // 延迟跳转到首页
+  setTimeout(() => {
+    uni.reLaunch({
+      url: '/pages/home/home',
+    })
+  }, 1000)
+}
+
+/**
+ * 返回登录首页
+ */
+const goBackToIndex = () => {
+  uni.navigateBack()
+}
+</script>
+
+<style scoped lang="scss">
+.scan-login-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* ============= 选择模式界面 ============= */
+.choice-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 40rpx 30rpx;
+}
+
+.choice-header {
+  text-align: center;
+  margin-bottom: 50rpx;
+  color: white;
+}
+
+.choice-title {
+  display: block;
+  font-size: 40rpx;
+  font-weight: 600;
+}
+
+.choice-options {
+  display: flex;
+  flex-direction: column;
+  gap: 30rpx;
+  width: 100%;
+  max-width: 400rpx;
+  margin-bottom: 50rpx;
+}
+
+.choice-option {
+  background: white;
+  border-radius: 16rpx;
+  padding: 40rpx;
+  text-align: center;
+  box-shadow: 0 10rpx 30rpx rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.choice-option:active {
+  transform: translateY(-2rpx);
+  box-shadow: 0 15rpx 40rpx rgba(0, 0, 0, 0.3);
+}
+
+.option-icon {
+  display: block;
+  font-size: 60rpx;
+  margin-bottom: 20rpx;
+}
+
+.option-title {
+  display: block;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 10rpx;
+}
+
+.option-desc {
+  display: block;
+  font-size: 24rpx;
+  color: #999;
+}
+
+.back-button {
+  text-align: center;
+  margin-top: 30rpx;
+}
+
+.back-button text {
+  color: white;
+  font-size: 28rpx;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.back-button text:active {
+  opacity: 0.7;
+}
+
+/* ============= 密码登录界面 ============= */
+.password-login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 40rpx 30rpx;
+}
+
+.password-header {
+  text-align: center;
+  margin-bottom: 50rpx;
+  color: white;
+}
+
+.password-title {
+  display: block;
+  font-size: 40rpx;
+  font-weight: 600;
+  margin-bottom: 10rpx;
+}
+
+.password-form {
+  background: white;
+  border-radius: 16rpx;
+  padding: 40rpx;
+  width: 100%;
+  max-width: 400rpx;
+  margin-bottom: 30rpx;
+  box-shadow: 0 20rpx 60rpx rgba(0, 0, 0, 0.3);
+}
+
+.form-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 30rpx;
+}
+
+.form-label {
+  width: 80rpx;
+  font-size: 28rpx;
+  color: #333;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.form-item-wrap {
+  flex: 1;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.form-input {
+  flex: 1;
+}
+
+.submit-btn {
+  width: 100%;
+  height: 88rpx !important;
+  line-height: 88rpx !important;
+  font-size: 32rpx !important;
+  border-radius: 12rpx !important;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  border: none !important;
+  margin-top: 20rpx;
+}
+
+.password-footer {
+  text-align: center;
+}
+
+.link {
+  color: white;
+  font-size: 28rpx;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.link:active {
+  opacity: 0.7;
+}
+
+/* ============= uni-form 深层样式覆盖 ============= */
+:deep(.form-item-wrap .u-form-item),
+:deep(.form-item-wrap .u-form-item__wrapper),
+:deep(.form-item-wrap .u-form-item__body),
+:deep(.form-item-wrap .u-form-item__content) {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+}
+
+:deep(.form-input .u-input),
+:deep(.form-input .u-input__wrapper),
+:deep(.form-input .u-input__content-wrapper) {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100% !important;
+}
+
+:deep(.u-form-item__error) {
+  display: block !important;
+  margin-top: 8rpx !important;
+  font-size: 24rpx !important;
+  color: #fa3534 !important;
+  line-height: 1.2 !important;
+  padding-left: 20rpx !important;
+}
+</style>

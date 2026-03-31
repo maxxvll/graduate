@@ -1,23 +1,31 @@
-# 应用服务 WEB 访问端口
 server:
   port: 5050
   servlet:
     context-path: /api
     session:
-      timeout: PT60M  # session过期时间 60M 一个小时
-  tomcat:  # 提升Tomcat并发能力
+      timeout: PT60M
+  tomcat:
     max-threads: 200
     min-spare-threads: 20
+    threads:
+      virtual:
+        enabled: true
+        max-count: 1000
 
-# Spring核心配置
 spring:
   application:
     name: wx-chat
     server-id: ${SERVER_ID:default-server}
+
+  # 配置文件激活（通过环境变量 SPRING_PROFILES_ACTIVE 设置）
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
   servlet:
     multipart:
       max-file-size: 15MB
       max-request-size: 15MB
+
   mvc:
     favicon:
       enabled: false
@@ -30,129 +38,137 @@ spring:
         json: application/json
         xml: application/xml
         "*/*": application/json
+
   web:
     resources:
       add-mappings: true
+
+  task:
+    execution:
+      thread-name-prefix: app-virtual-thread-
+      virtual:
+        enabled: true
+    scheduling:
+      thread-name-prefix: app-scheduler-virtual-thread-
+      virtual:
+        enabled: true
+
+  # 邮件配置（在不同环境的yaml中覆盖）
   mail:
     host: smtp.qq.com
-    username: 2057044770@qq.com
-    password: qlfvnwkdedlccabb
+    username: ${MAIL_USERNAME:2057044770@qq.com}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail.smtp.ssl.enable: true
       mail.smtp.port: 465
+  cloud:
+    refresh:
+      enabled: true
 
-  datasource:
-    url: jdbc:mysql://192.168.164.128:3306/chat?serverTimezone=GMT%2B8&useUnicode=true&characterEncoding=utf8&autoReconnect=true&allowMultiQueries=true&useSSL=false&allowPublicKeyRetrieval=true
-    username: root
-    password: root123  # 匹配Docker的MySQL root密码
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    hikari:
-      pool-name: HikariCPDatasource
-      minimum-idle: 5
-      idle-timeout: 180000
-      maximum-pool-size: 10
-      auto-commit: true
-      max-lifetime: 1800000
-      connection-timeout: 30000
-      connection-test-query: SELECT 1
-
-  data:
-    redis:
-      database: 0
-      host: 192.168.164.128
-      port: 6379
-      password: 123456  # 匹配Docker的Redis密码
-      timeout: 5000
-      lettuce:
-        pool:
-          max-active: 50
-          max-wait: -1ms
-          max-idle: 20
-          min-idle: 5
-          shutdown-timeout: 100ms
-        cluster:
-          refresh:
-            adaptive: true
-        client:
-          resources:
-            io-executor-threads: 4
-            computation-executor-threads: 4
-        client-name: graduate-app
-        shutdown:
-          quiet-period: 0
-          timeout: 2000
-
-  # ========== 【核心修改】Kafka 配置：使用JSON序列化器 ==========
+# 应用配置
+app:
+  chat:
+    message-retention-days: 15
+    retention-cleanup-cron: 0 10 4 * * ?
   kafka:
-    # Kafka 服务器地址（和你原有配置保持一致）
-    bootstrap-servers: 192.168.164.128:9092
-    # 生产者配置
-    producer:
-      key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      # 核心：使用Spring自带JSON序列化器，自动将对象转为JSON
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
-      retries: 3
-      acks: 1
-      batch-size: 16384
-      buffer-memory: 33554432
-      properties:
-        spring:
-          json:
-            type:
-              mapping: "event:com.maxxvll.common.event.LoginEvent"
-    # 消费者配置
-    consumer:
-      # 【核心修复】用错误处理包装器，避免反序列化失败导致消费者无限崩溃
-      key-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
-      # 消费者核心配置
-      properties:
-        # 内层真实的反序列化器
-        spring.deserializer.key.delegate.class: org.apache.kafka.common.serialization.StringDeserializer
-        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
-        # 彻底解决信任包问题（生产环境可改为你的专属包：com.maxxvll.common.event）
-        spring.json.trusted.packages: "*"
-        # 默认反序列化的目标类，匹配你的LoginEvent全路径
-        spring.json.value.default.type: com.maxxvll.common.event.LoginEvent
-        # 和生产者保持一致的类型映射
-        spring.json.type.mapping: "event:com.maxxvll.common.event.LoginEvent"
-      # 【必须和你的@KafkaListener保持一致】报错里的消费者组是login-log-group
-      group-id: login-log-group
-      # 【关键修复】跳过Kafka里已有的坏消息，从最新的消息开始消费
-      auto-offset-reset: latest
-      enable-auto-commit: true
-      auto-commit-interval: 5000
-    # 监听器配置
-    listener:
-      type: single
-      concurrency: 1
-      ack-mode: batch
+    chat:
+      consumer-mode: batch
+    features:
+      global-kafka-enabled: true
+      email-async-enabled: true
+      friend-notification-async-enabled: true
+      audit-log-async-enabled: true
+      group-notification-async-enabled: true
+      file-upload-log-async-enabled: true
+      message-recall-async-enabled: false
+      user-profile-update-async-enabled: false
+  permission:
+    enabled: true
+    cache-enabled: true
+    cache-ttl-seconds: 300
+  file:
+    upload-path: /uploads
+    access-url:
+  voice-call:
+    supported-transports:
+      - webrtc
+      - stream
+    ice-servers:
+      - urls:
+          - ${VOICE_CALL_STUN_URL:stun:stun.l.google.com:19302}
+        username: ${VOICE_CALL_STUN_USERNAME:}
+        credential: ${VOICE_CALL_STUN_CREDENTIAL:}
 
-# ========== 注释RabbitMQ配置 ==========
-# spring:
-#   rabbitmq:
-#     host: 192.168.164.128
-#     port: 5672
-#     username: root
-#     password: wx782057yingluom
-#     publisher-confirm-type: correlated
-#     publisher-returns: true
-#     template:
-#       mandatory: true
+  # ================================================
+  # 告警配置
+  # ================================================
+  alert:
+    enabled: true
+    # 告警规则列表
+    rules:
+      # WebSocket连接数超限告警
+      - name: WebSocket连接数超限
+        metric: websocket.activeConnections
+        threshold: 5000
+        operator: GREATER_THAN
+        severity: WARNING
+        cooldown-seconds: 300
+        enabled: true
+      # 内存使用率过高告警
+      - name: 内存使用率过高
+        metric: jvm.heapUsagePercent
+        threshold: 85
+        operator: GREATER_THAN
+        severity: WARNING
+        cooldown-seconds: 180
+        enabled: true
+      # 内存严重过高告警
+      - name: 内存使用率严重过高
+        metric: jvm.heapUsagePercent
+        threshold: 95
+        operator: GREATER_THAN
+        severity: CRITICAL
+        cooldown-seconds: 300
+        enabled: true
+      # 消息延迟过高告警
+      - name: 消息延迟过高
+        metric: latency.avgMs
+        threshold: 500
+        operator: GREATER_THAN
+        severity: WARNING
+        cooldown-seconds: 120
+        enabled: true
+      # 线程数过多告警
+      - name: 线程数过多
+        metric: jvm.threadCount
+        threshold: 500
+        operator: GREATER_THAN
+        severity: WARNING
+        cooldown-seconds: 300
+        enabled: true
+    # 告警通知渠道配置
+    channels:
+      - type: LOG
+        enabled: true
+      - type: EMAIL
+        config: ${ALERT_EMAIL_CONFIG:}
+        enabled: false
+      - type: WEBHOOK
+        config: ${ALERT_WEBHOOK_CONFIG:}
+        enabled: false
 
-# ========== ES配置 ==========
+# Elasticsearch配置（可选）
 elasticsearch:
-  host: 192.168.164.128
-  port: 9200
-  scheme: http
+  host: ${ELASTICSEARCH_HOST:localhost}
+  port: ${ELASTICSEARCH_PORT:9200}
+  scheme: ${ELASTICSEARCH_SCHEME:http}
 
-# ========== MinIO 配置 ==========
+# MinIO配置（在不同环境的yaml中覆盖）
 minio:
-  endpoint: http://192.168.164.128:9000
-  access-key: minioadmin
-  secret-key: minioadmin
+  endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+  access-key: ${MINIO_ACCESS_KEY:minioadmin}
+  secret-key: ${MINIO_SECRET_KEY:minioadmin}
   default-bucket: file-storage-bucket
-  # 公共头像桶：匿名可读，头像使用永久直链（无签名、无过期、Firefox 完全兼容）
   avatar-bucket: chat-avatars-public
   upload:
     chunk-size: 5242880
@@ -177,7 +193,7 @@ minio:
       - audio/mp3
       - audio/wav
 
-# ========== 健康检查配置 ==========
+# 管理端点配置（在不同环境的yaml中覆盖）
 management:
   health:
     elasticsearch:
@@ -187,30 +203,32 @@ management:
     kafka:
       enabled: true
   endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
     health:
-      show-details: never
+      show-details: always
 
-# ========== 日志配置 ==========
+# 日志配置（基础配置，profile中覆盖）
 logging:
   level:
-    root: info
-    org.springframework.jdbc: info
-    org.springframework.data.redis: info
-    org.springframework.kafka: info
+    root: warn
+    com.maxxvll: info
+    org.springframework.jdbc: warn
+    org.springframework.data.redis: warn
+    org.springframework.kafka: warn
     com.mysql.cj: warn
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
 
-app:
-  file:
-    upload-path: /uploads
-    access-url:
-
 # DeepSeek API配置
 deepseek:
   api:
-    url: https://api.deepseek.com/v1/chat/completions
-    key: sk-911b43fc1a07434f8ee8d96e0685d5b4
+    url: ${DEEPSEEK_API_URL:https://api.deepseek.com/v1/chat/completions}
+    key: ${DEEPSEEK_API_KEY:}
+
+# Sa-Token配置
 sa-token:
   token-name: satoken
   timeout: 2592000
@@ -219,7 +237,81 @@ sa-token:
   is-share: false
   token-style: uuid
   is-log: true
-  jwt-secret-key: asdasdasifhwdsaavuihdfjskljfvbgwenkdvzhirzcxcfnijkxfnuskhjtmflkjvnjhksuejhfbh548~~~urfewbfjsdafjk
-# WebSocket端口配置
+  jwt-secret-key: ${SA_TOKEN_SECRET_KEY:asdasdasifhwdsaavuihdfjskljfvbgwenkdvzhirzcxcfnijkxfnuskhjtmflkjvnjhksuejhfbh548~~~urfewbfjsdafjk}
+  enabled: true
+  allow-cross-origin: true
+  allow-origin: ${CORS_ALLOWED_ORIGINS:http://localhost:5100}
+  exclude-paths:
+    - /favicon.ico
+    - /user/login
+    - /user/register
+    - /user/check-username
+    - /user/qrcode/generate
+    - /user/qrcode/status
+    - /user/sendEmailCode
+    - /cloud/access/**
+    - /test/**
+
+# WebSocket配置
 ws:
-  port: 5051
+  host: 0.0.0.0
+  port: ${WS_PORT:5051}
+  auth:
+    max-connections-per-user: 3
+    max-connections-per-ip: 10
+    connection-rate-limit: 10
+    ip-whitelist:
+      - "127.0.0.1"
+      - "localhost"
+    ip-blacklist: []
+  heartbeat:
+    reader-idle-time: 90
+    writer-idle-time: 0
+    all-idle-time: 30
+    default-interval-ms: 30000
+    min-interval-ms: 10000
+    max-interval-ms: 120000
+    stable-threshold: 5
+    unstable-threshold: 3
+    timeout-ms: 10000
+    alert-threshold-ms: 5000
+    consecutive-alert-threshold: 3
+  batch:
+    enabled: true
+    max-batch-size: 50
+    flush-interval-ms: 100
+  compression:
+    enabled: true
+    min-size-bytes: 1024
+    max-size-bytes: 10485760
+    level: 6
+  pending-message:
+    max-cache-size: 10000
+    expire-minutes: 30
+
+# Netty配置
+netty:
+  boss-threads: 1
+  worker-threads: 0
+
+# ================================================
+# Jasypt加密配置
+# ================================================
+# 加密后的配置使用 ENC(...) 包裹，例如：
+# password: ENC(加密后的密文)
+# 加密密钥通过环境变量或命令行参数传入：
+# -Djasypt.encryptor.password=your-secret-key
+jasypt:
+  encryptor:
+    algorithm: PBEWithMD5AndDES
+    password: ${JASYPT_ENCRYPTOR_PASSWORD:changeit}
+    iv-generator-classname: org.jasypt.iv.NoIvGenerator
+    salt-generator-classname: org.jasypt.salt.RandomSaltGenerator
+    key-obfuscation: true
+    string-output-type: base64
+
+# ================================================
+# 配置刷新端点
+# ================================================
+# 启用配置刷新功能后，可通过 POST /actuator/refresh 刷新配置
+

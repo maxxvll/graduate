@@ -3,17 +3,17 @@ package com.maxxvll.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.maxxvll.common.interceptor.LogInterceptor;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.web.servlet.config.annotation.ContentNegotiationConfigurer;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.nio.charset.StandardCharsets;
-import java.util.List;
-
 import java.util.List;
 
 /**
@@ -24,13 +24,64 @@ import java.util.List;
 public class WebMvcConfig implements WebMvcConfigurer {
 
     /**
+     * 日志拦截器（自动注入）
+     */
+    private final LogInterceptor logInterceptor;
+
+    public WebMvcConfig(LogInterceptor logInterceptor) {
+        this.logInterceptor = logInterceptor;
+    }
+
+    /**
+     * 注册日志拦截器
+     * <p>
+     * 拦截所有请求，自动管理 MDC 上下文和记录请求日志
+     * </p>
+     * <p>
+     * 排除路径：
+     * <ul>
+     *     <li>/error - 错误页面</li>
+     *     <li>/actuator/** - 健康检查端点</li>
+     *     <li>/swagger-ui/** - Swagger UI</li>
+     *     <li>/v3/api-docs/** - API 文档</li>
+     * </ul>
+     * </p>
+     */
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(logInterceptor)
+                .addPathPatterns("/**")
+                .excludePathPatterns(
+                        "/error",
+                        "/actuator/**",
+                        "/swagger-ui/**",
+                        "/v3/api-docs/**",
+                        "/swagger-resources/**",
+                        "/webjars/**"
+                );
+    }
+
+    /**
      * 配置跨域支持
+     * 说明：
+     * - 允许所有来源（包括 localhost、127.0.0.1、IP地址等）
+     * - 支持预检请求 (preflight)
+     * - 支持凭证传递（cookies、authorization）
      */
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOriginPatterns("*")
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                // 对于开发环境和生产环境都友好的配置
+                .allowedOrigins(
+                    "http://localhost:5100",      // 本地开发 (localhost)
+                    "http://127.0.0.1:5100",      // 本地开发 (127.0.0.1)
+                    "http://192.168.145.1:5100",  // 本地网络 IP
+                    "http://47.99.57.75:5100",    // 公网 IP
+                    "https://47.99.57.75:5100"    // HTTPS
+                )
+                // 如果需要支持更多来源，使用下面这行（但需要谨慎 - 生产环境慎用）
+                // .allowedOriginPatterns(".*") // 允许所有来源
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH")
                 .allowedHeaders("*")
                 .allowCredentials(true)
                 .maxAge(3600);

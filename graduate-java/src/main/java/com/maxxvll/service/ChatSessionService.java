@@ -1,6 +1,7 @@
 package com.maxxvll.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.maxxvll.common.vo.CursorPageVO;
 import com.maxxvll.common.vo.SessionVO;
 import com.maxxvll.domain.ChatGroup;
 import com.maxxvll.domain.ChatMessage;
@@ -34,6 +35,16 @@ public interface ChatSessionService extends IService<ChatSession> {
     List<SessionVO> getSessionList(String userId);
 
     /**
+     * 游标分页获取历史会话列表（最近N条开始，向后翻页）
+     */
+    CursorPageVO<SessionVO> getSessionPage(String userId, int limit, String cursor);
+
+    /**
+     * 基于更新时间游标增量同步会话变更
+     */
+    CursorPageVO<SessionVO> syncSessionList(String userId, int limit, String cursor);
+
+    /**
      * 软删除会话（仅对当前用户隐藏）
      */
     void softDeleteSession(String sessionId, String userId);
@@ -64,4 +75,9 @@ public interface ChatSessionService extends IService<ChatSession> {
      * 更新该 sessionId 所有用户的最后一条消息（不依赖 UserContext，用于系统消息通知）
      */
     void refreshAllLastMessage(ChatMessage message);
+
+    /**
+     * 获取用户的所有会话列表（用于搜索等场景）
+     */
+    List<ChatSession> getSessionsByUserId(String userId);
 }

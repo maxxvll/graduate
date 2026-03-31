@@ -163,6 +163,27 @@
 import { ref, reactive } from 'vue'
 import service from '@/utils/request'
 
+// #ifdef H5
+// H5 平台请求通知权限
+const requestNotificationPermission = async () => {
+  if ('Notification' in window && Notification.permission === 'default') {
+    try {
+      await Notification.requestPermission()
+    } catch (e) {
+      console.warn('Failed to request notification permission:', e)
+    }
+  }
+}
+
+const requestNotificationPermissionInBackground = () => {
+  Promise.resolve()
+    .then(() => requestNotificationPermission())
+    .catch((e) => {
+      console.warn('Failed to request notification permission in background:', e)
+    })
+}
+// #endif
+
 // 登录模式：'password' 或 'qrcode'
 const loginMode = ref('password')
 
@@ -223,15 +244,12 @@ const generateQrCode = async () => {
   try {
     qrCodeStatus.value = 'waiting'
     timeRemaining.value = 300
-    
-    const res = await service({
-      url: '/user/qrcode/generate',
-      method: 'get'
-    })
-    
+
+    const res = await service.get('/user/qrcode/generate')
+
     qrCodeBase64.value = res.data.qrCodeBase64
     qrCodeId.value = res.data.qrCodeId
-    
+
     // 开始轮询和倒计时
     startPolling()
     startCountdown()
@@ -257,10 +275,7 @@ const startPolling = () => {
   
   pollingTimer.value = setInterval(async () => {
     try {
-      const res = await service({
-        url: `/user/qrcode/status?qrCodeId=${qrCodeId.value}`,
-        method: 'get'
-      })
+      const res = await service.get(`/user/qrcode/status?qrCodeId=${qrCodeId.value}`)
       
       const status = res.data.status
       qrCodeStatus.value = status
@@ -269,13 +284,18 @@ const startPolling = () => {
         // 登录成功，保存token
         const token = res.data.token
         uni.setStorageSync('satoken', token)
-        
+
         stopPolling()
         stopCountdown()
-        
+
+        // #ifdef H5
+        // 登录成功后请求通知权限
+        requestNotificationPermissionInBackground()
+        // #endif
+
         uni.$u.toast('登录成功，即将进入首页')
         setTimeout(() => {
-          uni.redirectTo({ url: '/pages/home/home' })
+          uni.reLaunch({ url: '/pages/home/home' })
         }, 1500)
       } else if (status === 'expired') {
         stopPolling()
@@ -332,18 +352,27 @@ const submitForm = async () => {
     const valid = await formRef.value.validate()
     if (valid) {
       isLoading.value = true
-      const res = await service({
-        url: '/user/login',
-        method: 'post',
-        data: {
-          username: formData.value.account,
-          password: formData.value.password
-        }
+      const res = await service.post('/user/login', {
+        username: formData.value.account,
+        password: formData.value.password
       })
       uni.setStorageSync('satoken', res.data)
+
+      // #ifdef H5
+      // 登录成功后请求通知权限
+      requestNotificationPermissionInBackground()
+      // #endif
+
+      isLoading.value = false
+      uni.$u.toast('登录成功，即将进入首页')
+      setTimeout(() => {
+        uni.reLaunch({ url: '/pages/home/home' })
+      }, 1500)
+      return
+
       await uni.$u.toast('登录成功，即将进入首页')
       setTimeout(() => {
-        uni.redirectTo({ url: '/pages/home/home' })
+        uni.reLaunch({ url: '/pages/home/home' })
       }, 1500)
     }
   } catch (err) {

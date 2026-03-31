@@ -1,0 +1,103 @@
+# ================================================
+# 测试环境配置
+# ================================================
+#
+# 使用说明：
+# 1. 测试环境使用专用测试服务器
+# 2. 配置与生产环境保持一致
+# 3. 使用独立的数据库和Redis实例
+# 4. 日志级别适中，方便问题排查
+#
+spring:
+  # 数据库配置
+  datasource:
+    url: jdbc:mysql://${DB_HOST:test-mysql}:${DB_PORT:3306}/chat?serverTimezone=GMT%2B8&useUnicode=true&characterEncoding=utf8&autoReconnect=true&allowMultiQueries=true&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${DB_USERNAME:test_user}
+    password: ${DB_PASSWORD:test_password}
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 15
+      idle-timeout: 300000
+      max-lifetime: 1800000
+      connection-timeout: 10000
+
+  # Redis配置
+  data:
+    redis:
+      host: ${REDIS_HOST:test-redis}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:test_redis_password}
+      lettuce:
+        pool:
+          max-active: 30
+          max-idle: 10
+          min-idle: 5
+
+  # Kafka配置
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:test-kafka:9092}
+    consumer:
+      group-id: login-log-group-test
+      auto-offset-reset: earliest
+
+# MinIO配置
+minio:
+  endpoint: ${MINIO_ENDPOINT:http://test-minio:9000}
+  access-key: ${MINIO_ACCESS_KEY:test_minio_admin}
+  secret-key: ${MINIO_SECRET_KEY:test_minio_password}
+
+# WebSocket配置
+ws:
+  host: 0.0.0.0
+  port: ${WS_PORT:5051}
+
+# 日志配置
+logging:
+  level:
+    root: info
+    com.maxxvll: info
+    org.springframework.web: warn
+    org.springframework.kafka: warn
+
+# Actuator配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when_authorized
+
+# Sa-Token配置
+sa-token:
+  is-log: true
+  allow-origin: ${CORS_ALLOWED_ORIGINS:http://test.example.com}
+
+# DeepSeek API
+deepseek:
+  api:
+    url: ${DEEPSEEK_API_URL:https://api.deepseek.com/v1/chat/completions}
+    key: ${DEEPSEEK_API_KEY:}
+
+# 应用配置
+app:
+  chat:
+    message-retention-days: 7
+    retention-cleanup-cron: 0 10 4 * * ?
+  kafka:
+    chat:
+      consumer-mode: batch
+    features:
+      global-kafka-enabled: true
+      email-async-enabled: true
+      friend-notification-async-enabled: true
+      audit-log-async-enabled: true
+      group-notification-async-enabled: true
+      file-upload-log-async-enabled: false
+      message-recall-async-enabled: false
+      user-profile-update-async-enabled: false
+  permission:
+    enabled: true
+    cache-enabled: true
+    cache-ttl-seconds: 300

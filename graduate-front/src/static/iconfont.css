@@ -1,0 +1,167 @@
+/**
+ * Iconfont - 统一图标字体系统
+ *
+ * 使用说明：
+ * 1. 访问 https://www.iconfont.cn/
+ * 2. 创建项目并添加以下图标：
+ *    - 用户图标（user）
+ *    - 锁图标（lock）
+ *    - 对勾图标（check）
+ *    - 二维码图标（qrcode）
+ *    - 刷新图标（refresh）
+ * 3. 下载字体文件并放入 /static/fonts/ 目录：
+ *    - iconfont.woff2
+ *    - iconfont.woff
+ *    - iconfont.ttf
+ *    - iconfont.svg
+ * 4. 更新下方的 @font-face url 路径
+ * 5. 在 App.vue 或 main.js 中全局引入此文件
+ */
+
+/* ========== Font Face Definition ========== */
+@font-face {
+  font-family: 'iconfont';
+  /* 请根据实际文件路径更新以下URL */
+  src: url('./fonts/iconfont.woff2') format('woff2'),
+       url('./fonts/iconfont.woff') format('woff'),
+       url('./fonts/iconfont.ttf') format('truetype'),
+       url('./fonts/iconfont.svg#iconfont') format('svg');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
+/* ========== Base Icon Class ========== */
+.iconfont {
+  font-family: 'iconfont' !important;
+  font-size: 20px;
+  font-style: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1;
+  display: inline-block;
+}
+
+/* ========== Icon-Specific Classes ========== */
+/* 使用示例：<text class="iconfont icon-user"></text> */
+
+/* 用户图标 */
+.icon-user::before {
+  content: '\e001'; /* 请替换为实际的unicode编码 */
+}
+
+/* 锁图标 */
+.icon-lock::before {
+  content: '\e002'; /* 请替换为实际的unicode编码 */
+}
+
+/* 对勾图标 */
+.icon-check::before {
+  content: '\e003'; /* 请替换为实际的unicode编码 */
+}
+
+/* 二维码图标 */
+.icon-qrcode::before {
+  content: '\e004'; /* 请替换为实际的unicode编码 */
+}
+
+/* 刷新图标 */
+.icon-refresh::before {
+  content: '\e005'; /* 请替换为实际的unicode编码 */
+}
+
+/* ========== Size Variants ========== */
+.iconfont.icon-sm {
+  font-size: 16px;
+}
+
+.iconfont.icon-md {
+  font-size: 20px;
+}
+
+.iconfont.icon-lg {
+  font-size: 24px;
+}
+
+.iconfont.icon-xl {
+  font-size: 28px;
+}
+
+/* ========== Color Variants ========== */
+.iconfont.icon-primary {
+  color: #22C55E;
+}
+
+.iconfont.icon-secondary {
+  color: #57534E;
+}
+
+.iconfont.icon-tertiary {
+  color: #A8A29E;
+}
+
+.iconfont.icon-blue {
+  color: #3B82F6;
+}
+
+.iconfont.icon-red {
+  color: #EF4444;
+}
+
+/* ========== Animation Utilities ========== */
+.iconfont.icon-spin {
+  animation: iconSpin 1s linear infinite;
+}
+
+@keyframes iconSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.iconfont.icon-pulse {
+  animation: iconPulse 2s ease-in-out infinite;
+}
+
+@keyframes iconPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
+
+/* ========== Platform-Specific Notes ========== */
+/*
+ * H5平台：完全支持
+ * App平台：完全支持
+ * 小程序平台：
+ * - 微信小程序：支持
+ * - 支付宝小程序：支持
+ * - 百度小程序：支持
+ * - 字节跳动小程序：支持
+ *
+ * 注意事项：
+ * 1. 确保字体文件路径正确
+ * 2. 字体文件总大小建议不超过200KB
+ * 3. 优先使用woff2格式（体积最小）
+ * 4. 在小程序中，需要将字体文件上传到CDN或本地目录
+ * 5. 某些小程序平台可能需要配置允许的字体域名
+ */
+
+/* ========== Fallback for Mini-Programs ========== */
+/*
+ * 如果iconfont加载失败，可以在模板中使用条件编译提供emoji后备：
+ *
+ * <!-- #ifdef H5 || APP-PLUS -->
+ * <text class="iconfont icon-user"></text>
+ * <!-- #endif -->
+ * <!-- #ifdef MP-* -->
+ * <text class="icon-emoji">👤</text>
+ * <!-- #endif */

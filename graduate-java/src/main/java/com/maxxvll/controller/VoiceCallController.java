@@ -1,48 +1,192 @@
 package com.maxxvll.controller;
 
-import com.maxxvll.common.Result;
-import com.maxxvll.common.dto.VoiceCallDTO;
+import com.alibaba.fastjson2.JSON;
 import com.maxxvll.common.BaseController;
+import com.maxxvll.common.Result;
+import com.maxxvll.common.constants.VoiceCallConstants;
+import com.maxxvll.common.dto.VoiceCallDTO;
+import com.maxxvll.common.vo.UserInfoVO;
+import com.maxxvll.common.vo.VoiceCallConfigVO;
+import com.maxxvll.config.VoiceCallProperties;
 import com.maxxvll.component.NettyChannelManager;
 import com.maxxvll.utils.UserContextUtil;
-import com.maxxvll.common.vo.UserInfoVO;
 import io.netty.channel.Channel;
 import io.netty.handler.codec.http.websocketx.TextWebSocketFrame;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
-import com.alibaba.fastjson.JSON;
-
 /**
  * 语音通话控制器
+ * 提供语音通话相关的REST接口，包括发起、接听、拒绝、挂断等操作
+ * 通过WebSocket信令实现WebRTC语音通话的建立和管理
  */
 @Slf4j
 @RestController
 @RequestMapping("/voice-call")
+@Tag(name = "语音通话", description = "语音通话相关接口")
 public class VoiceCallController extends BaseController {
 
     @Resource
     private NettyChannelManager nettyChannelManager;
 
+    @Resource
+    private VoiceCallProperties voiceCallProperties;
+
+    /**
+     * 获取语音通话配置
+     */
+    @GetMapping("/config")
+    public Result<VoiceCallConfigVO> getCallConfig() {
+        VoiceCallConfigVO configVO = new VoiceCallConfigVO();
+        configVO.setSupportedTransports(voiceCallProperties.getSupportedTransports());
+        configVO.setPushBaseUrl(voiceCallProperties.getPushBaseUrl());
+        configVO.setPlayBaseUrl(voiceCallProperties.getPlayBaseUrl());
+        configVO.setIceServers(voiceCallProperties.getIceServers().stream().map(item -> {
+            VoiceCallConfigVO.IceServerVO serverVO = new VoiceCallConfigVO.IceServerVO();
+            serverVO.setUrls(item.getUrls());
+            serverVO.setUsername(item.getUsername());
+            serverVO.setCredential(item.getCredential());
+            return serverVO;
+        }).toList());
+        return success(configVO);
+    }
+
     /**
      * 发起语音呼叫
      */
     @PostMapping("/call")
-    public Result<Void> makeCall(@RequestBody VoiceCallDTO callDTO) {
-        String currentUserId = UserContextUtil.getCurrentUserId();
+    public Result<Void> makeCall(@Valid @RequestBody VoiceCallDTO callDTO) {
+        String currentUserId = getCurrentUserId();
         log.info("用户{}发起语音呼叫，目标用户{}", currentUserId, callDTO.getTargetId());
 
-        // 1. 检查被呼叫人是否在线
+        // 检查被呼叫人是否在线
         Channel calleeChannel = nettyChannelManager.getChannel(callDTO.getTargetId());
         if (calleeChannel == null || !calleeChannel.isActive()) {
-            return Result.fail("对方不在线");
+            return fail("对方不在线");
         }
 
-        // 2. 构造呼叫信令，并注入主叫人信息，方便被叫端展示来电者
-        callDTO.setCallType("1"); // 1-发起呼叫
-        // 注入 caller 信息
+        // 构造呼叫信令，注入主叫人信息
+        callDTO.setCallType(VoiceCallConstants.CallType.CALL);
         callDTO.setFromId(currentUserId);
+        enrichCallerInfo(callDTO);
+
+        String messageJson = JSON.toJSONString(callDTO);
+        calleeChannel.writeAndFlush(new TextWebSocketFrame(messageJson));
+
+        log.info("语音呼叫信令已发送");
+        return success("呼叫已发起");
+    }
+
+    /**
+     * 接听语音呼叫
+     */
+    @PostMapping("/answer")
+    public Result<Void> answerCall(@Valid @RequestBody VoiceCallDTO callDTO) {
+        String currentUserId = getCurrentUserId();
+        log.info("用户{}接听语音呼叫", currentUserId);
+
+        Channel callerChannel = nettyChannelManager.getChannel(callDTO.getTargetId());
+        if (callerChannel == null || !callerChannel.isActive()) {
+            return fail("对方已离线");
+        }
+
+        callDTO.setCallType(VoiceCallConstants.CallType.ANSWER);
+        String messageJson = JSON.toJSONString(callDTO);
+        callerChannel.writeAndFlush(new TextWebSocketFrame(messageJson));
+
+        log.info("语音接听信令已发送");
+        return success("已接听");
+    }
+
+    /**
+     * 拒绝语音呼叫
+     */
+    @PostMapping("/reject")
+    public Result<Void> rejectCall(@Valid @RequestBody VoiceCallDTO callDTO) {
+        String currentUserId = getCurrentUserId();
+        log.info("用户{}拒绝语音呼叫", currentUserId);
+
+        Channel callerChannel = nettyChannelManager.getChannel(callDTO.getTargetId());
+        if (callerChannel == null || !callerChannel.isActive()) {
+            return fail("对方已离线");
+        }
+
+        callDTO.setCallType(VoiceCallConstants.CallType.REJECT);
+        String messageJson = JSON.toJSONString(callDTO);
+        callerChannel.writeAndFlush(new TextWebSocketFrame(messageJson));
+
+        log.info("语音拒绝信令已发送");
+        return success("已拒绝");
+    }
+
+    /**
+     * 挂断语音通话
+     */
+    @PostMapping("/hangup")
+    public Result<Void> hangupCall(@Valid @RequestBody VoiceCallDTO callDTO) {
+        String currentUserId = getCurrentUserId();
+        log.info("用户{}挂断语音通话", currentUserId);
+
+        Channel peerChannel = nettyChannelManager.getChannel(callDTO.getTargetId());
+        if (peerChannel != null && peerChannel.isActive()) {
+            callDTO.setCallType(VoiceCallConstants.CallType.HANGUP);
+            String messageJson = JSON.toJSONString(callDTO);
+            peerChannel.writeAndFlush(new TextWebSocketFrame(messageJson));
+        }
+
+        log.info("语音挂断信令已发送");
+        return success("已挂断");
+    }
+
+    /**
+     * 交换 WebRTC SDP 信令
+     */
+    @PostMapping("/sdp")
+    public Result<Void> exchangeSDP(@Valid @RequestBody VoiceCallDTO callDTO) {
+        String currentUserId = getCurrentUserId();
+
+        Channel peerChannel = nettyChannelManager.getChannel(callDTO.getTargetId());
+        if (peerChannel == null || !peerChannel.isActive()) {
+            return fail("对方不在线");
+        }
+
+        callDTO.setCallType(VoiceCallConstants.CallType.SDP);
+        String messageJson = JSON.toJSONString(callDTO);
+        peerChannel.writeAndFlush(new TextWebSocketFrame(messageJson));
+        log.info("SDP 信令已发送给用户{}", callDTO.getTargetId());
+
+        return success();
+    }
+
+    /**
+     * 交换 ICE candidate 信令
+     */
+    @PostMapping("/ice")
+    public Result<Void> exchangeICE(@Valid @RequestBody VoiceCallDTO callDTO) {
+        String currentUserId = getCurrentUserId();
+
+        Channel peerChannel = nettyChannelManager.getChannel(callDTO.getTargetId());
+        if (peerChannel == null || !peerChannel.isActive()) {
+            return fail("对方不在线");
+        }
+
+        callDTO.setCallType(VoiceCallConstants.CallType.ICE);
+        String messageJson = JSON.toJSONString(callDTO);
+        peerChannel.writeAndFlush(new TextWebSocketFrame(messageJson));
+        log.info("ICE 信令已发送给用户{}", callDTO.getTargetId());
+
+        return success();
+    }
+
+    /**
+     * 注入主叫人信息到 DTO
+     */
+    private void enrichCallerInfo(VoiceCallDTO callDTO) {
         try {
             UserInfoVO caller = UserContextUtil.getCurrentUser();
             if (caller != null) {
@@ -52,158 +196,5 @@ public class VoiceCallController extends BaseController {
         } catch (Exception e) {
             log.warn("获取主叫用户信息失败，跳过注入昵称/头像", e);
         }
-        String messageJson = JSON.toJSONString(callDTO);
-
-        // 3. 发送给被呼叫人
-        calleeChannel.writeAndFlush(new TextWebSocketFrame(messageJson));
-
-        log.info("语音呼叫信令已发送");
-        return Result.success("呼叫已发起");
-    }
-
-    /**
-     * 接听语音呼叫
-     */
-    @PostMapping("/answer")
-    public Result<Void> answerCall(@RequestBody VoiceCallDTO callDTO) {
-        String currentUserId = UserContextUtil.getCurrentUserId();
-        log.info("用户{}接听语音呼叫", currentUserId);
-
-        // 参数校验
-        if (callDTO.getTargetId() == null || callDTO.getTargetId().trim().isEmpty()) {
-            return Result.fail("目标用户 ID 不能为空");
-        }
-
-        // 1. 检查主叫人是否在线
-        Channel callerChannel = nettyChannelManager.getChannel(callDTO.getTargetId());
-        if (callerChannel == null || !callerChannel.isActive()) {
-            return Result.fail("对方已离线");
-        }
-
-        // 2. 构造接听信令
-        callDTO.setCallType("2"); // 2-接听
-        String messageJson = JSON.toJSONString(callDTO);
-
-        // 3. 发送给主叫人
-        callerChannel.writeAndFlush(new TextWebSocketFrame(messageJson));
-
-        log.info("语音接听信令已发送");
-        return Result.success("已接听");
-    }
-
-    /**
-     * 拒绝语音呼叫
-     */
-    @PostMapping("/reject")
-    public Result<Void> rejectCall(@RequestBody VoiceCallDTO callDTO) {
-        String currentUserId = UserContextUtil.getCurrentUserId();
-        log.info("用户{}拒绝语音呼叫", currentUserId);
-
-        // 参数校验
-        if (callDTO.getTargetId() == null || callDTO.getTargetId().trim().isEmpty()) {
-            return Result.fail("目标用户 ID 不能为空");
-        }
-
-        // 1. 检查主叫人是否在线
-        Channel callerChannel = nettyChannelManager.getChannel(callDTO.getTargetId());
-        if (callerChannel == null || !callerChannel.isActive()) {
-            return Result.fail("对方已离线");
-        }
-
-        // 2. 构造拒绝信令
-        callDTO.setCallType("3"); // 3-拒绝
-        String messageJson = JSON.toJSONString(callDTO);
-
-        // 3. 发送给主叫人
-        callerChannel.writeAndFlush(new TextWebSocketFrame(messageJson));
-
-        log.info("语音拒绝信令已发送");
-        return Result.success("已拒绝");
-    }
-
-    /**
-     * 挂断语音通话
-     */
-    @PostMapping("/hangup")
-    public Result<Void> hangupCall(@RequestBody VoiceCallDTO callDTO) {
-        String currentUserId = UserContextUtil.getCurrentUserId();
-        log.info("用户{}挂断语音通话", currentUserId);
-
-        // 参数校验
-        if (callDTO.getTargetId() == null || callDTO.getTargetId().trim().isEmpty()) {
-            return Result.fail("目标用户 ID 不能为空");
-        }
-
-        // 1. 通知对方
-        Channel peerChannel = nettyChannelManager.getChannel(callDTO.getTargetId());
-        if (peerChannel != null && peerChannel.isActive()) {
-            // 2. 构造挂断信令
-            callDTO.setCallType("4"); // 4-挂断
-            String messageJson = JSON.toJSONString(callDTO);
-            peerChannel.writeAndFlush(new TextWebSocketFrame(messageJson));
-        }
-
-        log.info("语音挂断信令已发送");
-        return Result.success("已挂断");
-    }
-
-    /**
-     * 交换 WebRTC SDP 信令
-     */
-    @PostMapping("/sdp")
-    public Result<Void> exchangeSDP(@RequestBody VoiceCallDTO callDTO) {
-        String currentUserId = UserContextUtil.getCurrentUserId();
-        
-        // 参数校验
-        if (callDTO.getTargetId() == null || callDTO.getTargetId().trim().isEmpty()) {
-            return Result.fail("目标用户 ID 不能为空");
-        }
-        if (callDTO.getSdp() == null) {
-            return Result.fail("SDP 数据不能为空");
-        }
-        
-        // 1. 发送给对方
-        Channel peerChannel = nettyChannelManager.getChannel(callDTO.getTargetId());
-        if (peerChannel != null && peerChannel.isActive()) {
-            callDTO.setCallType("5"); // 5-SDP 交换
-            String messageJson = JSON.toJSONString(callDTO);
-            peerChannel.writeAndFlush(new TextWebSocketFrame(messageJson));
-            log.info("SDP 信令已发送给用户{}", callDTO.getTargetId());
-        } else {
-            log.warn("用户{}不在线，无法发送 SDP 信令", callDTO.getTargetId());
-            return Result.fail("对方不在线");
-        }
-
-        return Result.success();
-    }
-
-    /**
-     * 交换 ICE candidate 信令
-     */
-    @PostMapping("/ice")
-    public Result<Void> exchangeICE(@RequestBody VoiceCallDTO callDTO) {
-        String currentUserId = UserContextUtil.getCurrentUserId();
-        
-        // 参数校验
-        if (callDTO.getTargetId() == null || callDTO.getTargetId().trim().isEmpty()) {
-            return Result.fail("目标用户 ID 不能为空");
-        }
-        if (callDTO.getCandidate() == null) {
-            return Result.fail("ICE candidate 数据不能为空");
-        }
-        
-        // 1. 发送给对方
-        Channel peerChannel = nettyChannelManager.getChannel(callDTO.getTargetId());
-        if (peerChannel != null && peerChannel.isActive()) {
-            callDTO.setCallType("6"); // 6-ICE 交换
-            String messageJson = JSON.toJSONString(callDTO);
-            peerChannel.writeAndFlush(new TextWebSocketFrame(messageJson));
-            log.info("ICE 信令已发送给用户{}", callDTO.getTargetId());
-        } else {
-            log.warn("用户{}不在线，无法发送 ICE 信令", callDTO.getTargetId());
-            return Result.fail("对方不在线");
-        }
-
-        return Result.success();
     }
 }

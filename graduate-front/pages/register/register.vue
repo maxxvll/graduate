@@ -357,11 +357,7 @@ const sendCode = async () => {
   try {
     isSendingCode.value = true
     // 假设发送验证码接口为 /user/sendEmailCode
-    await service({
-      url: '/user/sendEmailCode',
-      method: 'post',
-      data: { email: formData.value.email }
-    })
+    await service.post('/user/sendEmailCode', { email: formData.value.email })
     uni.$u.toast('验证码已发送')
     
     // 开始倒计时
@@ -385,11 +381,7 @@ const submitForm = async () => {
     if (valid) {
       isLoading.value = true
       // 调用注册接口
-      await service({
-        url: '/user/register',
-        method: 'post',
-        data: formData.value
-      })
+      await service.post('/user/register', formData.value)
       await uni.$u.toast('注册成功，即将跳转到登录页')
       setTimeout(() => {
         uni.redirectTo({ url: '/pages/login/login' })

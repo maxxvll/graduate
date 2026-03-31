@@ -158,13 +158,13 @@ const submitPasswordLogin = async () => {
     isLoading.value = true
 
     // 调用后端登录接口
-    const res = await service.post('/auth/login', {
-      account: formData.value.account,
+    const res = await service.post('/user/login', {
+      username: formData.value.account,
       password: formData.value.password
     })
 
     if (res.code === 200) {
-      const { token, userInfo } = res.data
+      const token = res.data
 
       // 保存 token
       saveLoginToken(token)

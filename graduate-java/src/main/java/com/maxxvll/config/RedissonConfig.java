@@ -3,18 +3,17 @@ package com.maxxvll.config;
 import org.redisson.Redisson;
 import org.redisson.api.RedissonClient;
 import org.redisson.config.Config;
+import org.redisson.config.ConstantDelay;
+import org.redisson.config.SingleServerConfig;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/**
- * Redisson配置类（适配你的application.yml配置）
- * 核心：读取spring.data.redis下的host/port/password等配置，而非url
- */
+import java.time.Duration;
+
 @Configuration
 public class RedissonConfig {
 
-    // 读取spring.data.redis下的配置（完全匹配你的yml）
     @Value("${spring.data.redis.host:127.0.0.1}")
     private String redisHost;
 
@@ -30,33 +29,23 @@ public class RedissonConfig {
     @Value("${spring.data.redis.timeout:5000}")
     private int redisTimeout;
 
-    /**
-     * 创建RedissonClient实例（适配你的Redis配置）
-     */
-    @Bean(destroyMethod = "shutdown") // 容器销毁时自动关闭
+    @Bean(destroyMethod = "shutdown")
     public RedissonClient redissonClient() {
         Config config = new Config();
+        config.setPassword(redisPassword == null || redisPassword.isBlank() ? null : redisPassword);
+        config.setTcpKeepAlive(true);
+        config.setTcpNoDelay(true);
 
-        // 拼接Redis地址：redis://host:port（适配你的host+port配置）
-        String redisAddress = String.format("redis://%s:%d", redisHost, redisPort);
-
-        // 单机模式配置（完全匹配你的Redis参数）
-        config.useSingleServer()
-                .setAddress(redisAddress)
-                // 处理密码：空字符串转为null（Redisson要求无密码时传null）
-                .setPassword(redisPassword.isBlank() ? null : redisPassword)
-                .setDatabase(redisDatabase)
-                .setTimeout(redisTimeout) // 连接超时时间（匹配你的5000ms）
-                .setConnectionPoolSize(50) // 连接池大小（匹配你的lettuce.pool.max-active=50）
-                .setConnectionMinimumIdleSize(5) // 最小空闲连接（匹配你的lettuce.pool.min-idle=5）
-                .setIdleConnectionTimeout(180000) // 空闲连接超时（参考你的datasource配置）
-                .setRetryAttempts(3) // 连接失败重试次数
-                .setRetryInterval(1500) // 重试间隔时间（毫秒）
-                .setPingConnectionInterval(30000) // 心跳检测间隔
-                .setKeepAlive(true) // 保持连接活跃
-                .setTcpNoDelay(true) // 禁用Nagle算法，降低延迟
-                .setConnectTimeout(10000) // 连接超时时间
-                .setTimeout(5000); // 命令执行超时时间
+        SingleServerConfig singleServerConfig = config.useSingleServer();
+        singleServerConfig.setAddress(String.format("redis://%s:%d", redisHost, redisPort));
+        singleServerConfig.setDatabase(redisDatabase);
+        singleServerConfig.setTimeout(redisTimeout);
+        singleServerConfig.setConnectionPoolSize(50);
+        singleServerConfig.setConnectionMinimumIdleSize(5);
+        singleServerConfig.setIdleConnectionTimeout(180_000);
+        singleServerConfig.setRetryAttempts(3);
+        singleServerConfig.setRetryDelay(new ConstantDelay(Duration.ofMillis(1_500)));
+        singleServerConfig.setConnectTimeout(10_000);
 
         return Redisson.create(config);
     }

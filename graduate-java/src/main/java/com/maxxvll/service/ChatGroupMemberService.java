@@ -7,7 +7,9 @@ import com.maxxvll.common.vo.GroupMemberVO;
 import com.maxxvll.domain.ChatGroupMember;
 import com.baomidou.mybatisplus.extension.service.IService;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 
 /**
 * @author 20570
@@ -45,6 +47,15 @@ public interface ChatGroupMemberService extends IService<ChatGroupMember> {
     List<GroupMemberVO> getGroupMembers(Long groupId);
 
     /**
+     * 获取群内未退出成员 ID 列表。
+     */
+    List<String> getActiveMemberIds(Long groupId);
+
+    Map<Long, List<String>> getActiveMemberIdsByGroupIds(Collection<Long> groupIds);
+
+    List<Long> getActiveGroupIdsByUserId(String userId);
+
+    /**
      * 获取群成员详情
      * @param groupId 群ID
      * @param userId 用户ID
@@ -67,6 +78,10 @@ public interface ChatGroupMemberService extends IService<ChatGroupMember> {
      * @return 角色：1-群主，2-管理员，3-普通成员，null-不在群中
      */
     Integer getUserRole(Long groupId, String userId);
+
+    boolean hasPermission(Long groupId, String userId, int requiredRole);
+
+    void checkPermission(Long groupId, String userId, int requiredRole, String errorMessage);
 
     /**
      * 获取群成员数量

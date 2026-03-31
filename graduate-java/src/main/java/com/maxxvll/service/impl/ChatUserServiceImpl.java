@@ -1,6 +1,5 @@
 package com.maxxvll.service.impl;
 
-import cn.dev33.satoken.secure.BCrypt;
 import cn.dev33.satoken.stp.SaTokenInfo;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.util.StrUtil;
@@ -22,6 +21,7 @@ import com.maxxvll.utils.RedissonCacheUtil;
 import com.maxxvll.utils.UserContextUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,6 +44,8 @@ public class ChatUserServiceImpl extends ServiceImpl<ChatUserMapper, ChatUser>
     private LoginEventProducer loginEventProducer;
     @Resource
     private RedissonCacheUtil redissonCacheUtils;
+    @Resource
+    private PasswordEncoder passwordEncoder;
     @Override
     public String login(UserLoginDTO userLoginDTO) {
         String username = userLoginDTO.getUsername();
@@ -63,7 +65,7 @@ public class ChatUserServiceImpl extends ServiceImpl<ChatUserMapper, ChatUser>
         if(chatUser.getStatus()!=1){
             throw new BusinessException("用户已被禁用");
         }
-        if(!BCrypt.checkpw(userLoginDTO.getPassword(),chatUser.getPassword())){
+        if(!passwordEncoder.matches(userLoginDTO.getPassword(), chatUser.getPassword())){
             handleLoginFail(username);
             throw new BusinessException("用户名或密码错误");
         }
@@ -92,7 +94,7 @@ public class ChatUserServiceImpl extends ServiceImpl<ChatUserMapper, ChatUser>
         }
 
         // 3. 使用 Sa-Token 内置 BCrypt 加密密码
-        String hashedPassword = BCrypt.hashpw(userRegisterDTO.getPassword(), BCrypt.gensalt());
+        String hashedPassword = passwordEncoder.encode(userRegisterDTO.getPassword());
 
         // 4. 构建用户对象并入库
         ChatUser chatUser = new ChatUser();
@@ -106,16 +108,33 @@ public class ChatUserServiceImpl extends ServiceImpl<ChatUserMapper, ChatUser>
 
     /**
      * 获取当前用户信息。
-     * 每次实时从 DB 读取，避免 Sa-Token 会话缓存过期导致头像/昵称不同步。
+     * 优化：使用 Redis 缓存（TTL 30 分钟），减少数据库查询
      */
     @Override
     public UserInfoVO getCurrentUserInfo() {
         String userId = UserContextUtil.getCurrentUserId();
+        String cacheKey = String.format("user:info:%s", userId);
+
+        // 先从 Redis 缓存获取
+        UserInfoVO cachedInfo = redissonCacheUtils.get(cacheKey);
+        if (cachedInfo != null) {
+            log.debug("用户信息缓存命中，userId: {}", userId);
+            // 同步刷新 Sa-Token 缓存
+            UserContextUtil.setCurrentUser(cachedInfo);
+            return cachedInfo;
+        }
+
+        // 缓存未命中，查询数据库
         ChatUser chatUser = getById(userId);
         if (chatUser == null) {
             throw new BusinessException("用户不存在");
         }
         UserInfoVO vo = BeanConvertUtil.convert(chatUser, UserInfoVO.class);
+
+        // 缓存 30 分钟
+        redissonCacheUtils.set(cacheKey, vo, 30, TimeUnit.MINUTES);
+        log.info("用户信息已缓存，userId: {}, TTL: 30分钟", userId);
+
         // 同步刷新 Sa-Token 缓存（确保其他接口读到的也是最新数据）
         UserContextUtil.setCurrentUser(vo);
         return vo;
@@ -161,29 +180,38 @@ public class ChatUserServiceImpl extends ServiceImpl<ChatUserMapper, ChatUser>
         updateUser.setPhone(StrUtil.isBlank(updateInfoDTO.getPhone()) ? chatUser.getPhone() : updateInfoDTO.getPhone());
         updateUser.setEmail(StrUtil.isBlank(updateInfoDTO.getEmail()) ? chatUser.getEmail() : updateInfoDTO.getEmail());
         updateUser.setExtInfo(updateInfoDTO.getExtInfo()); // 扩展信息
-        updateUser.setUpdatedAt(new Date());
+        updateUser.setUpdateTime(new Date());
 
         // 更新数据库
         this.updateById(updateUser);
-        log.info("用户信息更新成功，userId: {}, 头像路径: {}", loginId, avatar);
+        log.info(String.format("用户信息更新成功，userId: %s, 头像路径: %s", loginId, avatar));
+
+        // 清除 Redis 缓存
+        String cacheKey = String.format("user:info:%s", loginId);
+        redissonCacheUtils.delete(cacheKey);
+        log.info("用户信息缓存已清除，userId: {}", loginId);
 
         // 刷新 Sa-Token 会话缓存，避免刷新页面后 getInfo 返回老数据
         ChatUser refreshed = this.getById(loginId);
         if (refreshed != null) {
-            UserContextUtil.setCurrentUser(BeanConvertUtil.convert(refreshed, UserInfoVO.class));
+            UserInfoVO userInfoVO = BeanConvertUtil.convert(refreshed, UserInfoVO.class);
+            UserContextUtil.setCurrentUser(userInfoVO);
+            // 重新缓存更新后的用户信息
+            redissonCacheUtils.set(cacheKey, userInfoVO, 30, TimeUnit.MINUTES);
         }
     }
     @Override
     public void updatePassword(UserUpdatePasswordDTO updatePasswordDTO) {
-        if(!updatePasswordDTO.getNewPassword().equals(updatePasswordDTO.getOldPassword())){
-            throw new BusinessException("两次输入的密码不一致");
+        // 修复：新密码不能与旧密码相同
+        if(updatePasswordDTO.getNewPassword().equals(updatePasswordDTO.getOldPassword())){
+            throw new BusinessException("新密码不能与旧密码相同");
         }
         String loginId = UserContextUtil.getCurrentUserId();
         ChatUser chatUser = chatUserMapper.selectById(loginId);
-        if(!BCrypt.checkpw(updatePasswordDTO.getOldPassword(), chatUser.getPassword())){
+        if(!passwordEncoder.matches(updatePasswordDTO.getOldPassword(), chatUser.getPassword())){
             throw new BusinessException("原密码不正确");
         }
-        chatUser.setPassword(BCrypt.hashpw(updatePasswordDTO.getNewPassword(), BCrypt.gensalt()));
+        chatUser.setPassword(passwordEncoder.encode(updatePasswordDTO.getNewPassword()));
         chatUserMapper.updateById(chatUser);
         StpUtil.logout(loginId);
     }
@@ -215,6 +243,23 @@ public class ChatUserServiceImpl extends ServiceImpl<ChatUserMapper, ChatUser>
                         .eq(ChatUser::getUsername, username)
         );
         return count > 0;
+    }
+
+    @Override
+    public boolean existsByUsername(String username) {
+        return checkUsernameExist(username);
+    }
+
+    @Override
+    public boolean existsByEmail(String email) {
+        if (email == null || email.isBlank()) {
+            return false;
+        }
+        Long count = chatUserMapper.selectCount(
+                new LambdaQueryWrapper<ChatUser>()
+                        .eq(ChatUser::getEmail, email)
+        );
+        return count != null && count > 0;
     }
 
     @Override
@@ -259,11 +304,11 @@ public class ChatUserServiceImpl extends ServiceImpl<ChatUserMapper, ChatUser>
         }
         if (lockTime > 0) {
             redissonCacheUtils.set(lockKey, "1", lockTime, TimeUnit.SECONDS);
-            throw new BusinessException("账号已锁定，请" + lockTime + "秒后重试");
+            throw new BusinessException(String.format("账号已锁定，请%d秒后重试", lockTime));
         }
-        int remainTry=5-(failCount%5);
-        if(remainTry>0 && remainTry<5){
-            throw new BusinessException("密码错误，还剩 " + remainTry + " 次尝试机会");
+        int remainTry = 5 - (failCount % 5);
+        if (remainTry > 0 && remainTry < 5) {
+            throw new BusinessException(String.format("密码错误，还剩 %d 次尝试机会", remainTry));
         }
         throw new BusinessException("密码错误");
 
@@ -299,40 +344,6 @@ public class ChatUserServiceImpl extends ServiceImpl<ChatUserMapper, ChatUser>
         }
 
         return user;
-    }
-
-    /**
-     * 检查用户名是否存在
-     */
-    @Override
-    public boolean existsByUsername(String username) {
-        if (username == null || username.isEmpty()) {
-            return false;
-        }
-
-        Long count = chatUserMapper.selectCount(
-                new LambdaQueryWrapper<ChatUser>()
-                        .eq(ChatUser::getUsername, username)
-        );
-
-        return count > 0;
-    }
-
-    /**
-     * 检查邮箱是否存在
-     */
-    @Override
-    public boolean existsByEmail(String email) {
-        if (email == null || email.isEmpty()) {
-            return false;
-        }
-
-        Long count = chatUserMapper.selectCount(
-                new LambdaQueryWrapper<ChatUser>()
-                        .eq(ChatUser::getEmail, email)
-        );
-
-        return count > 0;
     }
 }
 

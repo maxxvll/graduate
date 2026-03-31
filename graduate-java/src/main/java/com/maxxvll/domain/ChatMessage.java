@@ -1,28 +1,20 @@
 package com.maxxvll.domain;
 
-import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.fasterxml.jackson.databind.ser.std.ToStringSerializer;
-import java.util.Date;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+
+import java.util.Date;
 
 /**
  * 聊天消息记录表（精简版）
  * @TableName chat_message
  */
-@TableName(value ="chat_message")
+@TableName(value = "chat_message")
 @Data
-public class ChatMessage {
-    /**
-     * 消息唯一主键ID（雪花算法，插入前生成，保证前端可直接使用）
-     * 使用 ToStringSerializer 序列化为字符串，防止 JS Number 精度丢失
-     */
-    @TableId(type = IdType.ASSIGN_ID)
-    @JsonSerialize(using = ToStringSerializer.class)
-    private Long id;
+@EqualsAndHashCode(callSuper = true)
+public class ChatMessage extends BaseEntity {
 
     /**
      * 消息唯一业务编号（客户端生成，用于去重，避免重复发送）
@@ -140,20 +132,28 @@ public class ChatMessage {
     private Integer isSensitive;
 
     /**
+     * 是否已编辑：0-否，1-是
+     */
+    private Integer isEdited;
+
+    /**
+     * 编辑时间
+     */
+    private Date editTime;
+
+    /**
      * 软删除标识：0-未删除，1-已删除
      */
     private Integer isDeleted;
 
     /**
-     * 记录创建时间
+     * 是否已撤回：0-否，1-是
      */
-    private Date createdAt;
+    private Integer isRecalled;
 
     /**
-     * 记录更新时间
+     * 语音时长（秒）
      */
-    private Date updatedAt;
-    
     private Integer duration;
 
     /**

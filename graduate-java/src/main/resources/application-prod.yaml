@@ -1,0 +1,211 @@
+# ================================================
+# 生产环境配置
+# ================================================
+#
+# 重要提示：
+# 1. 所有敏感配置必须使用环境变量或加密配置
+# 2. 密码等敏感信息不要硬编码在配置文件中
+# 3. 使用 ENC(...) 包裹加密值，例如：password: ENC(加密后的密文)
+# 4. 加密密钥通过 -Djasypt.encryptor.password=xxx 传入
+#
+spring:
+  # 数据库配置
+  datasource:
+    url: jdbc:mysql://${DB_HOST:mysql}:3306/chat?serverTimezone=GMT%2B8&useUnicode=true&characterEncoding=utf8&autoReconnect=true&allowMultiQueries=true&useSSL=true&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      pool-name: HikariCP-Datasource
+      minimum-idle: 10
+      maximum-pool-size: 50
+      idle-timeout: 300000
+      max-lifetime: 1800000
+      connection-timeout: 30000
+      leak-detection-threshold: 60000
+      connection-test-query: SELECT 1
+
+  # Redis配置
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
+      database: 0
+      timeout: 5000
+      lettuce:
+        pool:
+          max-active: 100
+          max-wait: 5000ms
+          max-idle: 50
+          min-idle: 10
+          shutdown-timeout: 200ms
+        client-name: graduate-app
+
+  # Kafka配置
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      retries: 5
+      acks: all
+      batch-size: 65536
+      buffer-memory: 16777216
+      properties:
+        spring.json.type.mapping: "event:com.maxxvll.common.event.LoginEvent"
+    consumer:
+      key-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.deserializer.key.delegate.class: org.apache.kafka.common.serialization.StringDeserializer
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+        spring.json.trusted.packages: com.maxxvll.common.event
+        spring.json.value.default.type: com.maxxvll.common.event.LoginEvent
+        spring.json.type.mapping: "event:com.maxxvll.common.event.LoginEvent"
+      group-id: ${KAFKA_CONSUMER_GROUP:login-log-group}
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      max-poll-records: 500
+    listener:
+      type: batch
+      concurrency: 3
+      ack-mode: manual
+
+# MinIO配置
+minio:
+  endpoint: ${MINIO_ENDPOINT}
+  access-key: ${MINIO_ACCESS_KEY}
+  secret-key: ${MINIO_SECRET_KEY}
+  default-bucket: file-storage-bucket
+  avatar-bucket: chat-avatars-public
+
+# WebSocket配置
+ws:
+  host: 0.0.0.0
+  port: ${WS_PORT:5051}
+  auth:
+    max-connections-per-user: 5
+    max-connections-per-ip: 20
+    connection-rate-limit: 20
+  heartbeat:
+    reader-idle-time: 120
+    writer-idle-time: 0
+    all-idle-time: 60
+
+# 日志配置 - 生产环境
+logging:
+  level:
+    root: warn
+    com.maxxvll: info
+    org.springframework: warn
+    org.springframework.kafka: warn
+    com.mysql.cj: warn
+    org.springframework.data.redis: warn
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n"
+  file:
+    name: /app/logs/application.log
+    max-size: 100MB
+    max-history: 30
+    total-size-cap: 3GB
+
+# Actuator配置 - 生产环境限制暴露
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when_authorized
+      probes:
+        enabled: true
+  health:
+    elasticsearch:
+      enabled: false
+    rabbitmq:
+      enabled: false
+    kafka:
+      enabled: true
+    redis:
+      enabled: true
+    db:
+      enabled: true
+
+# Sa-Token配置
+sa-token:
+  token-name: satoken
+  timeout: 2592000
+  active-timeout: -1
+  is-concurrent: true
+  is-share: false
+  token-style: uuid
+  is-log: false
+  jwt-secret-key: ${SA_TOKEN_SECRET_KEY}
+  enabled: true
+  allow-cross-origin: true
+  allow-origin: ${CORS_ALLOWED_ORIGINS}
+
+# DeepSeek API
+deepseek:
+  api:
+    url: ${DEEPSEEK_API_URL:https://api.deepseek.com/v1/chat/completions}
+    key: ${DEEPSEEK_API_KEY}
+
+# 邮件配置
+spring.mail:
+  host: ${MAIL_HOST:smtp.qq.com}
+  username: ${MAIL_USERNAME}
+  password: ${MAIL_PASSWORD}
+  properties:
+    mail.smtp.ssl.enable: true
+    mail.smtp.port: 465
+
+# Netty配置
+netty:
+  boss-threads: 2
+  worker-threads: 0
+
+# ================================================
+# 应用配置
+# ================================================
+app:
+  chat:
+    message-retention-days: 30
+    retention-cleanup-cron: 0 10 4 * * ?
+  kafka:
+    chat:
+      consumer-mode: batch
+    features:
+      global-kafka-enabled: true
+      email-async-enabled: true
+      friend-notification-async-enabled: true
+      audit-log-async-enabled: true
+      group-notification-async-enabled: true
+      file-upload-log-async-enabled: true
+      message-recall-async-enabled: true
+      user-profile-update-async-enabled: true
+  permission:
+    enabled: true
+    cache-enabled: true
+    cache-ttl-seconds: 600
+  file:
+    upload-path: /app/uploads
+    access-url:
+  voice-call:
+    supported-transports:
+      - webrtc
+      - stream
+    ice-servers:
+      - urls:
+          - ${VOICE_CALL_STUN_URL:stun:stun.l.google.com:19302}
+        username: ${VOICE_CALL_STUN_USERNAME:}
+        credential: ${VOICE_CALL_STUN_CREDENTIAL:}
+
+# 权限配置
+app.permission:
+  enabled: true
+  cache-enabled: true
+  cache-ttl-seconds: 600

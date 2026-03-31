@@ -1,408 +1,609 @@
+import { isAppPlusRuntime, supportsBrowserDom, waitForPlusReady } from './runtime'
+
+const RETENTION_DAYS = 15
+const RETENTION_MS = RETENTION_DAYS * 24 * 60 * 60 * 1000
+
+const SQLITE_DB_NAME = 'graduateChatCache'
+const SQLITE_DB_PATH = '_doc/graduate-chat-cache.db'
+const SQLITE_TABLE = 'chat_message_cache'
+
+const IDB_NAME = 'graduate-chat-cache'
+const IDB_VERSION = 1
+const IDB_STORE = 'messages'
+const IDB_INDEX_SESSION = 'sessionId'
+const IDB_INDEX_SEND_TIME = 'sendTimeMs'
+
+const FALLBACK_STORAGE_KEY = 'chat_message_cache_fallback_v2'
+const DEVICE_FLAG_PREFIX = 'chat_device_initialized_'
+const MAX_FALLBACK_MESSAGES_PER_SESSION = 400
+
+const isFiniteNumber = (value) => Number.isFinite(Number(value))
+
+const normalizeTimestamp = (value) => {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.getTime()
+  }
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value > 1e12 ? value : value * 1000
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed) return Date.now()
+
+    if (/^\d+$/.test(trimmed)) {
+      const numeric = Number(trimmed)
+      return numeric > 1e12 ? numeric : numeric * 1000
+    }
+
+    const parsed = Date.parse(trimmed)
+    if (!Number.isNaN(parsed)) {
+      return parsed
+    }
+  }
+
+  return Date.now()
+}
+
+const normalizeText = (value) => String(value ?? '').trim()
+
+const buildCacheKey = (message) => {
+  const messageNo = normalizeText(message.messageNo || message.message_no)
+  if (messageNo) {
+    return `messageNo:${messageNo}`
+  }
+
+  const messageId = normalizeText(message.id || message.messageId)
+  if (messageId) {
+    return `id:${messageId}`
+  }
+
+  const sessionId = normalizeText(message.sessionId || message.session_id)
+  const senderId = normalizeText(message.senderId || message.sender_id)
+  const sendTime = normalizeTimestamp(message.sendTime || message.send_time || message.createdAt)
+  return `local:${sessionId}:${senderId}:${sendTime}:${Math.random().toString(36).slice(2, 8)}`
+}
+
+const sortMessagesAsc = (list) =>
+  [...list].sort((left, right) => {
+    const delta = normalizeTimestamp(left.sendTime) - normalizeTimestamp(right.sendTime)
+    if (delta !== 0) return delta
+    return String(left.messageNo || left.id || '').localeCompare(String(right.messageNo || right.id || ''))
+  })
+
+const dedupeMessages = (list) => {
+  const byCacheKey = new Map()
+  list.forEach((item) => {
+    if (!item) return
+    byCacheKey.set(item.cacheKey, item)
+  })
+  return [...byCacheKey.values()]
+}
+
+const toPersistedPayload = (message, sessionIdOverride = '') => {
+  const sessionId = normalizeText(sessionIdOverride || message.sessionId || message.session_id)
+  if (!sessionId) return null
+
+  const sendTimeMs = normalizeTimestamp(message.sendTime || message.send_time || message.createdAt)
+  const sendTime = new Date(sendTimeMs).toISOString()
+  const messageNo = normalizeText(message.messageNo || message.message_no)
+  const messageId = normalizeText(message.id || message.messageId)
+
+  const payload = {
+    id: messageId,
+    messageNo,
+    sessionId,
+    sessionType: Number(message.sessionType || message.session_type || 1),
+    senderId: normalizeText(message.senderId || message.sender_id),
+    receiverId: normalizeText(message.receiverId || message.receiver_id),
+    messageType: Number(message.messageType || message.message_type || 1),
+    content: String(message.content || ''),
+    fileUrl: String(message.fileUrl || message.file_url || ''),
+    fileName: String(message.fileName || message.file_name || ''),
+    fileSize: Number(message.fileSize || message.file_size || 0),
+    duration: Number(message.duration || 0),
+    sendTime,
+    status: Number(message.status || 0),
+    contentReplaced: String(message.contentReplaced || message.content_replaced || ''),
+    senderAvatar: String(message.senderAvatar || message.sender_avatar || ''),
+    senderName: String(message.senderName || message.sender_name || ''),
+    clientStatus: String(message.clientStatus || message.send_status || ''),
+  }
+
+  return {
+    cacheKey: buildCacheKey(payload),
+    sessionId,
+    messageNo: messageNo || null,
+    messageId: messageId || null,
+    sendTimeMs,
+    updatedAtMs: Date.now(),
+    payload,
+  }
+}
+
+const isExpiredRecord = (record, cutoffMs) => Number(record?.sendTimeMs || 0) < cutoffMs
+
 class ChatStorage {
   constructor() {
-    this.dbName = 'chatDB'
-    this.dbPath = '_doc/chat.db'
-    this.isApp = false
-    // 统一使用一个 Storage Key，避免分 Key 导致的查询混乱
-    this.UNIFIED_STORAGE_KEY = 'chat_unified_message_history'
-    // 每个会话最多缓存的消息条数，防止 Storage 超出 5MB 上限
-    this.MAX_MESSAGES_PER_SESSION = 200
-    this.init()
+    this.sqliteReady = false
+    this.sqliteReadyPromise = null
+    this.sqliteDisabled = false
+    this.indexedDbPromise = null
+    this.indexedDbDisabled = false
   }
 
-  // 初始化
-  init() {
-    // #ifdef APP-PLUS
-    this.isApp = true
-    plus.sqlite.openDatabase({
-      name: this.dbName,
-      path: this.dbPath,
-      success: () => {
-        console.log('ChatStorage: App端数据库打开成功')
-        this.createTable()
-      },
-      fail: (err) => {
-        console.error('ChatStorage: App端数据库打开失败，降级为Storage', err)
-        this.isApp = false
-      }
-    })
-    // #endif
+  getRetentionCutoffMs() {
+    return Date.now() - RETENTION_MS
   }
 
-  // App端表结构：增加完整字段，支持文件/语音/图片
-  createTable() {
-    if (!this.isApp) return
-    plus.sqlite.executeSql({
-      name: this.dbName,
-      sql: `CREATE TABLE IF NOT EXISTS messages (
-        id TEXT PRIMARY KEY,
-        messageNo TEXT,
-        session_id TEXT,
-        session_type INTEGER,
-        sender_id TEXT,
-        receiver_id TEXT,
-        message_type INTEGER,
-        content TEXT,
-        send_time TEXT,
-        file_url TEXT,
-        file_name TEXT,
-        file_size INTEGER,
-        file_type TEXT,
-        duration INTEGER,
-        avatar TEXT,
-        send_status TEXT,
-        extra_json TEXT
-      )`,
-      success: () => console.log('ChatStorage: 消息表创建成功'),
-      fail: (err) => console.error('ChatStorage: 创建表失败', err)
-    })
+  normalizeMessage(message, sessionId = '') {
+    return toPersistedPayload(message, sessionId)
   }
 
-  // 统一字段名，兼容驼峰和下划线，完整保存所有字段
-  _normalizeMessage(msg) {
-    if (!msg) return null
-    // 兼容 sessionId 和 session_id
-    const sessionId = msg.sessionId || msg.session_id
-    return {
-      id: String(msg.id || msg.messageId || Date.now()),
-      messageNo: msg.messageNo || '',
-      session_id: String(sessionId || ''), // 【核心】强制转字符串
-      session_type: msg.sessionType || msg.session_type || 1,
-      sender_id: msg.senderId || msg.sender_id || msg.sender || '',
-      receiver_id: msg.receiverId || msg.receiver_id || '',
-      message_type: Number(msg.messageType || msg.message_type || 1),
-      content: msg.content || '',
-      send_time: msg.sendTime || msg.send_time || msg.time || new Date().toISOString(),
-      file_url: msg.fileUrl || msg.file_url || '',
-      file_name: msg.fileName || msg.file_name || '',
-      file_size: msg.fileSize || msg.file_size || 0,
-      file_type: msg.fileType || msg.file_type || '',
-      duration: msg.duration ? Number(msg.duration) : null,
-      avatar: msg.avatar || '',
-      send_status: msg.send_status || 'success',
-      // 把其他可能的字段存到 extra_json 里，防止丢失
-      extra_json: JSON.stringify(msg)
+  normalizeMessages(sessionId, messages = []) {
+    const cutoffMs = this.getRetentionCutoffMs()
+    return dedupeMessages(
+      messages
+        .map((message) => this.normalizeMessage(message, sessionId))
+        .filter((record) => record && !isExpiredRecord(record, cutoffMs)),
+    )
+  }
+
+  async resolveDriver() {
+    if (isAppPlusRuntime() && !this.sqliteDisabled) {
+      const ready = await this.ensureSqliteReady()
+      if (ready) return 'sqlite'
     }
-  }
 
-  // 1. 插入单条消息（核心方法）
-  insertMessage(msg) {
-    return new Promise((resolve, reject) => {
-      try {
-        const normalizedMsg = this._normalizeMessage(msg)
-        if (!normalizedMsg.session_id) {
-          console.error('ChatStorage: 消息缺少 session_id，无法存储', msg)
-          return reject(new Error('缺少 session_id'))
-        }
-
-        // #ifdef APP-PLUS
-        if (this.isApp) {
-          plus.sqlite.executeSql({
-            name: this.dbName,
-            sql: `INSERT OR REPLACE INTO messages 
-              (id, messageNo, session_id, session_type, sender_id, receiver_id, message_type, content, send_time, file_url, file_name, file_size, file_type, duration, avatar, send_status, extra_json) 
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            args: [
-              normalizedMsg.id, normalizedMsg.messageNo, normalizedMsg.session_id, normalizedMsg.session_type,
-              normalizedMsg.sender_id, normalizedMsg.receiver_id, normalizedMsg.message_type, normalizedMsg.content,
-              normalizedMsg.send_time, normalizedMsg.file_url, normalizedMsg.file_name, normalizedMsg.file_size,
-              normalizedMsg.file_type, normalizedMsg.duration, normalizedMsg.avatar, normalizedMsg.send_status,
-              normalizedMsg.extra_json
-            ],
-            success: () => {
-              console.log('ChatStorage: App端消息插入成功', normalizedMsg.id)
-              resolve(true)
-            },
-            fail: (err) => {
-              console.error('ChatStorage: App端插入失败', err)
-              reject(err)
-            }
-          })
-          return
-        }
-        // #endif
-
-        // H5/小程序端：统一存储，完整保存
-        const allMessages = this._getAllStorageMessages()
-        // 去重：messageNo 为空时不参与匹配，防止空值误匹配
-        const existIndex = allMessages.findIndex(item =>
-          item.id === normalizedMsg.id ||
-          (normalizedMsg.messageNo && item.messageNo === normalizedMsg.messageNo)
-        )
-        if (existIndex !== -1) {
-          allMessages[existIndex] = { ...allMessages[existIndex], ...normalizedMsg }
-        } else {
-          allMessages.push(normalizedMsg)
-        }
-        // 写入本地磁盘（真正的持久化）
-        uni.setStorageSync(this.UNIFIED_STORAGE_KEY, JSON.stringify(allMessages))
-        console.log('ChatStorage: Storage端消息插入成功', normalizedMsg.id)
-        resolve(true)
-      } catch (err) {
-        console.error('ChatStorage: 插入消息异常', err)
-        reject(err)
-      }
-    })
-  }
-
-  // 2. 批量插入消息（H5 端 O(N) 单次读写优化，App 端沿用逐条 SQLite 插入）
-  insertMessages(sessionId, msgs) {
-    if (!msgs || msgs.length === 0) return Promise.resolve([])
-
-    // #ifdef APP-PLUS
-    if (this.isApp) {
-      return Promise.all(msgs.map(msg => this.insertMessage({ ...msg, session_id: sessionId })))
+    if (supportsBrowserDom() && !this.indexedDbDisabled) {
+      const db = await this.ensureIndexedDbReady()
+      if (db) return 'indexeddb'
     }
-    // #endif
 
-    // H5/小程序端：批量 upsert，全程只读写一次 Storage
-    return new Promise((resolve, reject) => {
-      try {
-        const normalizedList = msgs
-          .map(msg => this._normalizeMessage({ ...msg, session_id: sessionId }))
-          .filter(m => m && m.session_id)
-        if (normalizedList.length === 0) return resolve([])
-        this._batchUpsertStorage(normalizedList)
-        resolve(normalizedList)
-      } catch (err) {
-        console.error('ChatStorage: 批量插入失败', err)
-        reject(err)
-      }
-    })
+    return 'storage'
   }
 
-  // 3. 查询指定会话的所有消息（核心方法）
-  queryMessages(sessionId) {
-    return new Promise((resolve, reject) => {
+  async ensureSqliteReady() {
+    if (!isAppPlusRuntime() || this.sqliteDisabled) {
+      return false
+    }
+
+    if (this.sqliteReady) {
+      return true
+    }
+
+    if (this.sqliteReadyPromise) {
+      return this.sqliteReadyPromise
+    }
+
+    this.sqliteReadyPromise = (async () => {
+      await waitForPlusReady()
+
+      if (!plus?.sqlite) {
+        throw new Error('plus.sqlite unavailable')
+      }
+
+      let opened = false
       try {
-        const targetSessionId = String(sessionId)
-        console.log('ChatStorage: 查询会话消息，sessionId:', targetSessionId)
-
-        // #ifdef APP-PLUS
-        if (this.isApp) {
-          plus.sqlite.selectSql({
-            name: this.dbName,
-            sql: `SELECT * FROM messages WHERE session_id = ? ORDER BY send_time ASC`,
-            args: [targetSessionId],
-            success: (res) => {
-              const list = (res.data || []).map(item => {
-                try { return { ...JSON.parse(item.extra_json), ...item } } 
-                catch (e) { return item }
-              })
-              console.log('ChatStorage: App端查询到消息', list.length, '条')
-              resolve(list)
-            },
-            fail: (err) => {
-              console.error('ChatStorage: App端查询失败', err)
-              reject(err)
-            }
+        opened =
+          typeof plus.sqlite.isOpenDatabase === 'function' &&
+          plus.sqlite.isOpenDatabase({
+            name: SQLITE_DB_NAME,
+            path: SQLITE_DB_PATH,
           })
-          return
-        }
-        // #endif
+      } catch (error) {
+        console.warn('[ChatStorage] Failed to inspect sqlite status, retry opening directly', error)
+      }
 
-        // H5/小程序端：从统一存储中过滤
-        const allMessages = this._getAllStorageMessages()
-        const sessionMessages = allMessages.filter(item => {
-          return String(item.session_id) === targetSessionId
-        }).sort((a, b) => {
-          return new Date(a.send_time) - new Date(b.send_time)
+      if (!opened) {
+        await new Promise((resolve, reject) => {
+          plus.sqlite.openDatabase({
+            name: SQLITE_DB_NAME,
+            path: SQLITE_DB_PATH,
+            success: resolve,
+            fail: reject,
+          })
         })
-        
-        console.log('ChatStorage: Storage端查询到消息', sessionMessages.length, '条')
-        resolve(sessionMessages)
-      } catch (err) {
-        console.error('ChatStorage: 查询消息异常', err)
-        reject(err)
       }
+
+      await this.executeSqliteRaw(
+        `CREATE TABLE IF NOT EXISTS ${SQLITE_TABLE} (
+          cache_key TEXT PRIMARY KEY,
+          session_id TEXT NOT NULL,
+          message_no TEXT,
+          message_id TEXT,
+          send_time INTEGER NOT NULL,
+          payload_json TEXT NOT NULL,
+          updated_at INTEGER NOT NULL
+        )`,
+      )
+
+      await this.executeSqliteRaw(
+        `CREATE INDEX IF NOT EXISTS idx_${SQLITE_TABLE}_session_time ON ${SQLITE_TABLE} (session_id, send_time)`,
+      )
+
+      await this.executeSqliteRaw(
+        `CREATE INDEX IF NOT EXISTS idx_${SQLITE_TABLE}_send_time ON ${SQLITE_TABLE} (send_time)`,
+      )
+
+      this.sqliteReady = true
+      return true
+    })().catch((error) => {
+      console.warn('[ChatStorage] SQLite init failed, fallback to browser/local storage', error)
+      this.sqliteDisabled = true
+      this.sqliteReadyPromise = null
+      return false
     })
+
+    return this.sqliteReadyPromise
   }
 
-  // 4. 删除指定会话的所有消息
-  deleteSessionMessages(sessionId) {
-    return new Promise((resolve, reject) => {
+  async ensureIndexedDbReady() {
+    if (!supportsBrowserDom() || this.indexedDbDisabled || typeof indexedDB === 'undefined') {
+      return null
+    }
+
+    if (this.indexedDbPromise) {
+      return this.indexedDbPromise
+    }
+
+    this.indexedDbPromise = new Promise((resolve) => {
       try {
-        const targetSessionId = String(sessionId)
-        
-        // #ifdef APP-PLUS
-        if (this.isApp) {
-          plus.sqlite.executeSql({
-            name: this.dbName,
-            sql: `DELETE FROM messages WHERE session_id = ?`,
-            args: [targetSessionId],
-            success: () => resolve(true),
-            fail: (err) => reject(err)
-          })
-          return
+        const request = indexedDB.open(IDB_NAME, IDB_VERSION)
+
+        request.onupgradeneeded = () => {
+          const db = request.result
+          const store = db.objectStoreNames.contains(IDB_STORE)
+            ? request.transaction.objectStore(IDB_STORE)
+            : db.createObjectStore(IDB_STORE, { keyPath: 'cacheKey' })
+
+          if (!store.indexNames.contains(IDB_INDEX_SESSION)) {
+            store.createIndex(IDB_INDEX_SESSION, 'sessionId', { unique: false })
+          }
+          if (!store.indexNames.contains(IDB_INDEX_SEND_TIME)) {
+            store.createIndex(IDB_INDEX_SEND_TIME, 'sendTimeMs', { unique: false })
+          }
         }
-        // #endif
 
-        // H5/小程序端
-        const allMessages = this._getAllStorageMessages().filter(item => {
-          return String(item.session_id) !== targetSessionId
-        })
-        uni.setStorageSync(this.UNIFIED_STORAGE_KEY, JSON.stringify(allMessages))
-        resolve(true)
-      } catch (err) {
-        reject(err)
-      }
-    })
-  }
-
-  // ─────────────────────────────────────────────────────────────
-  // 内部辅助方法
-  // ─────────────────────────────────────────────────────────────
-
-  // 获取所有消息（容错处理损坏的 JSON）
-  _getAllStorageMessages() {
-    try {
-      const raw = uni.getStorageSync(this.UNIFIED_STORAGE_KEY)
-      if (!raw) return []
-      const parsed = JSON.parse(raw)
-      return Array.isArray(parsed) ? parsed : []
-    } catch (e) {
-      console.error('ChatStorage: 读取Storage失败，已重置缓存', e)
-      // JSON 损坏时清除防止持续报错
-      try { uni.removeStorageSync(this.UNIFIED_STORAGE_KEY) } catch (_) {}
-      return []
-    }
-  }
-
-  /**
-   * H5 端批量 upsert：用 Map 索引实现 O(1) 查找，全程只读写一次 Storage
-   * @param {Array} normalizedList - 已经过 _normalizeMessage 处理的消息列表
-   */
-  _batchUpsertStorage(normalizedList) {
-    if (!normalizedList || normalizedList.length === 0) return
-    const allMessages = this._getAllStorageMessages()
-
-    // 构建 id/messageNo 双索引，O(1) 查重
-    const idMap = new Map()
-    const msgNoMap = new Map()
-    allMessages.forEach((item, idx) => {
-      if (item.id) idMap.set(String(item.id), idx)
-      if (item.messageNo) msgNoMap.set(item.messageNo, idx)
-    })
-
-    for (const normalized of normalizedList) {
-      const byId = idMap.get(String(normalized.id))
-      const byMsgNo = normalized.messageNo ? msgNoMap.get(normalized.messageNo) : undefined
-      const existIdx = byId !== undefined ? byId : byMsgNo
-
-      if (existIdx !== undefined) {
-        // 更新已有消息
-        allMessages[existIdx] = { ...allMessages[existIdx], ...normalized }
-      } else {
-        // 追加新消息，并更新索引
-        const newIdx = allMessages.length
-        allMessages.push(normalized)
-        if (normalized.id) idMap.set(String(normalized.id), newIdx)
-        if (normalized.messageNo) msgNoMap.set(normalized.messageNo, newIdx)
-      }
-    }
-
-    const trimmed = this._trimOldMessages(allMessages)
-    uni.setStorageSync(this.UNIFIED_STORAGE_KEY, JSON.stringify(trimmed))
-    console.log(`ChatStorage: 批量写入完成，共 ${trimmed.length} 条`)
-  }
-
-  /**
-   * 按会话裁剪超出上限的旧消息，防止 Storage 无限增长
-   * 每个会话保留最新的 MAX_MESSAGES_PER_SESSION 条
-   */
-  _trimOldMessages(allMessages) {
-    // 按 session_id 分组
-    const sessionMap = new Map()
-    for (const msg of allMessages) {
-      const sid = String(msg.session_id)
-      if (!sessionMap.has(sid)) sessionMap.set(sid, [])
-      sessionMap.get(sid).push(msg)
-    }
-    const result = []
-    for (const [, msgs] of sessionMap) {
-      if (msgs.length <= this.MAX_MESSAGES_PER_SESSION) {
-        result.push(...msgs)
-      } else {
-        // 按时间升序后截取最新的 N 条
-        msgs.sort((a, b) => new Date(a.send_time) - new Date(b.send_time))
-        result.push(...msgs.slice(-this.MAX_MESSAGES_PER_SESSION))
-      }
-    }
-    return result
-  }
-
-  /**
-   * 获取指定会话本地缓存中最新一条消息的时间，用于增量同步
-   * @param {string|number} sessionId
-   * @returns {Promise<string|null>} ISO 时间字符串，无缓存时返回 null
-   */
-  getLatestMessageTime(sessionId) {
-    return new Promise((resolve) => {
-      try {
-        const targetSessionId = String(sessionId)
-
-        // #ifdef APP-PLUS
-        if (this.isApp) {
-          plus.sqlite.selectSql({
-            name: this.dbName,
-            sql: `SELECT MAX(send_time) AS latest FROM messages WHERE session_id = ?`,
-            args: [targetSessionId],
-            success: (res) => resolve(res.data?.[0]?.latest || null),
-            fail: () => resolve(null)
-          })
-          return
+        request.onsuccess = () => resolve(request.result)
+        request.onerror = () => {
+          console.warn('[ChatStorage] IndexedDB open failed, fallback to storage', request.error)
+          this.indexedDbDisabled = true
+          this.indexedDbPromise = null
+          resolve(null)
         }
-        // #endif
-
-        const allMessages = this._getAllStorageMessages()
-        const sessionMsgs = allMessages.filter(m => String(m.session_id) === targetSessionId)
-        if (sessionMsgs.length === 0) return resolve(null)
-        const latest = sessionMsgs.reduce((max, m) =>
-          new Date(m.send_time) > new Date(max) ? m.send_time : max,
-          sessionMsgs[0].send_time
-        )
-        resolve(latest)
-      } catch (e) {
-        console.error('ChatStorage: getLatestMessageTime 异常', e)
+      } catch (error) {
+        console.warn('[ChatStorage] IndexedDB unavailable, fallback to storage', error)
+        this.indexedDbDisabled = true
+        this.indexedDbPromise = null
         resolve(null)
       }
     })
+
+    return this.indexedDbPromise
   }
 
-  /**
-   * 检测当前用户是否为本设备首次登录（从未在本设备成功同步过消息）
-   * 用于决定是否先读本地缓存：首次登录无本地数据，直接走服务端；非首次先读本地再拉离线消息
-   * @param {string} userId - 当前用户 ID
-   * @returns {boolean} true=首次在本设备登录，false=非首次（已有本地同步记录）
-   */
-  isFirstTimeOnDevice(userId) {
-    if (!userId || String(userId).trim() === '') return true
+  executeSqliteRaw(sql, args = []) {
+    return new Promise((resolve, reject) => {
+      plus.sqlite.executeSql({
+        name: SQLITE_DB_NAME,
+        sql,
+        args,
+        success: resolve,
+        fail: reject,
+      })
+    })
+  }
+
+  selectSqliteRaw(sql, args = []) {
+    return new Promise((resolve, reject) => {
+      plus.sqlite.selectSql({
+        name: SQLITE_DB_NAME,
+        sql,
+        args,
+        success: (rows) => resolve(Array.isArray(rows) ? rows : rows?.data || []),
+        fail: reject,
+      })
+    })
+  }
+
+  async withIndexedDbStore(mode, handler) {
+    const db = await this.ensureIndexedDbReady()
+    if (!db) return null
+
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(IDB_STORE, mode)
+      const store = transaction.objectStore(IDB_STORE)
+      let result
+
+      transaction.oncomplete = () => resolve(result)
+      transaction.onerror = () => reject(transaction.error)
+      transaction.onabort = () => reject(transaction.error)
+
+      Promise.resolve(handler(store, transaction))
+        .then((value) => {
+          result = value
+        })
+        .catch((error) => {
+          try {
+            transaction.abort()
+          } catch {}
+          reject(error)
+        })
+    })
+  }
+
+  readFallbackStore() {
     try {
-      const key = `chat_device_initialized_${String(userId).trim()}`
-      const val = typeof uni !== 'undefined' ? uni.getStorageSync(key) : null
-      return val !== true && val !== '1'
-    } catch (e) {
-      console.warn('ChatStorage: isFirstTimeOnDevice 读取失败', e)
+      const raw = uni.getStorageSync(FALLBACK_STORAGE_KEY)
+      if (!raw) return {}
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw
+      return parsed && typeof parsed === 'object' ? parsed : {}
+    } catch (error) {
+      console.warn('[ChatStorage] Failed to read fallback store, resetting cache', error)
+      try {
+        uni.removeStorageSync(FALLBACK_STORAGE_KEY)
+      } catch {}
+      return {}
+    }
+  }
+
+  writeFallbackStore(store) {
+    uni.setStorageSync(FALLBACK_STORAGE_KEY, JSON.stringify(store))
+  }
+
+  trimFallbackRecords(records) {
+    const cutoffMs = this.getRetentionCutoffMs()
+    return dedupeMessages(records)
+      .filter((record) => record && !isExpiredRecord(record, cutoffMs))
+      .sort((left, right) => left.sendTimeMs - right.sendTimeMs)
+      .slice(-MAX_FALLBACK_MESSAGES_PER_SESSION)
+  }
+
+  async pruneExpiredMessages() {
+    const driver = await this.resolveDriver()
+    const cutoffMs = this.getRetentionCutoffMs()
+
+    if (driver === 'sqlite') {
+      await this.executeSqliteRaw(`DELETE FROM ${SQLITE_TABLE} WHERE send_time < ?`, [cutoffMs])
+      return true
+    }
+
+    if (driver === 'indexeddb') {
+      await this.withIndexedDbStore('readwrite', (store) => {
+        const index = store.index(IDB_INDEX_SEND_TIME)
+        const range = IDBKeyRange.upperBound(cutoffMs - 1)
+        index.openKeyCursor(range).onsuccess = (event) => {
+          const cursor = event.target.result
+          if (!cursor) return
+          store.delete(cursor.primaryKey)
+          cursor.continue()
+        }
+      })
+      return true
+    }
+
+    const nextStore = {}
+    const store = this.readFallbackStore()
+    Object.keys(store).forEach((sessionId) => {
+      const normalized = this.trimFallbackRecords(Array.isArray(store[sessionId]) ? store[sessionId] : [])
+      if (normalized.length) {
+        nextStore[sessionId] = normalized
+      }
+    })
+    this.writeFallbackStore(nextStore)
+    return true
+  }
+
+  async insertMessage(message) {
+    const normalized = this.normalizeMessage(message)
+    if (!normalized) return null
+    await this.upsertRecords([normalized])
+    return normalized.payload
+  }
+
+  async insertMessages(sessionId, messages = []) {
+    const normalized = this.normalizeMessages(sessionId, messages)
+    if (!normalized.length) return []
+    await this.upsertRecords(normalized)
+    return normalized.map((record) => record.payload)
+  }
+
+  async replaceSessionMessages(sessionId, messages = []) {
+    const targetSessionId = normalizeText(sessionId)
+    if (!targetSessionId) return []
+
+    const normalized = this.normalizeMessages(targetSessionId, messages)
+    const driver = await this.resolveDriver()
+
+    if (driver === 'sqlite') {
+      await this.executeSqliteRaw(`DELETE FROM ${SQLITE_TABLE} WHERE session_id = ?`, [targetSessionId])
+      if (normalized.length) {
+        await this.upsertRecords(normalized)
+      }
+      return normalized.map((record) => record.payload)
+    }
+
+    if (driver === 'indexeddb') {
+      await this.withIndexedDbStore('readwrite', (store) => {
+        const sessionIndex = store.index(IDB_INDEX_SESSION)
+        const range = IDBKeyRange.only(targetSessionId)
+        sessionIndex.openCursor(range).onsuccess = (event) => {
+          const cursor = event.target.result
+          if (!cursor) return
+          cursor.delete()
+          cursor.continue()
+        }
+      })
+      if (normalized.length) {
+        await this.upsertRecords(normalized)
+      }
+      return normalized.map((record) => record.payload)
+    }
+
+    const store = this.readFallbackStore()
+    if (normalized.length) {
+      store[targetSessionId] = this.trimFallbackRecords(normalized)
+    } else {
+      delete store[targetSessionId]
+    }
+    this.writeFallbackStore(store)
+    return normalized.map((record) => record.payload)
+  }
+
+  async queryMessages(sessionId) {
+    const targetSessionId = normalizeText(sessionId)
+    if (!targetSessionId) return []
+
+    await this.pruneExpiredMessages()
+    const driver = await this.resolveDriver()
+
+    if (driver === 'sqlite') {
+      const rows = await this.selectSqliteRaw(
+        `SELECT payload_json FROM ${SQLITE_TABLE} WHERE session_id = ? ORDER BY send_time ASC`,
+        [targetSessionId],
+      )
+      return rows
+        .map((row) => {
+          try {
+            return JSON.parse(row.payload_json)
+          } catch {
+            return null
+          }
+        })
+        .filter(Boolean)
+    }
+
+    if (driver === 'indexeddb') {
+      const records = await this.withIndexedDbStore('readonly', (store) => {
+        const sessionIndex = store.index(IDB_INDEX_SESSION)
+        const request = sessionIndex.getAll(IDBKeyRange.only(targetSessionId))
+        return new Promise((resolve, reject) => {
+          request.onsuccess = () => resolve(request.result || [])
+          request.onerror = () => reject(request.error)
+        })
+      })
+
+      return sortMessagesAsc((records || []).map((record) => record.payload).filter(Boolean))
+    }
+
+    const store = this.readFallbackStore()
+    const records = this.trimFallbackRecords(Array.isArray(store[targetSessionId]) ? store[targetSessionId] : [])
+    if (records.length !== (store[targetSessionId] || []).length) {
+      if (records.length) {
+        store[targetSessionId] = records
+      } else {
+        delete store[targetSessionId]
+      }
+      this.writeFallbackStore(store)
+    }
+    return sortMessagesAsc(records.map((record) => record.payload).filter(Boolean))
+  }
+
+  async deleteSessionMessages(sessionId) {
+    const targetSessionId = normalizeText(sessionId)
+    if (!targetSessionId) return false
+
+    const driver = await this.resolveDriver()
+
+    if (driver === 'sqlite') {
+      await this.executeSqliteRaw(`DELETE FROM ${SQLITE_TABLE} WHERE session_id = ?`, [targetSessionId])
+      return true
+    }
+
+    if (driver === 'indexeddb') {
+      await this.withIndexedDbStore('readwrite', (store) => {
+        const sessionIndex = store.index(IDB_INDEX_SESSION)
+        const range = IDBKeyRange.only(targetSessionId)
+        sessionIndex.openCursor(range).onsuccess = (event) => {
+          const cursor = event.target.result
+          if (!cursor) return
+          cursor.delete()
+          cursor.continue()
+        }
+      })
+      return true
+    }
+
+    const store = this.readFallbackStore()
+    delete store[targetSessionId]
+    this.writeFallbackStore(store)
+    return true
+  }
+
+  async getLatestMessageTime(sessionId) {
+    const records = await this.queryMessages(sessionId)
+    if (!records.length) return null
+    return records[records.length - 1].sendTime || null
+  }
+
+  async upsertRecords(records = []) {
+    const normalized = dedupeMessages(records)
+    if (!normalized.length) return []
+
+    await this.pruneExpiredMessages()
+    const driver = await this.resolveDriver()
+
+    if (driver === 'sqlite') {
+      for (const record of normalized) {
+        await this.executeSqliteRaw(
+          `INSERT OR REPLACE INTO ${SQLITE_TABLE}
+            (cache_key, session_id, message_no, message_id, send_time, payload_json, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [
+            record.cacheKey,
+            record.sessionId,
+            record.messageNo,
+            record.messageId,
+            record.sendTimeMs,
+            JSON.stringify(record.payload),
+            record.updatedAtMs,
+          ],
+        )
+      }
+      return normalized
+    }
+
+    if (driver === 'indexeddb') {
+      await this.withIndexedDbStore('readwrite', (store) => {
+        normalized.forEach((record) => store.put(record))
+      })
+      return normalized
+    }
+
+    const store = this.readFallbackStore()
+    normalized.forEach((record) => {
+      const sessionId = record.sessionId
+      const current = Array.isArray(store[sessionId]) ? store[sessionId] : []
+      const next = current.filter((item) => item.cacheKey !== record.cacheKey)
+      next.push(record)
+      store[sessionId] = this.trimFallbackRecords(next)
+    })
+    this.writeFallbackStore(store)
+    return normalized
+  }
+
+  isFirstTimeOnDevice(userId) {
+    if (!normalizeText(userId)) return true
+    try {
+      const value = uni.getStorageSync(`${DEVICE_FLAG_PREFIX}${normalizeText(userId)}`)
+      return value !== true && value !== '1'
+    } catch (error) {
+      console.warn('[ChatStorage] Failed to read device init flag', error)
       return true
     }
   }
 
-  /**
-   * 标记当前用户在本设备已完成首次消息同步，后续进入视为非首次
-   * @param {string} userId - 当前用户 ID
-   */
   setDeviceInitialized(userId) {
-    if (!userId || String(userId).trim() === '') return
+    if (!normalizeText(userId)) return
     try {
-      const key = `chat_device_initialized_${String(userId).trim()}`
-      if (typeof uni !== 'undefined') {
-        uni.setStorageSync(key, true)
-      }
-    } catch (e) {
-      console.warn('ChatStorage: setDeviceInitialized 写入失败', e)
+      uni.setStorageSync(`${DEVICE_FLAG_PREFIX}${normalizeText(userId)}`, true)
+    } catch (error) {
+      console.warn('[ChatStorage] Failed to persist device init flag', error)
     }
   }
 }
 
-// 导出单例
+export { RETENTION_DAYS, RETENTION_MS }
 export default new ChatStorage()

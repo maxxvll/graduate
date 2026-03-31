@@ -1,16 +1,13 @@
 <template>
   <view v-if="show" class="modal-mask" @click.self="$emit('close')">
     <view class="modal-box" @click.stop>
-      <!-- 标题栏 -->
       <view class="modal-header">
         <text class="modal-title">加入群聊</text>
-        <text class="modal-close" @click="$emit('close')">✕</text>
+        <text class="modal-close" @click="$emit('close')">×</text>
       </view>
 
-      <!-- 搜索栏 -->
       <view class="modal-search-bar">
         <view class="search-input-wrap">
-          <text class="search-prefix-icon">🔍</text>
           <input
             v-model="keyword"
             class="search-input"
@@ -18,59 +15,91 @@
             @keyup.enter="doSearch"
             :disabled="loading"
           />
-          <text v-if="keyword" class="search-clear" @click="clearSearch">✕</text>
+          <text v-if="keyword" class="search-clear" @click="clearSearch">清空</text>
         </view>
         <button
           class="search-btn"
           :disabled="!keyword.trim() || loading"
           @click="doSearch"
-        >{{ loading ? '搜索中...' : '搜索' }}</button>
+        >
+          {{ loading ? '搜索中...' : '搜索' }}
+        </button>
       </view>
 
-      <!-- 结果区 -->
       <view class="modal-body">
-        <!-- 引导提示 -->
-        <view v-if="!searched" class="hint-block">
-          <text class="hint-icon">👥</text>
-          <text class="hint-text">输入群名称，搜索并申请加入群聊</text>
+        <view v-if="!searched" class="state-block">
+          <text class="state-text">输入群名称后搜索并申请加入群聊</text>
         </view>
 
-        <view v-else-if="loading" class="loading-block">
-          <text class="loading-text">搜索中...</text>
+        <view v-else-if="loading" class="state-block">
+          <text class="state-text">搜索中...</text>
         </view>
 
-        <view v-else-if="!results.length" class="empty-block">
-          <text class="empty-icon">🔍</text>
-          <text class="empty-text">未找到相关群聊</text>
+        <view v-else-if="!results.length" class="state-block">
+          <text class="state-text">没有找到匹配的群聊</text>
         </view>
 
-        <!-- 群聊结果列表 -->
         <scroll-view v-else scroll-y class="result-list">
           <view
-            class="group-card"
             v-for="group in results"
             :key="group.id"
+            class="group-card"
           >
-            <image :src="group.groupAvatar || defaultAvatar" class="group-avatar" mode="aspectFill" />
+            <image
+              :src="group.groupAvatar || defaultAvatar"
+              class="group-avatar"
+              mode="aspectFill"
+            />
             <view class="group-info">
               <text class="group-name">{{ group.groupName }}</text>
-              <text class="group-count">{{ group.currentMemberCount }}/{{ group.maxMember }} 人</text>
-              <!-- joinType: 1=需审核, 2=直接加入, 3=仅邀请 -->
+              <text class="group-count">
+                {{ displayMemberCount(group) }}/{{ group.maxMember || '-' }} 人
+              </text>
               <text class="group-join-type" :class="joinTypeClass(group.joinType)">
                 {{ joinTypeLabel(group.joinType) }}
               </text>
             </view>
             <view class="group-action">
-              <button v-if="group.applyStatus === 'member'"  class="action-btn btn-disabled" disabled>已加入</button>
-              <button v-else-if="group.applyStatus === 'pending'" class="action-btn btn-pending" disabled>已申请</button>
-              <button v-else-if="group.joinType === 3"        class="action-btn btn-disabled" disabled>仅邀请</button>
+              <button
+                v-if="group.applyStatus === 'member'"
+                class="action-btn btn-disabled"
+                disabled
+              >
+                已加入
+              </button>
+              <button
+                v-else-if="group.applyStatus === 'pending'"
+                class="action-btn btn-pending"
+                disabled
+              >
+                已申请
+              </button>
+              <button
+                v-else-if="group.joinType === 3"
+                class="action-btn btn-disabled"
+                disabled
+              >
+                仅邀请
+              </button>
               <button
                 v-else
                 class="action-btn btn-apply"
                 :disabled="applying === group.id"
                 @click="applyJoin(group)"
-              >{{ applying === group.id ? '申请中...' : '申请加入' }}</button>
+              >
+                {{ applying === group.id ? '提交中...' : '申请加入' }}
+              </button>
             </view>
+          </view>
+
+          <view v-if="hasMore" class="result-more">
+            <button
+              class="result-more-btn"
+              :disabled="loadingMore"
+              @click="loadMore"
+            >
+              {{ loadingMore ? '加载中...' : '加载更多' }}
+            </button>
           </view>
         </scroll-view>
       </view>
@@ -83,71 +112,128 @@ import { ref, watch } from 'vue'
 import service from '@/utils/request'
 
 const props = defineProps({
-  show:          { type: Boolean, required: true },
-  currentUserId: { type: [String, Number], default: null },
-  defaultAvatar: { type: String, default: '' },
+  show: {
+    type: Boolean,
+    required: true,
+  },
+  currentUserId: {
+    type: [String, Number],
+    default: null,
+  },
+  defaultAvatar: {
+    type: String,
+    default: '',
+  },
 })
 
 const emit = defineEmits(['close', 'joined'])
 
-const keyword  = ref('')
-const results  = ref([])
+const keyword = ref('')
+const results = ref([])
 const searched = ref(false)
-const loading  = ref(false)
-/** 当前正在申请的群 ID，用于精准控制按钮 loading 状态 */
+const loading = ref(false)
+const loadingMore = ref(false)
 const applying = ref(null)
+const currentPage = ref(1)
+const pageSize = 20
+const hasMore = ref(false)
 
-/**
- * 搜索群聊。
- * 后端返回的每条 GroupInfoVO 包含 applyStatus 字段：
- *   - null     = 未申请
- *   - 'pending' = 已申请待审核
- *   - 'member'  = 已是成员
- */
 const doSearch = async () => {
   const q = keyword.value.trim()
-  if (!q || loading.value) return
-  loading.value  = true
+  if (!q || loading.value) {
+    return
+  }
+
+  loading.value = true
   searched.value = true
-  results.value  = []
+  results.value = []
+  currentPage.value = 1
+  hasMore.value = false
 
   try {
-    const res = await service.get('/group/search', {
-      params: { keyword: q, userId: props.currentUserId },
+    const res = await service.get('/group/search/page', {
+      params: {
+        keyword: q,
+        current: 1,
+        size: pageSize,
+      },
     })
-    results.value = res.code === 200 && Array.isArray(res.data) ? res.data : []
+    if (res.code === 200 && res.data) {
+      const records = Array.isArray(res.data.records) ? res.data.records : []
+      results.value = records
+      currentPage.value = Number(res.data.current || 1)
+      hasMore.value = currentPage.value < Number(res.data.pages || 0)
+      return
+    }
+    results.value = []
+    hasMore.value = false
   } catch {
     results.value = []
+    hasMore.value = false
+    uni.showToast({ title: '搜索失败', icon: 'none' })
   } finally {
     loading.value = false
   }
 }
 
-/**
- * 申请加入群聊。
- * joinType=2（免审核）时后端直接拉入，前端将状态更新为 member。
- * joinType=1（需审核）时后端创建申请记录，前端将状态更新为 pending。
- */
+const loadMore = async () => {
+  const q = keyword.value.trim()
+  if (!q || loading.value || loadingMore.value || !hasMore.value) {
+    return
+  }
+
+  loadingMore.value = true
+  try {
+    const nextPage = currentPage.value + 1
+    const res = await service.get('/group/search/page', {
+      params: {
+        keyword: q,
+        current: nextPage,
+        size: pageSize,
+      },
+    })
+    if (res.code === 200 && res.data) {
+      const records = Array.isArray(res.data.records) ? res.data.records : []
+      results.value = [...results.value, ...records]
+      currentPage.value = Number(res.data.current || nextPage)
+      hasMore.value = currentPage.value < Number(res.data.pages || 0)
+      return
+    }
+    hasMore.value = false
+  } catch {
+    uni.showToast({ title: '加载更多失败', icon: 'none' })
+  } finally {
+    loadingMore.value = false
+  }
+}
+
 const applyJoin = async (group) => {
-  if (applying.value) return
+  if (applying.value) {
+    return
+  }
+
   applying.value = group.id
   try {
     const res = await service.post('/group/apply', {
       groupId: group.id,
-      userId:  props.currentUserId,
     })
     if (res.code === 200) {
       const newStatus = group.joinType === 2 ? 'member' : 'pending'
-      const idx = results.value.findIndex(g => g.id === group.id)
-      if (idx !== -1) {
-        results.value[idx] = { ...results.value[idx], applyStatus: newStatus }
+      const index = results.value.findIndex((item) => item.id === group.id)
+      if (index !== -1) {
+        results.value[index] = {
+          ...results.value[index],
+          applyStatus: newStatus,
+        }
       }
-      const msg = group.joinType === 2 ? '已成功加入群聊' : '申请已发送，等待管理员审核'
-      uni.showToast({ title: msg, icon: 'none' })
+      uni.showToast({
+        title: group.joinType === 2 ? '已加入群聊' : '申请已提交',
+        icon: 'none',
+      })
       emit('joined')
-    } else {
-      uni.showToast({ title: res.msg || '申请失败', icon: 'none' })
+      return
     }
+    uni.showToast({ title: res.message || '申请失败', icon: 'none' })
   } catch {
     uni.showToast({ title: '网络异常，请稍后重试', icon: 'none' })
   } finally {
@@ -156,25 +242,49 @@ const applyJoin = async (group) => {
 }
 
 const clearSearch = () => {
-  keyword.value  = ''
-  results.value  = []
+  keyword.value = ''
+  results.value = []
   searched.value = false
+  currentPage.value = 1
+  hasMore.value = false
+  loadingMore.value = false
 }
 
+const displayMemberCount = (group) =>
+  Number(group.currentMemberCount ?? group.memberCount ?? 0)
+
 const joinTypeLabel = (type) => {
-  const map = { 1: '需审核加入', 2: '免审核加入', 3: '仅邀请加入' }
-  return map[type] ?? '未知'
+  const map = {
+    1: '需要审核',
+    2: '直接加入',
+    3: '仅邀请',
+  }
+  return map[type] || '未知'
 }
 
 const joinTypeClass = (type) => ({
-  'type-open':    type === 2,
-  'type-verify':  type === 1,
-  'type-invite':  type === 3,
+  'type-open': type === 2,
+  'type-verify': type === 1,
+  'type-invite': type === 3,
 })
 
-watch(() => props.show, (visible) => {
-  if (!visible) clearSearch()
-})
+watch(
+  () => keyword.value,
+  (value) => {
+    if (!value.trim()) {
+      clearSearch()
+    }
+  },
+)
+
+watch(
+  () => props.show,
+  (visible) => {
+    if (!visible) {
+      clearSearch()
+    }
+  },
+)
 </script>
 
 <style scoped>
@@ -187,15 +297,16 @@ watch(() => props.show, (visible) => {
   justify-content: center;
   z-index: 1500;
 }
+
 .modal-box {
+  width: 520px;
+  max-height: 620px;
   background: #fff;
   border-radius: 14px;
-  width: 500px;
-  max-height: 600px;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.15);
   overflow: hidden;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.18);
 }
 
 .modal-header {
@@ -204,11 +315,20 @@ watch(() => props.show, (visible) => {
   justify-content: space-between;
   padding: 18px 20px 14px;
   border-bottom: 1px solid #f0f0f0;
-  flex-shrink: 0;
 }
-.modal-title { font-size: 16px; font-weight: 600; color: #1a1a1a; }
-.modal-close { font-size: 16px; color: #aaa; cursor: pointer; padding: 2px 6px; border-radius: 4px; }
-.modal-close:hover { color: #333; }
+
+.modal-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.modal-close {
+  font-size: 20px;
+  color: #999;
+  cursor: pointer;
+  line-height: 1;
+}
 
 .modal-search-bar {
   display: flex;
@@ -216,29 +336,33 @@ watch(() => props.show, (visible) => {
   gap: 10px;
   padding: 16px 20px;
   border-bottom: 1px solid #f5f5f5;
-  flex-shrink: 0;
 }
+
 .search-input-wrap {
   flex: 1;
   display: flex;
   align-items: center;
+  gap: 8px;
+  padding: 0 12px;
   background: #f7f8fa;
-  border-radius: 8px;
-  padding: 0 10px;
-  gap: 6px;
   border: 1px solid #ebebeb;
+  border-radius: 8px;
 }
-.search-prefix-icon { font-size: 14px; color: #bbb; }
+
 .search-input {
   flex: 1;
+  height: 38px;
   border: none;
   background: transparent;
   font-size: 14px;
   color: #1a1a1a;
-  padding: 9px 0;
-  outline: none;
 }
-.search-clear { font-size: 13px; color: #bbb; cursor: pointer; }
+
+.search-clear {
+  font-size: 12px;
+  color: #999;
+}
+
 .search-btn {
   padding: 8px 18px;
   background: #1677ff;
@@ -246,65 +370,140 @@ watch(() => props.show, (visible) => {
   border: none;
   border-radius: 8px;
   font-size: 13px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.15s;
   line-height: 1.5;
 }
-.search-btn:disabled { background: #b0c9f5; cursor: not-allowed; }
-.search-btn:not(:disabled):hover { background: #0f63d9; }
+
+.search-btn:disabled {
+  background: #b0c9f5;
+}
 
 .modal-body {
   flex: 1;
   overflow: hidden;
   padding: 16px 20px;
-  display: flex;
-  flex-direction: column;
 }
 
-.hint-block, .loading-block, .empty-block {
+.state-block {
+  height: 100%;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 24px 0;
-  flex: 1;
+  text-align: center;
 }
-.hint-icon, .empty-icon { font-size: 32px; }
-.hint-text, .empty-text, .loading-text { font-size: 14px; color: #aaa; }
 
-.result-list { flex: 1; }
+.state-text {
+  font-size: 14px;
+  color: #999;
+}
+
+.result-list {
+  height: 100%;
+}
+
 .group-card {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 12px;
-  border-radius: 10px;
-  border: 1px solid #ebebeb;
-  background: #f7f8fa;
   margin-bottom: 10px;
+  border: 1px solid #ebebeb;
+  border-radius: 10px;
+  background: #f7f8fa;
 }
-.group-avatar { width: 48px; height: 48px; border-radius: 8px; flex-shrink: 0; background: #e6e6e6; }
-.group-info   { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
-.group-name   { font-size: 14px; font-weight: 600; color: #1a1a1a; }
-.group-count  { font-size: 12px; color: #aaa; }
-.group-join-type { font-size: 11px; padding: 2px 6px; border-radius: 4px; display: inline-block; width: fit-content; }
-.type-open    { background: #e8f5e9; color: #2e7d32; }
-.type-verify  { background: #fff8e1; color: #f57f17; }
-.type-invite  { background: #f5f5f5; color: #aaa; }
+
+.group-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  background: #e6e6e6;
+  flex-shrink: 0;
+}
+
+.group-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.group-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.group-count {
+  font-size: 12px;
+  color: #888;
+}
+
+.group-join-type {
+  display: inline-block;
+  width: fit-content;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.type-open {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.type-verify {
+  background: #fff8e1;
+  color: #f57f17;
+}
+
+.type-invite {
+  background: #f5f5f5;
+  color: #999;
+}
 
 .action-btn {
+  min-width: 84px;
   padding: 6px 14px;
+  border: none;
   border-radius: 8px;
   font-size: 13px;
-  cursor: pointer;
-  border: none;
-  white-space: nowrap;
   line-height: 1.5;
 }
-.btn-apply    { background: #1677ff; color: #fff; transition: background 0.15s; }
-.btn-apply:not(:disabled):hover { background: #0f63d9; }
-.btn-disabled { background: #f0f0f0; color: #aaa; cursor: not-allowed; }
-.btn-pending  { background: #fff3cd; color: #b08000; cursor: not-allowed; }
+
+.btn-apply {
+  background: #1677ff;
+  color: #fff;
+}
+
+.btn-disabled {
+  background: #f0f0f0;
+  color: #999;
+}
+
+.btn-pending {
+  background: #fff3cd;
+  color: #b08000;
+}
+
+.result-more {
+  display: flex;
+  justify-content: center;
+  padding: 12px 0 2px;
+}
+
+.result-more-btn {
+  min-width: 120px;
+  padding: 7px 16px;
+  border-radius: 18px;
+  border: 1px solid #dbe8ff;
+  background: #f4f8ff;
+  color: #1677ff;
+  font-size: 13px;
+}
+
+.result-more-btn:disabled {
+  color: #9eb5de;
+  border-color: #edf2fb;
+  background: #f7f9fc;
+}
 </style>

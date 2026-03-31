@@ -1,0 +1,86 @@
+# ================================================
+# 开发环境配置
+# ================================================
+#
+# 使用说明：
+# 1. 开发环境使用本地服务，配置简单
+# 2. 密码可使用默认值或简单值
+# 3. 日志级别设置为 debug，便于调试
+# 4. API文档和 Actuator 端点完全开放
+#
+spring:
+  # 数据库配置
+  datasource:
+    url: jdbc:mysql://${DB_HOST:192.168.164.128}:${DB_PORT:3306}/chat?serverTimezone=GMT%2B8&useUnicode=true&characterEncoding=utf8&autoReconnect=true&allowMultiQueries=true&useSSL=false&allowPublicKeyRetrieval=true
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root123}
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      idle-timeout: 300000
+      max-lifetime: 1800000
+      connection-timeout: 5000
+
+  # Redis配置
+  data:
+    redis:
+      host: ${REDIS_HOST:192.168.164.128}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:123456}
+      lettuce:
+        pool:
+          max-active: 50
+          max-idle: 20
+          min-idle: 5
+
+  # Kafka配置
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:192.168.164.128:9092}
+    consumer:
+      group-id: login-log-group
+      auto-offset-reset: latest
+
+# MinIO配置
+elasticsearch:
+  host: ${ELASTICSEARCH_HOST:192.168.164.128}
+  port: ${ELASTICSEARCH_PORT:9200}
+  scheme: ${ELASTICSEARCH_SCHEME:http}
+
+minio:
+  endpoint: ${MINIO_ENDPOINT:http://192.168.164.128:9000}
+  access-key: ${MINIO_ACCESS_KEY:minioadmin}
+  secret-key: ${MINIO_SECRET_KEY:minioadmin}
+
+# WebSocket配置
+ws:
+  host: 0.0.0.0
+  port: ${WS_PORT:5051}
+
+# 日志配置
+logging:
+  level:
+    root: info
+    com.maxxvll: debug
+    org.springframework.web: debug
+    org.springframework.kafka: info
+
+# Actuator配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+
+# Sa-Token配置
+sa-token:
+  is-log: true
+  allow-origin: "*"
+
+# DeepSeek API（开发环境可使用测试key）
+deepseek:
+  api:
+    url: ${DEEPSEEK_API_URL:https://api.deepseek.com/v1/chat/completions}
+    key: ${DEEPSEEK_API_KEY:sk-test-key}

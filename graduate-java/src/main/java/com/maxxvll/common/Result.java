@@ -26,13 +26,21 @@ public class Result<T> implements Serializable {
      */
     private T data;
 
+    /**
+     * 时间戳（毫秒）
+     */
+    private Long timestamp;
+
     // 私有构造，禁止外部直接创建
-    private Result() {}
+    private Result() {
+        this.timestamp = System.currentTimeMillis();
+    }
 
     private Result(int code, String msg, T data) {
         this.code = code;
         this.msg = msg;
         this.data = data;
+        this.timestamp = System.currentTimeMillis();
     }
 
     // ==================== 成功返回方法（多重载） ====================
@@ -109,10 +117,13 @@ public class Result<T> implements Serializable {
     // 手动添加getter/setter方法
     public int getCode() { return code; }
     public void setCode(int code) { this.code = code; }
-    
+
     public String getMsg() { return msg; }
     public void setMsg(String msg) { this.msg = msg; }
-    
+
     public T getData() { return data; }
     public void setData(T data) { this.data = data; }
+
+    public Long getTimestamp() { return timestamp; }
+    public void setTimestamp(Long timestamp) { this.timestamp = timestamp; }
 }

@@ -39,7 +39,9 @@ export const pollQrLoginStatus = async (qrId, maxRetries = 300) => {
   return new Promise((resolve) => {
     const poll = async () => {
       try {
-        const res = await service.get('/user/qrcode/status', { params: { qrCodeId: qrId } })
+        const res = await service.get('/user/qrcode/status', {
+          params: { qrCodeId: qrId },
+        })
         if (res.code === 200) {
           const { status, token } = res.data
 
@@ -55,7 +57,7 @@ export const pollQrLoginStatus = async (qrId, maxRetries = 300) => {
             resolve({
               success: true,
               message: '登录成功',
-              token
+              token,
             })
             return
           }
@@ -63,7 +65,7 @@ export const pollQrLoginStatus = async (qrId, maxRetries = 300) => {
           if (status === 'expired') {
             resolve({
               success: false,
-              message: '二维码已过期，请重新生成'
+              message: '二维码已过期，请重新生成',
             })
             return
           }
@@ -75,14 +77,14 @@ export const pollQrLoginStatus = async (qrId, maxRetries = 300) => {
           } else {
             resolve({
               success: false,
-              message: '扫码登录超时，请重试'
+              message: '扫码登录超时，请重试',
             })
           }
         } else {
           // 服务端错误
           resolve({
             success: false,
-            message: res.msg || '服务器错误'
+            message: res.msg || '服务器错误',
           })
         }
       } catch (e) {
@@ -93,7 +95,7 @@ export const pollQrLoginStatus = async (qrId, maxRetries = 300) => {
         } else {
           resolve({
             success: false,
-            message: '网络连接中断，请重试'
+            message: '网络连接中断，请重试',
           })
         }
       }
@@ -179,5 +181,5 @@ export default {
   getLoginToken,
   clearLoginToken,
   isTokenValid,
-  refreshUserInfo
+  refreshUserInfo,
 }

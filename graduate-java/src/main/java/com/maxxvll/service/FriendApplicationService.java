@@ -3,6 +3,8 @@ package com.maxxvll.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.maxxvll.common.dto.FriendApplyDTO;
 import com.maxxvll.common.dto.FriendApplyHandleDTO;
+import com.maxxvll.common.dto.FriendBlacklistUpdateDTO;
+import com.maxxvll.common.dto.FriendRelationUpdateDTO;
 import com.maxxvll.common.vo.FriendApplicationVO;
 import com.maxxvll.domain.FriendApplication;
 
@@ -39,4 +41,15 @@ public interface FriendApplicationService extends IService<FriendApplication> {
      * 获取好友列表（已互相接受申请的用户）
      */
     List<FriendApplicationVO> getFriendList(String userId);
+
+    void updateFriendRelation(FriendRelationUpdateDTO updateDTO, String userId);
+
+    void updateFriendBlacklist(FriendBlacklistUpdateDTO updateDTO, String userId);
+
+    void deleteFriend(String friendUserId, String userId);
+
+    /**
+     * 获取黑名单列表
+     */
+    List<FriendApplicationVO> getBlacklist(String userId);
 }

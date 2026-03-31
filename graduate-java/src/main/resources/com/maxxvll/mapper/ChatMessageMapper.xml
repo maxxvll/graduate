@@ -30,8 +30,8 @@
             <result property="extInfo" column="ext_info" />
             <result property="isSensitive" column="is_sensitive" />
             <result property="isDeleted" column="is_deleted" />
-            <result property="createdAt" column="created_at" />
-            <result property="updatedAt" column="updated_at" />
+            <result property="createTime" column="created_at" />
+            <result property="updateTime" column="updated_at" />
         <result property="duration" column="duration" />
     </resultMap>
 

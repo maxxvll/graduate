@@ -11,8 +11,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.ByteArrayInputStream;
+import java.io.BufferedOutputStream;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -22,6 +27,15 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 @Component
 public class MinioUtil {
+
+    public record CloudObjectItem(String objectName, String fileName, long size, String modifyTime) {
+    }
+
+    public record CloudListResult(List<CloudObjectItem> items, String nextCursor, boolean hasMore) {
+    }
+
+    public record CloudObjectInfo(String objectName, long size) {
+    }
 
     @Value("${minio.endpoint}")
     private String endpoint;
@@ -65,8 +79,21 @@ public class MinioUtil {
             if (!avatarBucketExists) {
                 minioClient.makeBucket(MakeBucketArgs.builder().bucket(avatarBucketName).build());
                 log.info("创建头像公共Bucket成功: {}", avatarBucketName);
+                // 只在新建bucket时设置策略
+                setAvatarBucketPublicPolicy(avatarBucketName);
+            } else {
+                log.info("头像Bucket已存在，跳过策略设置: {}", avatarBucketName);
             }
-            // 设置公共读策略：允许所有人匿名 GET（Head + Get）
+        } catch (Exception e) {
+            log.error("Minio初始化失败", e);
+        }
+    }
+
+    /**
+     * 设置头像桶的公共读策略
+     */
+    private void setAvatarBucketPublicPolicy(String avatarBucketName) {
+        try {
             String avatarBucketPolicy = String.format(
                     "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"*\"]},"
                   + "\"Action\":[\"s3:GetObject\",\"s3:HeadObject\"],\"Resource\":[\"arn:aws:s3:::%s/*\"]}]}",
@@ -77,7 +104,7 @@ public class MinioUtil {
                     .build());
             log.info("头像Bucket公共读策略已设置: {}", avatarBucketName);
         } catch (Exception e) {
-            log.error("Minio初始化失败", e);
+            log.warn("设置头像Bucket公共读策略失败: {}", e.getMessage());
         }
     }
 
@@ -195,6 +222,18 @@ public class MinioUtil {
         return getChatFileUrl(fileName, true);
     }
 
+    public Map<String, String> getAvatarUrlsBatch(Map<String, String> idToAvatarPath) {
+        if (idToAvatarPath == null || idToAvatarPath.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<String, String> avatarUrls = new HashMap<>(idToAvatarPath.size());
+        for (Map.Entry<String, String> entry : idToAvatarPath.entrySet()) {
+            avatarUrls.put(entry.getKey(), getAvatarUrl(entry.getValue()));
+        }
+        return avatarUrls;
+    }
+
     public String checkFileExistByMd5(String md5) {
         log.warn("checkFileExistByMd5 未实现数据库查询，秒传功能暂不可用: md5={}", md5);
         return null;
@@ -202,39 +241,94 @@ public class MinioUtil {
 
     // ================ 云盘相关辅助 ===================
     /**
-     * 列出指定用户云盘下的所有对象及大小
+     * 分页列出指定用户云盘下的对象。
      */
-    public List<Map<String, Object>> listCloudFiles(String userId) throws Exception {
-        List<Map<String, Object>> list = new ArrayList<>();
+    public CloudListResult listCloudFiles(String userId, int limit, String cursor) throws Exception {
+        return listCloudFilesWithPrefix(userId, limit, cursor, "cloud/" + userId + "/");
+    }
+
+    /**
+     * 分页列出指定用户云盘下指定前缀的对象（支持文件夹过滤）。
+     */
+    public CloudListResult listCloudFilesWithPrefix(String userId, int limit, String cursor, String prefix) throws Exception {
+        List<CloudObjectItem> files = new ArrayList<>(limit + 1);
+        if (prefix == null || prefix.isBlank()) {
+            prefix = "cloud/" + userId + "/";
+        }
+        ListObjectsArgs.Builder builder = ListObjectsArgs.builder()
+                .bucket(bucketName)
+                .prefix(prefix)
+                .recursive(true)
+                .maxKeys(limit + 1);
+        if (cursor != null && !cursor.isBlank()) {
+            builder.startAfter(cursor);
+        }
+        Iterable<Result<Item>> results = minioClient.listObjects(builder.build());
+
+        for (Result<Item> r : results) {
+            Item item = r.get();
+            if (item.objectName() == null || !item.objectName().startsWith(prefix)) {
+                continue;
+            }
+
+            files.add(new CloudObjectItem(
+                    item.objectName(),
+                    item.objectName().substring(prefix.length()),
+                    item.size(),
+                    item.lastModified() != null ? item.lastModified().toString() : null
+            ));
+
+            if (files.size() >= limit + 1) {
+                break;
+            }
+        }
+
+        boolean hasMore = files.size() > limit;
+        if (hasMore) {
+            files = new ArrayList<>(files.subList(0, limit));
+        }
+
+        String nextCursor = hasMore && !files.isEmpty()
+                ? files.get(files.size() - 1).objectName()
+                : null;
+        return new CloudListResult(files, nextCursor, hasMore);
+    }
+
+    public long calculateCloudUsedBytes(String userId) throws Exception {
         String prefix = "cloud/" + userId + "/";
+        long total = 0L;
         Iterable<Result<Item>> results = minioClient.listObjects(
                 ListObjectsArgs.builder().bucket(bucketName).prefix(prefix).recursive(true).build()
         );
         for (Result<Item> r : results) {
             Item item = r.get();
-            Map<String, Object> m = new HashMap<>();
-            m.put("name", item.objectName().substring(prefix.length()));
-            m.put("size", item.size());
-            // lastModified may be null but typically present
-            if (item.lastModified() != null) {
-                m.put("modifyTime", item.lastModified().toString());
+            if (item.objectName() != null && item.objectName().startsWith(prefix)) {
+                total += item.size();
             }
-            list.add(m);
         }
-        return list;
+        return total;
     }
 
     /**
      * 上传任意文件到用户的云盘目录
      * @return 存储的对象名
      */
-    public String uploadToCloud(MultipartFile file, String userId) throws Exception {
+    public CloudObjectInfo uploadToCloudInfo(MultipartFile file, String userId) throws Exception {
+        return uploadToCloudInfo(file, userId, null);
+    }
+
+    public CloudObjectInfo uploadToCloudInfo(MultipartFile file, String userId, String folderId) throws Exception {
         String suffix = "";
         String original = file.getOriginalFilename();
         if (original != null && original.contains(".")) {
             suffix = original.substring(original.lastIndexOf("."));
         }
-        String objectName = String.format("cloud/%s/%s%s", userId, IdUtil.simpleUUID(), suffix);
+        // 构建对象路径
+        String prefix = "cloud/" + userId + "/";
+        if (folderId != null && !folderId.trim().isEmpty() && !folderId.equals("root")) {
+            prefix = folderId.endsWith("/") ? folderId : folderId + "/";
+        }
+        String objectName = String.format("%s%s%s", prefix, IdUtil.simpleUUID(), suffix);
         minioClient.putObject(
                 PutObjectArgs.builder()
                         .bucket(bucketName)
@@ -243,19 +337,40 @@ public class MinioUtil {
                         .contentType(file.getContentType())
                         .build()
         );
-        return objectName;
+        return new CloudObjectInfo(objectName, file.getSize());
+    }
+
+    public String uploadToCloud(MultipartFile file, String userId) throws Exception {
+        return uploadToCloudInfo(file, userId).objectName();
+    }
+
+    /**
+     * 创建文件夹标记（创建一个以 .folder 结尾的空对象）
+     */
+    public void createFolderMarker(String objectName) throws Exception {
+        minioClient.putObject(
+                PutObjectArgs.builder()
+                        .bucket(bucketName)
+                        .object(objectName)
+                        .stream(new java.io.ByteArrayInputStream(new byte[0]), 0, -1)
+                        .contentType("application/x-directory")
+                        .build()
+        );
+        log.info("创建文件夹标记: {}", objectName);
     }
 
     /**
      * 从远程链接拉取内容并存到用户云盘
      */
-    public String importToCloudByUrl(String url, String userId) throws Exception {
+    public CloudObjectInfo importToCloudByUrlInfo(String url, String userId) throws Exception {
         // 简化实现：使用 Java URL 读取流
-        try (InputStream in = new java.net.URL(url).openStream()) {
+        URI remoteUri = URI.create(url);
+        try (InputStream in = remoteUri.toURL().openStream()) {
             String suffix = "";
-            String path = new java.net.URL(url).getPath();
+            String path = remoteUri.getPath();
             if (path.contains(".")) suffix = path.substring(path.lastIndexOf("."));
             String objectName = String.format("cloud/%s/%s%s", userId, IdUtil.simpleUUID(), suffix);
+            long uploadedSize = 0L;
             minioClient.putObject(
                     PutObjectArgs.builder()
                             .bucket(bucketName)
@@ -263,8 +378,18 @@ public class MinioUtil {
                             .stream(in, -1, 10485760) // unknown size
                             .build()
             );
-            return objectName;
+            StatObjectResponse stat = minioClient.statObject(
+                    StatObjectArgs.builder().bucket(bucketName).object(objectName).build()
+            );
+            if (stat != null) {
+                uploadedSize = stat.size();
+            }
+            return new CloudObjectInfo(objectName, uploadedSize);
         }
+    }
+
+    public String importToCloudByUrl(String url, String userId) throws Exception {
+        return importToCloudByUrlInfo(url, userId).objectName();
     }
 
     public String getCloudFileUrl(String objectName) {
@@ -349,23 +474,30 @@ public class MinioUtil {
 
     private void mergeChunksLocally(String md5, String finalObjectName, Integer totalChunks) throws Exception {
         log.info("执行本地流式合并: {}", finalObjectName);
-        List<byte[]> chunkDataList = new ArrayList<>();
-        long totalSize = 0;
-        for (int i = 0; i < totalChunks; i++) {
-            try (InputStream stream = minioClient.getObject(GetObjectArgs.builder().bucket(CHUNK_TEMP_BUCKET).object(md5 + "/" + i).build())) {
-                byte[] bytes = stream.readAllBytes();
-                chunkDataList.add(bytes);
-                totalSize += bytes.length;
+        Path tempFile = Files.createTempFile("minio-merge-", ".tmp");
+        try {
+            try (OutputStream outputStream = new BufferedOutputStream(
+                    Files.newOutputStream(tempFile, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING))) {
+                for (int i = 0; i < totalChunks; i++) {
+                    try (InputStream stream = minioClient.getObject(
+                            GetObjectArgs.builder().bucket(CHUNK_TEMP_BUCKET).object(md5 + "/" + i).build())) {
+                        stream.transferTo(outputStream);
+                    }
+                }
             }
-        }
-        byte[] finalFileBytes = new byte[(int) totalSize];
-        int offset = 0;
-        for (byte[] chunk : chunkDataList) {
-            System.arraycopy(chunk, 0, finalFileBytes, offset, chunk.length);
-            offset += chunk.length;
-        }
-        try (ByteArrayInputStream bais = new ByteArrayInputStream(finalFileBytes)) {
-            minioClient.putObject(PutObjectArgs.builder().bucket(bucketName).object(finalObjectName).stream(bais, finalFileBytes.length, -1).build());
+
+            long totalSize = Files.size(tempFile);
+            try (InputStream mergedStream = Files.newInputStream(tempFile)) {
+                minioClient.putObject(
+                        PutObjectArgs.builder()
+                                .bucket(bucketName)
+                                .object(finalObjectName)
+                                .stream(mergedStream, totalSize, -1)
+                                .build()
+                );
+            }
+        } finally {
+            Files.deleteIfExists(tempFile);
         }
     }
 
@@ -425,7 +557,80 @@ public class MinioUtil {
         log.info("删除对象成功: {}", objectName);
     }
 
+    public long removeCloudObject(String objectName) throws Exception {
+        StatObjectResponse stat = minioClient.statObject(
+                StatObjectArgs.builder()
+                        .bucket(bucketName)
+                        .object(objectName)
+                        .build()
+        );
+        long size = stat != null ? stat.size() : 0L;
+        removeObject(objectName);
+        return size;
+    }
+
+    /**
+     * 复制云盘文件对象
+     * @param sourceObjectName 源对象名
+     * @param targetObjectName 目标对象名
+     */
+    public void copyCloudObject(String sourceObjectName, String targetObjectName) throws Exception {
+        minioClient.copyObject(
+                CopyObjectArgs.builder()
+                        .bucket(bucketName)
+                        .object(targetObjectName)
+                        .source(
+                                CopySource.builder()
+                                        .bucket(bucketName)
+                                        .object(sourceObjectName)
+                                        .build()
+                        )
+                        .build()
+        );
+        log.info("复制对象成功: {} -> {}", sourceObjectName, targetObjectName);
+    }
+
     public String getPublicUrl(String fileName) {
         return getChatFileUrl(fileName, true);
+    }
+
+    // ================ 云盘文件下载（流式）====================
+    /**
+     * 获取云盘文件的输入流（用于后端流式下载）
+     * @param objectName 云盘对象名，如 cloud/userId/xxx
+     * @return 文件输入流
+     */
+    public InputStream getCloudFileStream(String objectName) throws Exception {
+        return minioClient.getObject(
+                GetObjectArgs.builder()
+                        .bucket(bucketName)
+                        .object(objectName)
+                        .build()
+        );
+    }
+
+    public InputStream getCloudFileStream(String objectName, Long offset, Long length) throws Exception {
+        GetObjectArgs.Builder builder = GetObjectArgs.builder()
+                .bucket(bucketName)
+                .object(objectName);
+        if (offset != null && offset >= 0) {
+            builder.offset(offset);
+        }
+        if (length != null && length > 0) {
+            builder.length(length);
+        }
+        return minioClient.getObject(builder.build());
+    }
+
+    /**
+     * 获取云盘文件的元数据信息
+     */
+    public StatObjectResponse getCloudFileStat(String objectName) throws Exception {
+        return minioClient.statObject(
+                StatObjectArgs.builder()
+                        .bucket(bucketName)
+                        .object(objectName)
+                        .build()
+        );
     }
 }

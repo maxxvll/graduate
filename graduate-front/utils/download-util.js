@@ -26,26 +26,40 @@ export const uniApiAdapter = {
     });
   },
   getStorageSync: (key) => {
-    if (typeof uni !== 'undefined') return uni.getStorageSync(key);
-    try {
-      const data = localStorage.getItem(key);
-      return data ? JSON.parse(data) : null;
-    } catch (e) {
-      console.error('读取本地存储失败', e);
-      return null;
+    // #ifdef H5
+    if (typeof uni === 'undefined') {
+      try {
+        const data = localStorage.getItem(key);
+        return data ? JSON.parse(data) : null;
+      } catch (e) {
+        console.error('读取本地存储失败', e);
+        return null;
+      }
     }
+    // #endif
+    return uni.getStorageSync(key);
   },
   setStorageSync: (key, data) => {
-    if (typeof uni !== 'undefined') return uni.setStorageSync(key, data);
-    try {
-      localStorage.setItem(key, JSON.stringify(data));
-    } catch (e) {
-      console.error('保存本地存储失败', e);
+    // #ifdef H5
+    if (typeof uni === 'undefined') {
+      try {
+        localStorage.setItem(key, JSON.stringify(data));
+      } catch (e) {
+        console.error('保存本地存储失败', e);
+      }
+      return;
     }
+    // #endif
+    uni.setStorageSync(key, data);
   },
   removeStorageSync: (key) => {
-    if (typeof uni !== 'undefined') return uni.removeStorageSync(key);
-    localStorage.removeItem(key);
+    // #ifdef H5
+    if (typeof uni === 'undefined') {
+      localStorage.removeItem(key);
+      return;
+    }
+    // #endif
+    uni.removeStorageSync(key);
   }
 };
 
@@ -145,6 +159,30 @@ const generateLocalFileName = (fileName, msgId) => {
   return `chat_files/${msgId}_${pureName}${suffix}`;
 };
 
+const downloadFileToLocalPath = async (url) => {
+  const downloadResult = await uni.downloadFile({ url });
+  if (Number(downloadResult?.statusCode || 0) !== 200 || !downloadResult?.tempFilePath) {
+    throw new Error(`download failed: ${downloadResult?.statusCode || 'unknown status'}`);
+  }
+
+  let localPath = downloadResult.tempFilePath;
+  if (typeof uni.saveFile === 'function') {
+    try {
+      const saveResult = await uni.saveFile({
+        tempFilePath: downloadResult.tempFilePath
+      });
+      localPath = saveResult?.savedFilePath || localPath;
+    } catch (error) {
+      console.warn('persist downloaded file failed, fallback to temp path', error);
+    }
+  }
+
+  return {
+    tempFilePath: downloadResult.tempFilePath,
+    localPath
+  };
+};
+
 /**
  * 执行文件下载
  * @param {string} url 远程文件地址
@@ -166,6 +204,7 @@ export const downloadFile = async (url, fileName, msgId, progressCallback, autoT
   }
 
   // 图片特殊处理：缓存Blob URL
+  // #ifdef H5
   if (fileName?.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp|bmp)$/)) {
     try {
       const response = await fetch(url);
@@ -173,7 +212,7 @@ export const downloadFile = async (url, fileName, msgId, progressCallback, autoT
       const blob = await response.blob();
       const localUrl = URL.createObjectURL(blob);
       const localPath = generateLocalFileName(fileName, msgId);
-      
+
       // 保存到缓存索引
       saveFileToCache({
         msgId,
@@ -187,12 +226,53 @@ export const downloadFile = async (url, fileName, msgId, progressCallback, autoT
       throw new Error(`图片缓存失败：${e.message}`);
     }
   }
+  // #endif
+  // #ifndef H5
+  if (fileName?.toLowerCase().match(/\.(jpg|jpeg|png|gif|webp|bmp)$/)) {
+    try {
+      const { localPath: persistedLocalPath } = await downloadFileToLocalPath(url);
+
+      saveFileToCache({
+        msgId,
+        fileUrl: url,
+        fileName,
+        fileSize: 0,
+        localPath: persistedLocalPath
+      });
+      return persistedLocalPath;
+
+      const { tempFilePath } = await uni.downloadFile({
+        url,
+        success: (res) => {
+          if (res.statusCode === 200) {
+            return res.tempFilePath;
+          }
+          throw new Error(`图片下载失败: ${res.statusCode}`);
+        }
+      });
+      const localPath = generateLocalFileName(fileName, msgId);
+
+      // 保存到缓存索引
+      saveFileToCache({
+        msgId,
+        fileUrl: url,
+        fileName,
+        fileSize: 0, // uni.downloadFile 不提供文件大小
+        localPath: tempFilePath
+      });
+      return tempFilePath;
+    } catch (e) {
+      throw new Error(`图片下载失败：${e.message}`);
+    }
+  }
+  // #endif
 
   // 普通文件下载
+  // #ifdef H5
   try {
     const response = await fetch(url);
     if (!response.ok) throw new Error('文件下载请求失败');
-    
+
     const contentLength = response.headers.get('content-length');
     const totalSize = contentLength ? parseInt(contentLength) : 0;
     const reader = response.body.getReader();
@@ -237,6 +317,62 @@ export const downloadFile = async (url, fileName, msgId, progressCallback, autoT
   } catch (e) {
     throw new Error(`文件下载失败：${e.message}`);
   }
+  // #endif
+  // #ifndef H5
+  try {
+    const { localPath: persistedLocalPath } = await downloadFileToLocalPath(url);
+
+    if (!autoTrigger) {
+      uni.openDocument({
+        filePath: persistedLocalPath,
+        showMenu: true,
+        fail: () => uniApiAdapter.showToast({ title: '鎵撳紑鏂囦欢澶辫触', icon: 'none' })
+      });
+    }
+
+    saveFileToCache({
+      msgId,
+      fileUrl: url,
+      fileName,
+      fileSize: 0,
+      localPath: persistedLocalPath
+    });
+    return persistedLocalPath;
+
+    const downloadTask = await uni.downloadFile({
+      url,
+      success: (res) => {
+        if (res.statusCode === 200) {
+          return res.tempFilePath;
+        }
+        throw new Error(`文件下载失败: ${res.statusCode}`);
+      }
+    });
+
+    const localPath = generateLocalFileName(fileName, msgId);
+
+    // 如果不是自动触发，打开文档
+    if (!autoTrigger) {
+      uni.openDocument({
+        filePath: downloadTask.tempFilePath,
+        showMenu: true,
+        fail: () => uniApiAdapter.showToast({ title: '打开文件失败', icon: 'none' })
+      });
+    }
+
+    // 保存下载记录到索引
+    saveFileToCache({
+      msgId,
+      fileUrl: url,
+      fileName,
+      fileSize: 0, // uni.downloadFile 不提供文件大小
+      localPath: downloadTask.tempFilePath
+    });
+    return downloadTask.tempFilePath;
+  } catch (e) {
+    throw new Error(`文件下载失败：${e.message}`);
+  }
+  // #endif
 };
 
 // ==================== 对外暴露的消息下载处理方法 ====================

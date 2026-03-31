@@ -1,0 +1,1172 @@
+<template>
+  <view class="modern-login-container" :data-theme="currentTheme">
+    <!-- Theme Toggle Button -->
+    <view class="theme-toggle-wrapper">
+      <ThemeToggle />
+    </view>
+
+    <!-- Ambient Background Shapes -->
+    <view class="ambient-shapes">
+      <view class="ambient-shape shape-1"></view>
+      <view class="ambient-shape shape-2"></view>
+      <view class="ambient-shape shape-3"></view>
+    </view>
+
+    <!-- Main Login Card -->
+    <view class="login-card">
+      <!-- Logo Section -->
+      <view class="logo-section">
+        <view class="logo-container">
+          <image
+            class="logo-image"
+            src="/static/logo.png"
+            mode="aspectFill"
+          ></image>
+        </view>
+        <text class="app-title">Chat</text>
+        <text class="app-subtitle">CONNECT WITH FRIENDS</text>
+      </view>
+
+      <!-- Password Login Mode -->
+      <view v-if="loginMode === 'password'" class="login-mode-wrapper">
+        <u-form :model="formData" :rules="formRules" ref="formRef" class="modern-form">
+          <!-- Account Input -->
+          <view class="input-group">
+            <view class="input-icon">
+              <!-- #ifdef H5 || APP-PLUS -->
+              <svg class="icon" width="20" height="20">
+                <use href="#icon-user"></use>
+              </svg>
+              <!-- #endif -->
+              <!-- #ifdef MP-WEIXIN || MP-ALIPAY || MP-BAIDU || MP-TOUTIAO -->
+              <!-- 小程序使用emoji作为后备方案 -->
+              <!-- 如需使用iconfont，请先按照 ICONFONT_SETUP_GUIDE.md 配置字体文件 -->
+              <!-- 配置完成后，将下方代码替换为：<text class="iconfont icon-user"></text> -->
+              <text class="icon-emoji">👤</text>
+              <!-- #endif -->
+            </view>
+            <u-form-item prop="account" class="form-item-custom" :border="false">
+              <u-input
+                v-model="formData.account"
+                placeholder="输入账号"
+                class="modern-input"
+                bgColor="transparent"
+                :custom-style="inputCustomStyle"
+                placeholderClass="input-placeholder"
+              ></u-input>
+            </u-form-item>
+            <view class="input-focus-line"></view>
+          </view>
+
+          <!-- Password Input -->
+          <view class="input-group">
+            <view class="input-icon">
+              <!-- #ifdef H5 || APP-PLUS -->
+              <svg class="icon" width="20" height="20">
+                <use href="#icon-lock"></use>
+              </svg>
+              <!-- #endif -->
+              <!-- #ifdef MP-WEIXIN || MP-ALIPAY || MP-BAIDU || MP-TOUTIAO -->
+              <!-- 小程序使用emoji作为后备方案 -->
+              <!-- 如需使用iconfont，请先按照 ICONFONT_SETUP_GUIDE.md 配置字体文件 -->
+              <!-- 配置完成后，将下方代码替换为：<text class="iconfont icon-lock"></text> -->
+              <text class="icon-emoji">🔒</text>
+              <!-- #endif -->
+            </view>
+            <u-form-item prop="password" class="form-item-custom" :border="false">
+              <u-input
+                v-model="formData.password"
+                placeholder="输入密码"
+                class="modern-input"
+                password
+                show-password
+                bgColor="transparent"
+                :custom-style="inputCustomStyle"
+                placeholderClass="input-placeholder"
+              ></u-input>
+            </u-form-item>
+            <view class="input-focus-line"></view>
+          </view>
+
+          <!-- Save Password (Mobile Only) -->
+          <!-- #ifndef H5 -->
+          <view class="save-password-wrapper">
+            <u-checkbox
+              v-model="savePassword"
+              shape="circle"
+              activeColor="#22C55E"
+              size="18px"
+            ></u-checkbox>
+            <text class="save-password-text">记住登录状态</text>
+          </view>
+          <!-- #endif -->
+
+          <!-- Login Button -->
+          <view class="button-group">
+            <view
+              class="modern-button primary-button"
+              @click="submitForm"
+              :class="{ 'button-loading': isLoading }"
+            >
+              <text class="button-text">{{ isLoading ? '连接中...' : '登录' }}</text>
+            </view>
+          </view>
+        </u-form>
+
+        <!-- Footer Links -->
+        <view class="footer-links">
+          <!-- #ifdef H5 -->
+          <text class="modern-link" @click="switchLoginMode('qrcode')">
+            二维码登录
+          </text>
+          <text class="modern-link" @click="() => uni.navigateTo({ url: '/pages/register/register' })">
+            创建账号
+          </text>
+          <!-- #endif -->
+
+          <!-- #ifndef H5 -->
+          <text class="modern-link" @click="() => uni.navigateTo({ url: '/pages/register/register' })">
+            创建账号
+          </text>
+          <!-- #endif -->
+        </view>
+      </view>
+
+      <!-- QR Code Login Mode -->
+      <view v-else class="qrcode-mode-wrapper">
+        <view class="qrcode-card">
+          <!-- Scanner Rings (Simplified to 2 layers) -->
+          <view class="qrcode-scanner-ring"></view>
+          <view class="qrcode-scanner-ring delay-1"></view>
+
+          <!-- QR Code Display -->
+          <view class="qrcode-display">
+            <image
+              v-if="qrCodeBase64"
+              :src="qrCodeBase64"
+              class="qrcode-image"
+              mode="aspectFit"
+            ></image>
+            <view v-else class="qrcode-loader">
+              <view class="loader-spinner"></view>
+              <text class="loader-text">生成中...</text>
+            </view>
+          </view>
+
+          <!-- Status Panel -->
+          <view class="qrcode-status-panel">
+            <view class="status-indicator" :class="`status-${qrCodeStatus}`">
+              <view class="status-dot"></view>
+            </view>
+            <text class="status-text" :class="`status-${qrCodeStatus}`">
+              {{ getStatusText() }}
+            </text>
+            <view class="countdown-ring">
+              <text class="countdown-number">{{ timeRemaining }}</text>
+            </view>
+          </view>
+
+          <!-- Action Buttons -->
+          <view class="qrcode-actions">
+            <view
+              class="modern-button secondary-button"
+              @click="switchLoginMode('password')"
+            >
+              <text class="button-text">返回密码登录</text>
+            </view>
+            <view
+              v-if="qrCodeStatus === 'expired'"
+              class="modern-button accent-button"
+              @click="regenerateQrCode"
+            >
+              <text class="button-text">重新生成</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+</template>
+
+<script setup>
+import { ref, reactive, onMounted, onBeforeUnmount, computed } from 'vue'
+import service from '@/utils/request'
+import { useTheme } from '@/composables/useTheme'
+import ThemeToggle from '@/components/ThemeToggle.vue'
+
+// ========== Theme Management ==========
+const { theme: currentTheme, initTheme, cleanup: cleanupTheme } = useTheme()
+
+// ========== State Management ==========
+const loginMode = ref('password')
+const isLoading = ref(false)
+const formData = ref({ account: '', password: '' })
+const savePassword = ref(false)
+
+// Form styles
+const inputCustomStyle = reactive({
+  height: '56px',
+  padding: '0 20px',
+  paddingLeft: '52px',
+  fontSize: '16px',
+  color: '#1C1917',
+  fontWeight: '500',
+})
+
+// Form validation rules
+const formRules = ref({
+  account: [
+    { required: true, message: '请输入账号', trigger: 'blur' },
+    { min: 3, max: 20, message: '账号长度为3-20位', trigger: 'blur' },
+  ],
+  password: [
+    { required: true, message: '请输入密码', trigger: 'blur' },
+    { min: 6, max: 16, message: '密码长度为6-16位', trigger: 'blur' },
+  ],
+})
+const formRef = ref(null)
+
+// QR Code states
+const qrCodeBase64 = ref('')
+const qrCodeId = ref('')
+const qrCodeStatus = ref('waiting') // waiting, scanned, confirmed, expired
+const timeRemaining = ref(300)
+const pollingTimer = ref(null)
+const countdownTimer = ref(null)
+
+// ========== Lifecycle ==========
+onMounted(() => {
+  // Initialize theme
+  initTheme()
+
+  try {
+    // Check if already logged in
+    const token = uni.getStorageSync('satoken')
+    if (token && token.trim()) {
+      uni.redirectTo({ url: '/pages/home/home' })
+      return
+    }
+
+    // Restore saved login info (mobile only)
+    const deviceType = getDeviceType()
+    if (deviceType !== 'h5') {
+      const savedAccount = uni.getStorageSync('savedAccount')
+      const savedPassword = uni.getStorageSync('savedPassword')
+      const shouldSavePassword = uni.getStorageSync('savePasswordEnabled')
+
+      if (savedAccount) {
+        formData.value.account = savedAccount
+        if (savedPassword) {
+          formData.value.password = savedPassword
+        }
+        savePassword.value = !!shouldSavePassword
+      }
+    }
+  } catch (error) {
+    console.error('Login page initialization error:', error)
+    uni.$u.toast('初始化失败，请刷新重试')
+  }
+})
+
+onBeforeUnmount(() => {
+  // Clear timers
+  stopPolling()
+  stopCountdown()
+
+  // Cleanup theme
+  cleanupTheme()
+})
+
+// ========== Utility Functions ==========
+const getDeviceType = () => {
+  try {
+    const systemInfo = uni.getSystemInfoSync()
+    if (systemInfo.miniProgram?.envVersion) return 'mp-weixin'
+    switch (systemInfo.platform) {
+      case 'android':
+        return 'android'
+      case 'ios':
+        return 'ios'
+      case 'windows':
+      case 'mac':
+        return 'pc'
+      default:
+        return 'h5'
+    }
+  } catch (error) {
+    return 'unknown'
+  }
+}
+
+const getStatusText = () => {
+  const statusMap = {
+    waiting: '请使用已登录设备扫描二维码',
+    scanned: '已扫描，请在设备上确认登录',
+    confirmed: '登录成功，即将跳转...',
+    expired: '二维码已过期，请重新生成',
+  }
+  return statusMap[qrCodeStatus.value] || ''
+}
+
+// ========== Login Mode Switching ==========
+const switchLoginMode = (mode) => {
+  if (mode === 'qrcode') {
+    loginMode.value = 'qrcode'
+    generateQrCode()
+  } else {
+    loginMode.value = 'password'
+    stopPolling()
+    stopCountdown()
+    qrCodeStatus.value = 'waiting'
+    timeRemaining.value = 300
+  }
+}
+
+// ========== Password Login ==========
+const submitForm = async () => {
+  try {
+    const valid = await formRef.value.validate()
+    if (valid) {
+      isLoading.value = true
+      const res = await service.post('/user/login', {
+        username: formData.value.account,
+        password: formData.value.password,
+      })
+
+      // Save token
+      uni.setStorageSync('satoken', res.data)
+
+      // Save account/password (mobile only)
+      const deviceType = getDeviceType()
+      if (deviceType !== 'h5' && savePassword.value) {
+        uni.setStorageSync('savedAccount', formData.value.account)
+        uni.setStorageSync('savedPassword', formData.value.password)
+        uni.setStorageSync('savePasswordEnabled', true)
+      } else if (deviceType !== 'h5' && !savePassword.value) {
+        uni.removeStorageSync('savedPassword')
+        uni.setStorageSync('savePasswordEnabled', false)
+      }
+
+      await uni.$u.toast('登录成功，欢迎回来')
+      setTimeout(() => {
+        uni.redirectTo({ url: '/pages/home/home' })
+      }, 800)
+    }
+  } catch (err) {
+    if (err[0]?.message) {
+      uni.$u.toast('验证失败：' + err[0].message)
+    } else {
+      uni.$u.toast(err.message || '登录失败，请检查账号密码')
+    }
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// ========== QR Code Login ==========
+const generateQrCode = async () => {
+  try {
+    qrCodeStatus.value = 'waiting'
+    timeRemaining.value = 300
+
+    const res = await service.get('/user/qrcode/generate')
+    qrCodeBase64.value = res.data.qrCodeBase64
+    qrCodeId.value = res.data.qrCodeId
+
+    startPolling()
+    startCountdown()
+  } catch (err) {
+    uni.$u.toast('生成二维码失败：' + (err.message || '未知错误'))
+  }
+}
+
+const regenerateQrCode = () => {
+  stopPolling()
+  stopCountdown()
+  generateQrCode()
+}
+
+const startPolling = () => {
+  stopPolling()
+
+  pollingTimer.value = setInterval(async () => {
+    try {
+      const res = await service.get(
+        `/user/qrcode/status?qrCodeId=${qrCodeId.value}`,
+      )
+
+      const status = res.data.status
+      qrCodeStatus.value = status
+
+      if (status === 'confirmed') {
+        const token = res.data.token
+        uni.setStorageSync('satoken', token)
+
+        stopPolling()
+        stopCountdown()
+
+        uni.$u.toast('验证成功，正在进入系统')
+        setTimeout(() => {
+          uni.redirectTo({ url: '/pages/home/home' })
+        }, 1000)
+      } else if (status === 'expired') {
+        stopPolling()
+        stopCountdown()
+      }
+    } catch (err) {
+      console.error('Polling error:', err)
+    }
+  }, 1000)
+}
+
+const stopPolling = () => {
+  if (pollingTimer.value) {
+    clearInterval(pollingTimer.value)
+    pollingTimer.value = null
+  }
+}
+
+const startCountdown = () => {
+  stopCountdown()
+
+  countdownTimer.value = setInterval(() => {
+    timeRemaining.value--
+
+    if (timeRemaining.value <= 0) {
+      qrCodeStatus.value = 'expired'
+      stopCountdown()
+      stopPolling()
+    }
+  }, 1000)
+}
+
+const stopCountdown = () => {
+  if (countdownTimer.value) {
+    clearInterval(countdownTimer.value)
+    countdownTimer.value = null
+  }
+}
+</script>
+
+<style>
+/* ========== Global Reset ========== */
+page,
+view,
+text,
+input {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* ========== Main Container ========== */
+.modern-login-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  /* Fallback for platforms without CSS variable support */
+  background: linear-gradient(135deg, #FAFAF9 0%, #F5F5F4 100%);
+  background: var(--gradient-bg, linear-gradient(135deg, #FAFAF9 0%, #F5F5F4 100%));
+  padding: 16px; /* Fallback value */
+  padding: var(--space-lg, 16px);
+  /* Safe area support - Use UniApp built-in variables first, then env() for H5/App */
+  padding-top: calc(var(--uni-safe-area-inset-top, 0px) + 16px);
+  padding-top: calc(var(--uni-safe-area-inset-top, 0px) + var(--space-lg, 16px));
+  padding-bottom: calc(var(--uni-safe-area-inset-bottom, 0px) + 16px);
+  padding-bottom: calc(var(--uni-safe-area-inset-bottom, 0px) + var(--space-lg, 16px));
+  padding-left: calc(var(--uni-safe-area-inset-left, 0px) + 16px);
+  padding-left: calc(var(--uni-safe-area-inset-left, 0px) + var(--space-lg, 16px));
+  padding-right: calc(var(--uni-safe-area-inset-right, 0px) + 16px);
+  padding-right: calc(var(--uni-safe-area-inset-right, 0px) + var(--space-lg, 16px));
+}
+
+/* ========== Ambient Background Shapes ========== */
+.ambient-shapes {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ambient-shape {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.6;
+  animation: float 20s ease-in-out infinite;
+}
+
+.shape-1 {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(34, 197, 94, 0.15), transparent 70%);
+  top: -100px;
+  left: -100px;
+  animation-delay: 0s;
+}
+
+.shape-2 {
+  width: 350px;
+  height: 350px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.1), transparent 70%);
+  bottom: -100px;
+  right: -100px;
+  animation-delay: -7s;
+}
+
+.shape-3 {
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.08), transparent 70%);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  animation-delay: -14s;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(20px, -20px) scale(1.05);
+  }
+}
+
+/* ========== Login Card ========== */
+.login-card {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  background: #FFFFFF;
+  border-radius: 32px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+  padding: 64px 48px;
+  z-index: 1;
+  animation: cardEntry 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes cardEntry {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ========== Logo Section ========== */
+.logo-section {
+  text-align: center;
+  margin-bottom: 48px;
+  animation: logoReveal 0.8s cubic-bezier(0.4, 0, 0.2, 1) 0.1s both;
+}
+
+@keyframes logoReveal {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.logo-container {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  margin: 0 auto 20px;
+}
+
+.logo-image {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.app-title {
+  display: block;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  background: linear-gradient(135deg, #22C55E 0%, #16A34A 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 8px;
+}
+
+.app-subtitle {
+  display: block;
+  font-size: 13px;
+  color: #57534E;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+/* ========== Form Styles ========== */
+.modern-form {
+  width: 100%;
+  margin-bottom: 24px;
+}
+
+.input-group {
+  position: relative;
+  margin-bottom: 24px;
+  animation: inputSlideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.input-group:nth-child(1) {
+  animation-delay: 0.2s;
+}
+
+.input-group:nth-child(2) {
+  animation-delay: 0.3s;
+}
+
+@keyframes inputSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.input-icon {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 52px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  /* Fallback color for platforms without CSS variable support */
+  color: #A8A29E;
+  color: var(--text-tertiary, #A8A29E);
+  transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.input-group:focus-within .input-icon {
+  color: #22C55E;
+  color: var(--green-primary, #22C55E);
+}
+
+/* Emoji icon styles for mini-programs */
+.icon-emoji {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.form-item-custom {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+}
+
+.modern-input {
+  width: 100%;
+  height: 56px;
+  padding: 0 20px 0 52px;
+  /* Fallback colors for platforms without CSS variable support */
+  background: #FFFFFF;
+  background: var(--bg-secondary, #FFFFFF);
+  border: 1.5px solid #E7E5E4;
+  border: 1.5px solid var(--border-subtle, #E7E5E4);
+  border-radius: 16px;
+  border-radius: var(--radius-lg, 16px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.modern-input:focus-within {
+  border-color: #22C55E;
+  border-color: var(--green-primary, #22C55E);
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.1);
+  box-shadow: 0 0 0 4px var(--green-faint, rgba(34, 197, 94, 0.1));
+}
+
+.input-focus-line {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  height: 2px;
+  width: 0;
+  background: linear-gradient(90deg, #22C55E, #16A34A);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 0 0 16px 16px;
+}
+
+.modern-input:focus-within ~ .input-focus-line {
+  width: 100%;
+}
+
+.input-placeholder {
+  color: #D6D3D1 !important;
+  font-size: 16px;
+  font-weight: 400;
+}
+
+/* Clear uView default styles */
+:deep(.form-item-custom .u-form-item),
+:deep(.form-item-custom .u-form-item__wrapper),
+:deep(.form-item-custom .u-form-item__body),
+:deep(.form-item-custom .u-form-item__content) {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+:deep(.modern-input .u-input),
+:deep(.modern-input .u-input__wrapper),
+:deep(.modern-input .u-input__content-wrapper) {
+  background: transparent !important;
+  border: none !important;
+}
+
+:deep(.modern-input .u-input__content input) {
+  background-color: transparent !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  outline: none !important;
+}
+
+/* ========== Save Password ========== */
+.save-password-wrapper {
+  display: flex;
+  align-items: center;
+  margin-bottom: 28px;
+  padding-left: 4px;
+  animation: inputSlideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.3s both;
+}
+
+.save-password-text {
+  margin-left: 10px;
+  font-size: 14px;
+  color: #57534E;
+  font-weight: 400;
+}
+
+/* ========== Button Styles ========== */
+.button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: buttonReveal 0.5s cubic-bezier(0.4, 0, 0.2, 1) 0.4s both;
+}
+
+@keyframes buttonReveal {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.modern-button {
+  position: relative;
+  height: 56px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  font-size: 16px;
+}
+
+.primary-button {
+  /* Fallback for platforms without CSS variable support */
+  background: linear-gradient(135deg, #22C55E 0%, #16A34A 100%);
+  background: var(--gradient-green, linear-gradient(135deg, #22C55E 0%, #16A34A 100%));
+  border: none;
+  color: #FFFFFF;
+  color: var(--bg-secondary, #FFFFFF);
+  box-shadow: 0 4px 12px rgba(34, 197, 94, 0.25);
+  box-shadow: var(--shadow-green, 0 4px 12px rgba(34, 197, 94, 0.25));
+}
+
+.primary-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(34, 197, 94, 0.3);
+  box-shadow: var(--shadow-green-hover, 0 8px 20px rgba(34, 197, 94, 0.3));
+}
+
+.primary-button:active {
+  transform: translateY(0);
+}
+
+.button-text {
+  position: relative;
+  z-index: 1;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.button-loading {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.secondary-button {
+  background: transparent;
+  border: 1.5px solid #E7E5E4;
+  color: #1C1917;
+}
+
+.secondary-button:hover {
+  background: #F5F5F4;
+  border-color: #D6D3D1;
+}
+
+.accent-button {
+  background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+  border: none;
+  color: #FFFFFF;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.25);
+}
+
+.accent-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(139, 92, 246, 0.3);
+}
+
+/* ========== Footer Links ========== */
+.footer-links {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 24px;
+  animation: footerReveal 0.6s cubic-bezier(0.4, 0, 0.2, 1) 0.5s both;
+}
+
+@keyframes footerReveal {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modern-link {
+  display: flex;
+  align-items: center;
+  font-size: 14px;
+  /* Fallback colors for platforms without CSS variable support */
+  color: #3B82F6;
+  color: var(--accent-blue, #3B82F6);
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 8px 12px;
+  border-radius: 8px;
+  border-radius: var(--radius-sm, 8px);
+}
+
+.modern-link:hover {
+  background: #F0FDF4;
+  background: var(--green-faint, #F0FDF4);
+  color: #16A34A;
+  color: var(--green-hover, #16A34A);
+}
+
+/* ========== QR Code Mode ========== */
+.qrcode-mode-wrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: modeSwitch 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes modeSwitch {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.qrcode-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.qrcode-scanner-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  border: 2px solid rgba(34, 197, 94, 0.2);
+  border-radius: 50%;
+  animation: scannerRing 3s linear infinite;
+  z-index: 0;
+}
+
+.qrcode-scanner-ring.delay-1 {
+  animation-delay: -1.5s;
+}
+
+@keyframes scannerRing {
+  0% {
+    width: 0;
+    height: 0;
+    opacity: 1;
+  }
+  100% {
+    width: 220px;
+    height: 220px;
+    opacity: 0;
+  }
+}
+
+.qrcode-display {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  background: #FFFFFF;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 8px 32px rgba(34, 197, 94, 0.1);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.qrcode-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.qrcode-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.loader-spinner {
+  width: 50px;
+  height: 50px;
+  border: 3px solid rgba(34, 197, 94, 0.1);
+  border-top-color: #22C55E;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loader-text {
+  font-size: 14px;
+  color: #A8A29E;
+  font-weight: 500;
+}
+
+.qrcode-status-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 32px;
+  width: 100%;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  background: #F5F5F4;
+  border: 1px solid #E7E5E4;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #A8A29E;
+  animation: statusPulse 2s ease-in-out infinite;
+}
+
+.status-waiting .status-dot {
+  background: #22C55E;
+}
+
+.status-scanned .status-dot {
+  background: #8B5CF6;
+}
+
+.status-confirmed .status-dot {
+  background: #22C55E;
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+}
+
+.status-expired .status-dot {
+  background: #EF4444;
+}
+
+@keyframes statusPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
+
+.status-text {
+  font-size: 14px;
+  color: #57534E;
+  text-align: center;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.status-text.status-scanned {
+  color: #8B5CF6;
+}
+
+.status-text.status-confirmed {
+  color: #22C55E;
+}
+
+.status-text.status-expired {
+  color: #EF4444;
+}
+
+.countdown-ring {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #F0FDF4;
+  border: 2px solid #86EFAC;
+}
+
+.countdown-number {
+  font-size: 24px;
+  font-weight: 700;
+  color: #22C55E;
+}
+
+.qrcode-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+/* ========== Error Messages ========== */
+:deep(.u-form-item__error) {
+  display: block !important;
+  margin-top: 8px !important;
+  font-size: 12px !important;
+  color: #EF4444 !important;
+  padding-left: 12px !important;
+  font-weight: 500 !important;
+}
+
+/* ========== Autofill Styles ========== */
+:deep(.modern-input input:-webkit-autofill) {
+  -webkit-text-fill-color: #1C1917 !important;
+  -webkit-box-shadow: 0 0 0 30px #FFFFFF inset !important;
+  transition: background-color 5000s ease-in-out 0s !important;
+}
+
+/* ========== Responsive Design ========== */
+@media (max-width: 640px) {
+  .login-card {
+    padding: 40px 24px;
+    border-radius: 24px;
+  }
+
+  .app-title {
+    font-size: 24px;
+  }
+
+  .modern-input {
+    height: 52px;
+  }
+
+  .modern-button {
+    height: 52px;
+  }
+}
+
+/* ========== Touch Device Optimizations ========== */
+@media (hover: none) {
+  .modern-button:active {
+    transform: scale(0.98);
+  }
+
+  .modern-link:active {
+    opacity: 0.7;
+  }
+}
+
+/* ========== Safe Area for iOS ========== */
+/* Fallback for H5 and App platforms that support env() */
+/* #ifdef H5 || APP-PLUS */
+@supports (padding: env(safe-area-inset-top)) {
+  .modern-login-container {
+    padding: calc(env(safe-area-inset-top) + 24px) env(safe-area-inset-right) calc(env(safe-area-inset-bottom) + 24px) env(safe-area-inset-left);
+  }
+}
+/* #endif */
+
+/* For platforms that don't support env(), the UniApp variables in the main CSS will handle it */
+
+/* ========== Theme Toggle Wrapper ========== */
+.theme-toggle-wrapper {
+  position: fixed;
+  top: calc(var(--uni-safe-area-inset-top, 0px) + 16px);
+  right: 16px;
+  z-index: 100;
+}
+</style>

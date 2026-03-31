@@ -2,6 +2,7 @@ package com.maxxvll.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.maxxvll.common.constants.ApplicationStatusConstants;
 import com.maxxvll.common.dto.GroupMemberAddDTO;
 import com.maxxvll.common.dto.GroupMemberRemoveDTO;
 import com.maxxvll.common.dto.GroupMemberUpdateDTO;
@@ -23,9 +24,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.Date;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
 * @author 20570
@@ -52,82 +58,126 @@ public class ChatGroupMemberServiceImpl extends ServiceImpl<ChatGroupMemberMappe
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void addMembers(GroupMemberAddDTO addDTO, String operatorId) {
-        // 1. 检查群是否存在
         ChatGroup group = chatGroupMapper.selectById(addDTO.getGroupId());
         if (group == null || group.getStatus() == 2) {
-            throw new BusinessException("群聊不存在或已解散");
+            throw new BusinessException("Group not found or already dissolved");
         }
 
-        // 2. 检查操作人是否在群中
         Integer operatorRole = getUserRole(addDTO.getGroupId(), operatorId);
         if (operatorRole == null) {
-            throw new BusinessException("您不在该群聊中");
+            throw new BusinessException("Operator is not in this group");
         }
 
-        // 3. 普通成员邀请：按群的加群方式来处理
+        LinkedHashSet<String> requestedUserIds = addDTO.getUserIds() == null
+                ? new LinkedHashSet<>()
+                : addDTO.getUserIds().stream()
+                        .filter(id -> id != null && !id.trim().isEmpty())
+                        .collect(Collectors.toCollection(LinkedHashSet::new));
+        if (requestedUserIds.isEmpty()) {
+            return;
+        }
+
         if (operatorRole == 3) {
             if (group.getJoinType() == 3) {
-                throw new BusinessException("该群聊仅支持邀请加入，您无权邀请他人");
+                throw new BusinessException("This group only supports invite-only joins");
             }
             if (group.getJoinType() == 1) {
-                // 需审核：创建待审核申请记录
-                for (String userId : addDTO.getUserIds()) {
-                    if (isGroupMember(addDTO.getGroupId(), userId)) {
-                        continue;
-                    }
-                    long pendingCount = groupApplicationMapper.selectCount(
-                            new LambdaQueryWrapper<GroupApplication>()
-                                    .eq(GroupApplication::getGroupId, Long.valueOf(addDTO.getGroupId()))
-                                    .eq(GroupApplication::getApplicantId, Long.valueOf(userId))
-                                    .eq(GroupApplication::getStatus, 0)
-                    );
-                    if (pendingCount > 0) continue;
+                Set<String> activeMemberIds = new java.util.HashSet<>(
+                        baseMapper.selectActiveUserIdsByGroupIdAndUserIds(addDTO.getGroupId(), requestedUserIds)
+                );
+                List<String> validInviteeIds = chatUserMapper.selectList(
+                                new LambdaQueryWrapper<ChatUser>()
+                                        .select(ChatUser::getId)
+                                        .in(ChatUser::getId, requestedUserIds)
+                        ).stream()
+                        .map(ChatUser::getId)
+                        .filter(userId -> !activeMemberIds.contains(userId))
+                        .collect(Collectors.toList());
 
-                    GroupApplication application = new GroupApplication();
-                    application.setApplicantId(Long.valueOf(userId));
-                    application.setGroupId(addDTO.getGroupId());
-                    application.setStatus(0);
-                    application.setCreateTime(new Date());
-                    application.setUpdateTime(new Date());
-                    groupApplicationMapper.insert(application);
-                    log.info("用户[{}]被[{}]邀请加入群聊[{}]（待审核）", userId, operatorId, addDTO.getGroupId());
+                if (validInviteeIds.isEmpty()) {
+                    return;
                 }
+
+                List<Long> inviteeIdLongs = validInviteeIds.stream()
+                        .map(Long::valueOf)
+                        .collect(Collectors.toList());
+                Set<Long> pendingApplicantIds = new java.util.HashSet<>(
+                        groupApplicationMapper.selectApplicantIdsByGroupIdAndStatusAndApplicantIds(
+                                addDTO.getGroupId(),
+                                ApplicationStatusConstants.STATUS_PENDING,
+                                inviteeIdLongs
+                        )
+                );
+
+                Date now = new Date();
+                List<GroupApplication> applicationsToSave = validInviteeIds.stream()
+                        .map(Long::valueOf)
+                        .filter(applicantId -> !pendingApplicantIds.contains(applicantId))
+                        .map(applicantId -> {
+                            GroupApplication application = new GroupApplication();
+                            application.setApplicantId(applicantId);
+                            application.setGroupId(addDTO.getGroupId());
+                            application.setStatus(ApplicationStatusConstants.STATUS_PENDING);
+                            application.setRejectReason(null);
+                            application.setOperatorId(null);
+                            application.setCreateTime(now);
+                            application.setUpdateTime(now);
+                            return application;
+                        })
+                        .collect(Collectors.toList());
+
+                if (applicationsToSave.isEmpty()) {
+                    return;
+                }
+
+                groupApplicationMapper.batchUpsertApplications(applicationsToSave);
+                log.info("Batch pending group invitations created, groupId={}, operatorId={}, count={}",
+                        addDTO.getGroupId(), operatorId, applicationsToSave.size());
                 return;
             }
-            // joinType == 2 (免审核)：普通成员也可直接邀请
         }
 
-        // 4. 管理员/群主直接添加，或免审核群普通成员邀请直接入群（userIds 去重，避免 uk_group_user 唯一约束冲突）
-        List<String> userIdsDistinct = addDTO.getUserIds().stream()
-                .filter(id -> id != null && !id.trim().isEmpty())
-                .distinct()
+        Set<String> activeMemberIds = new java.util.HashSet<>(
+                baseMapper.selectActiveUserIdsByGroupIdAndUserIds(addDTO.getGroupId(), requestedUserIds)
+        );
+        List<String> validNewUserIds = chatUserMapper.selectList(
+                        new LambdaQueryWrapper<ChatUser>()
+                                .select(ChatUser::getId)
+                                .in(ChatUser::getId, requestedUserIds)
+                ).stream()
+                .map(ChatUser::getId)
+                .filter(userId -> !activeMemberIds.contains(userId))
                 .collect(Collectors.toList());
-        long currentCount = getMemberCount(addDTO.getGroupId());
-        if (currentCount + userIdsDistinct.size() > group.getMaxMember()) {
-            throw new BusinessException("群成员数量将超过上限");
+
+        if (validNewUserIds.isEmpty()) {
+            return;
         }
 
-        for (String userId : userIdsDistinct) {
-            if (isGroupMember(addDTO.getGroupId(), userId)) {
-                continue;
-            }
-            ChatUser user = chatUserMapper.selectById(userId);
-            if (user == null) {
-                continue;
-            }
+        long currentCount = getMemberCount(addDTO.getGroupId());
+        if (currentCount + validNewUserIds.size() > group.getMaxMember()) {
+            throw new BusinessException("Member count would exceed the group limit");
+        }
+
+        Date now = new Date();
+        List<ChatGroupMember> membersToSave = new java.util.ArrayList<>(validNewUserIds.size());
+        for (String userId : validNewUserIds) {
             ChatGroupMember member = new ChatGroupMember();
             member.setGroupId(addDTO.getGroupId());
             member.setUserId(userId);
             member.setRole(3);
-            member.setJoinTime(new Date());
+            member.setJoinTime(now);
             member.setInviterId(operatorId);
             member.setIsMute(0);
             member.setIsQuit(0);
-            member.setCreatedAt(new Date());
-            member.setUpdatedAt(new Date());
-            this.save(member);
-            log.info("用户[{}]被添加到群聊[{}]", userId, addDTO.getGroupId());
+            member.setQuitTime(null);
+            member.setQuitReason(null);
+            member.setCreateTime(now);
+            member.setUpdateTime(now);
+            membersToSave.add(member);
         }
+
+        baseMapper.batchUpsertMembers(membersToSave);
+        log.info("Batch group member add completed, groupId={}, operatorId={}, count={}", addDTO.getGroupId(), operatorId, membersToSave.size());
     }
 
     @Override
@@ -181,7 +231,7 @@ public class ChatGroupMemberServiceImpl extends ServiceImpl<ChatGroupMemberMappe
             member.setIsQuit(1);
             member.setQuitTime(new Date());
             member.setQuitReason(removeDTO.getReason());
-            member.setUpdatedAt(new Date());
+            member.setUpdateTime(new Date());
             this.updateById(member);
             log.info("用户[{}]被从群聊[{}]移除，操作人：[{}]，原因：{}", 
                     removeDTO.getUserId(), removeDTO.getGroupId(), operatorId, 
@@ -253,7 +303,7 @@ public class ChatGroupMemberServiceImpl extends ServiceImpl<ChatGroupMemberMappe
                     updateDTO.getIsMute() == 1 ? "禁言" : "取消禁言", operatorId);
         }
 
-        member.setUpdatedAt(new Date());
+        member.setUpdateTime(new Date());
         this.updateById(member);
     }
 
@@ -273,7 +323,97 @@ public class ChatGroupMemberServiceImpl extends ServiceImpl<ChatGroupMemberMappe
                         .orderByDesc(ChatGroupMember::getJoinTime)
         );
 
-        return members.stream().map(this::convertToVO).collect(Collectors.toList());
+        // ===== N+1查询优化：批量查询用户信息 =====
+        return convertToVOBatch(members);
+    }
+
+    @Override
+    public List<String> getActiveMemberIds(Long groupId) {
+        return baseMapper.selectActiveUserIdsByGroupId(groupId);
+    }
+
+    @Override
+    public Map<Long, List<String>> getActiveMemberIdsByGroupIds(Collection<Long> groupIds) {
+        if (groupIds == null || groupIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return baseMapper.selectActiveMembersByGroupIds(groupIds).stream()
+                .collect(Collectors.groupingBy(
+                        ChatGroupMember::getGroupId,
+                        Collectors.mapping(ChatGroupMember::getUserId, Collectors.toList())
+                ));
+    }
+
+    @Override
+    public List<Long> getActiveGroupIdsByUserId(String userId) {
+        if (userId == null || userId.isBlank()) {
+            return List.of();
+        }
+        return baseMapper.selectActiveGroupIdsByUserId(userId);
+    }
+
+    /**
+     * 批量转换为VO（优化N+1查询）
+     * @param members 群成员列表
+     * @return VO列表
+     */
+    private List<GroupMemberVO> convertToVOBatch(List<ChatGroupMember> members) {
+        if (members == null || members.isEmpty()) {
+            return List.of();
+        }
+
+        // 1. 收集所有用户ID和邀请人ID
+        List<String> userIds = members.stream()
+                .map(ChatGroupMember::getUserId)
+                .distinct()
+                .collect(Collectors.toList());
+
+        List<String> inviterIds = members.stream()
+                .map(ChatGroupMember::getInviterId)
+                .filter(id -> id != null)
+                .distinct()
+                .collect(Collectors.toList());
+
+        // 合并所有需要查询的用户ID
+        List<String> allUserIds = Stream.concat(userIds.stream(), inviterIds.stream())
+                .distinct()
+                .collect(Collectors.toList());
+
+        // 2. 批量查询所有用户信息
+        List<ChatUser> users = allUserIds.isEmpty() ?
+                List.of() :
+                chatUserMapper.selectList(
+                        new LambdaQueryWrapper<ChatUser>()
+                                .in(ChatUser::getId, allUserIds)
+                );
+
+        // 3. 构建用户ID -> 用户信息的映射
+        Map<String, ChatUser> userMap = users.stream()
+                .collect(Collectors.toMap(ChatUser::getId, u -> u));
+
+        // 4. 在内存中转换每个成员
+        return members.stream().map(member -> {
+            GroupMemberVO vo = BeanConvertUtil.convert(member, GroupMemberVO.class);
+            vo.setRoleName(getRoleName(member.getRole()));
+
+            // 从Map中获取用户信息
+            ChatUser user = userMap.get(member.getUserId());
+            if (user != null) {
+                vo.setNickname(user.getNickname());
+                vo.setAvatar(minioUtil.getAvatarUrl(user.getAvatar()));
+            }
+
+            // 从Map中获取邀请人信息
+            if (member.getInviterId() != null) {
+                ChatUser inviter = userMap.get(member.getInviterId());
+                if (inviter != null) {
+                    vo.setInviterNickname(inviter.getNickname());
+                }
+            }
+
+            return vo;
+        }).collect(Collectors.toList());
     }
 
     @Override
@@ -323,33 +463,29 @@ public class ChatGroupMemberServiceImpl extends ServiceImpl<ChatGroupMemberMappe
         );
     }
 
+    @Override
+    public boolean hasPermission(Long groupId, String userId, int requiredRole) {
+        Integer userRole = getUserRole(groupId, userId);
+        if (userRole == null) {
+            return false;
+        }
+        // 角色值越小权限越高：1(群主) < 2(管理员) < 3(成员)
+        return userRole <= requiredRole;
+    }
+
+    @Override
+    public void checkPermission(Long groupId, String userId, int requiredRole, String errorMessage) {
+        if (!hasPermission(groupId, userId, requiredRole)) {
+            throw new BusinessException(errorMessage != null ? errorMessage : "权限不足");
+        }
+    }
+
     /**
      * 转换为VO
      */
     private GroupMemberVO convertToVO(ChatGroupMember member) {
-        // 使用BeanConvertUtil转换基础字段
-        GroupMemberVO vo = BeanConvertUtil.convert(member, GroupMemberVO.class);
-
-        // 设置扩展字段（关联查询和计算字段）
-        vo.setRoleName(getRoleName(member.getRole()));
-
-        // 获取用户信息
-        ChatUser user = chatUserMapper.selectById(member.getUserId());
-        if (user != null) {
-            vo.setNickname(user.getNickname());
-            // 转换头像为公共桶永久直链
-            vo.setAvatar(minioUtil.getAvatarUrl(user.getAvatar()));
-        }
-
-        // 获取邀请人信息
-        if (member.getInviterId() != null) {
-            ChatUser inviter = chatUserMapper.selectById(member.getInviterId());
-            if (inviter != null) {
-                vo.setInviterNickname(inviter.getNickname());
-            }
-        }
-
-        return vo;
+        List<GroupMemberVO> vos = convertToVOBatch(List.of(member));
+        return vos.isEmpty() ? null : vos.get(0);
     }
 
     /**

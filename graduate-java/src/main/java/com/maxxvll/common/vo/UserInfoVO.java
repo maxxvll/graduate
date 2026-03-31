@@ -1,58 +1,91 @@
 package com.maxxvll.common.vo;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import java.util.Date;
+import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.Data;
+
+import java.time.LocalDateTime;
 import java.util.Map;
 
+/**
+ * 用户信息响应VO
+ * <p>
+ * 用于返回用户基本信息。
+ * 包含用户ID、用户名、昵称、头像、邮箱等。
+ * </p>
+ *
+ * @author backend-friend
+ */
+@Data
+@Schema(description = "用户信息")
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class UserInfoVO {
+
+    /**
+     * 用户ID
+     */
+    @Schema(description = "用户ID")
     private String id;
+
+    /**
+     * 用户名
+     */
+    @Schema(description = "用户名")
     private String username;
+
+    /**
+     * 昵称
+     */
+    @Schema(description = "昵称")
     private String nickname;
+
+    /**
+     * 头像URL
+     */
+    @Schema(description = "头像URL")
     private String avatar;
+
+    /**
+     * 手机号
+     */
+    @Schema(description = "手机号")
     private String phone;
+
+    /**
+     * 邮箱
+     */
+    @Schema(description = "邮箱")
     private String email;
+
+    /**
+     * 用户状态：1-正常，2-禁用，3-注销
+     */
+    @Schema(description = "用户状态")
     private Integer status;
-    private Date createdAt;
 
-    // 【新增】直接展现在VO里，方便前端使用
-    private String signature; // 个性签名
-    private String region;    // 地区
+    /**
+     * 注册时间
+     */
+    @Schema(description = "注册时间")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss", timezone = "GMT+8")
+    private LocalDateTime createdAt;
 
-    // 【新增】原始扩展字段，用于兼容
+    /**
+     * 个性签名
+     */
+    @Schema(description = "个性签名")
+    private String signature;
+
+    /**
+     * 地区
+     */
+    @Schema(description = "地区")
+    private String region;
+
+    /**
+     * 扩展信息
+     */
+    @Schema(description = "扩展信息")
     private Map<String, Object> extInfo;
-
-    // 手动添加getter/setter方法
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
-    
-    public String getUsername() { return username; }
-    public void setUsername(String username) { this.username = username; }
-    
-    public String getNickname() { return nickname; }
-    public void setNickname(String nickname) { this.nickname = nickname; }
-    
-    public String getAvatar() { return avatar; }
-    public void setAvatar(String avatar) { this.avatar = avatar; }
-    
-    public String getPhone() { return phone; }
-    public void setPhone(String phone) { this.phone = phone; }
-    
-    public String getEmail() { return email; }
-    public void setEmail(String email) { this.email = email; }
-    
-    public Integer getStatus() { return status; }
-    public void setStatus(Integer status) { this.status = status; }
-    
-    public Date getCreatedAt() { return createdAt; }
-    public void setCreatedAt(Date createdAt) { this.createdAt = createdAt; }
-    
-    public String getSignature() { return signature; }
-    public void setSignature(String signature) { this.signature = signature; }
-    
-    public String getRegion() { return region; }
-    public void setRegion(String region) { this.region = region; }
-    
-    public Map<String, Object> getExtInfo() { return extInfo; }
-    public void setExtInfo(Map<String, Object> extInfo) { this.extInfo = extInfo; }
 }

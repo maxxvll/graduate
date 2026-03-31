@@ -14,11 +14,7 @@
 
       <view v-else-if="qrCode" class="qr-code-wrapper">
         <!-- 显示二维码图片 -->
-        <image
-          :src="qrCode"
-          mode="aspectFit"
-          class="qr-code-image"
-        />
+        <image :src="qrCode" mode="aspectFit" class="qr-code-image" />
 
         <!-- 二维码下方的提示信息 -->
         <view v-if="scanningStatus === 'pending'" class="status-pending">
@@ -71,9 +67,7 @@
 
     <!-- 其他登录方式链接 -->
     <view class="other-login-methods">
-      <text @click="switchToPasswordLogin" class="link">
-        返回密码登录
-      </text>
+      <text @click="switchToPasswordLogin" class="link"> 返回密码登录 </text>
     </view>
   </view>
 </template>
@@ -84,12 +78,56 @@ import service from '@/utils/request'
 import {
   generateQrCode,
   pollQrLoginStatus,
-  saveLoginToken
+  saveLoginToken,
 } from '@/utils/qr-login'
+
+/**
+ * QRLogin 组件 Props 类型定义
+ * @typedef {Object} QRLoginProps
+ * @property {boolean} [autoStart] - 是否自动开始轮询（默认true）
+ * @property {number} [pollInterval] - 轮询间隔毫秒数（默认1000）
+ * @property {number} [qrCodeExpireTime] - 二维码过期时间秒数（默认300）
+ */
+
+/**
+ * 二维码扫描状态类型
+ * @typedef {'pending'|'scanned'|'expired'|'rejected'|'confirmed'} ScanningStatus
+ */
 
 export default {
   name: 'QRLogin',
   emits: ['login-success', 'switch-method'],
+  props: {
+    /**
+     * 是否自动开始轮询
+     * @type {boolean}
+     * @default true
+     */
+    autoStart: {
+      type: Boolean,
+      default: true,
+    },
+    /**
+     * 轮询间隔（毫秒）
+     * @type {number}
+     * @default 1000
+     */
+    pollInterval: {
+      type: Number,
+      default: 1000,
+      validator: (value) => value >= 500,
+    },
+    /**
+     * 二维码过期时间（秒）
+     * @type {number}
+     * @default 300
+     */
+    qrCodeExpireTime: {
+      type: Number,
+      default: 300,
+      validator: (value) => value > 0,
+    },
+  },
   setup(props, { emit }) {
     // 响应式数据
     const loading = ref(false)
@@ -151,7 +189,10 @@ export default {
 
       // 然后每 1 秒检查一次
       pollTimer = setInterval(() => {
-        if (qrId.value && !['confirmed', 'expired', 'rejected'].includes(scanningStatus.value)) {
+        if (
+          qrId.value &&
+          !['confirmed', 'expired', 'rejected'].includes(scanningStatus.value)
+        ) {
           checkLoginStatus()
         }
       }, 1000)
@@ -169,10 +210,13 @@ export default {
           stopPolling()
           stopCountdown()
           saveLoginToken(result.token)
-          
+
           // 延迟跳转，让用户看到确认界面
           setTimeout(() => {
-            emit('login-success', { userInfo: result.userInfo, token: result.token })
+            emit('login-success', {
+              userInfo: result.userInfo,
+              token: result.token,
+            })
           }, 1000)
         } else if (result && result.message) {
           // 检查状态但未登载，可能是 pending 或 scanned
@@ -189,11 +233,13 @@ export default {
      */
     const checkDetailedStatus = async () => {
       try {
-        const res = await service.get(`/user/qrcode/status?qrCodeId=${qrId.value}`)
+        const res = await service.get(
+          `/user/qrcode/status?qrCodeId=${qrId.value}`,
+        )
 
         if (res && res.code === 200) {
           const { status, token } = res.data
-          
+
           if (status === 'scanned') {
             scanningStatus.value = 'scanned'
             scannedUserInfo.value = '某用户'
@@ -202,7 +248,7 @@ export default {
             stopPolling()
             stopCountdown()
             saveLoginToken(token)
-            
+
             setTimeout(() => {
               emit('login-success', { token })
             }, 500)
@@ -279,9 +325,9 @@ export default {
       timeRemaining,
       regenerateQrCode,
       cancelQrLogin,
-      switchToPasswordLogin
+      switchToPasswordLogin,
     }
-  }
+  },
 }
 </script>
 

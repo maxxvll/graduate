@@ -1,10 +1,10 @@
 package com.maxxvll.common.exception;
 
-import lombok.Data;
+import lombok.Getter;
 
 import java.util.HashMap;
 import java.util.Map;
-@Data
+@Getter
 public class DtoValidationException extends RuntimeException{
     private final Map<String, String> errorMap;
 

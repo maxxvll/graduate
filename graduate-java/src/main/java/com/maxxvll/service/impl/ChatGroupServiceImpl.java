@@ -1,7 +1,9 @@
 package com.maxxvll.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.maxxvll.common.constants.ApplicationStatusConstants;
 import com.maxxvll.common.dto.GroupCreateDTO;
 import com.maxxvll.common.dto.GroupTransferDTO;
 import com.maxxvll.common.dto.GroupUpdateDTO;
@@ -11,7 +13,7 @@ import com.maxxvll.utils.MinioUtil;
 import com.maxxvll.common.vo.GroupInfoVO;
 import com.maxxvll.domain.ChatGroup;
 import com.maxxvll.domain.ChatGroupMember;
-import com.maxxvll.domain.GroupApplication;
+import com.maxxvll.domain.ChatUser;
 import com.maxxvll.mapper.ChatGroupMapper;
 import com.maxxvll.mapper.ChatGroupMemberMapper;
 import com.maxxvll.mapper.ChatUserMapper;
@@ -23,9 +25,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
 import java.util.Date;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.UUID;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -37,6 +42,9 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ChatGroupServiceImpl extends ServiceImpl<ChatGroupMapper, ChatGroup>
     implements ChatGroupService{
+
+    private static final int DEFAULT_GROUP_SEARCH_SIZE = 20;
+    private static final int MAX_GROUP_SEARCH_SIZE = 50;
 
     @Resource
     private ChatGroupMemberMapper chatGroupMemberMapper;
@@ -56,12 +64,8 @@ public class ChatGroupServiceImpl extends ServiceImpl<ChatGroupMapper, ChatGroup
     @Override
     @Transactional(rollbackFor = Exception.class)
     public GroupInfoVO createGroup(GroupCreateDTO createDTO, String creatorId) {
-        // 1. 创建群聊（使用雪花算法生成ID）
         ChatGroup group = new ChatGroup();
-        // MyBatis Plus 的 @TableId(type = IdType.ASSIGN_ID) 会自动使用雪花算法生成ID
-        // 这里不需要手动设置ID，save时会自动生成
         group.setGroupName(createDTO.getGroupName());
-        // 未选择头像时使用空串，前端展示时用默认群头像兜底
         String avatar = createDTO.getGroupAvatar();
         group.setGroupAvatar(avatar != null && !avatar.trim().isEmpty() ? avatar.trim() : "");
         group.setCreatorId(Long.valueOf(creatorId));
@@ -69,46 +73,68 @@ public class ChatGroupServiceImpl extends ServiceImpl<ChatGroupMapper, ChatGroup
         group.setJoinType(createDTO.getJoinType() != null ? createDTO.getJoinType() : 1);
         group.setIsMuteAll(0);
         group.setStatus(1);
-        group.setCreatedAt(new Date());
-        group.setUpdatedAt(new Date());
+        group.setCreateTime(new Date());
+        group.setUpdateTime(new Date());
 
         this.save(group);
 
-        // 2. 添加群主为成员
+        LinkedHashSet<String> requestedMemberIds = createDTO.getMemberIds() == null
+                ? new LinkedHashSet<>()
+                : createDTO.getMemberIds().stream()
+                        .filter(id -> id != null && !id.trim().isEmpty())
+                        .filter(id -> !id.equals(creatorId))
+                        .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        List<String> validMemberIds = requestedMemberIds.isEmpty()
+                ? List.of()
+                : chatUserMapper.selectList(
+                                new LambdaQueryWrapper<ChatUser>()
+                                        .select(ChatUser::getId)
+                                        .in(ChatUser::getId, requestedMemberIds)
+                        ).stream()
+                        .map(ChatUser::getId)
+                        .collect(Collectors.toList());
+
+        if (validMemberIds.size() + 1 > group.getMaxMember()) {
+            throw new BusinessException("Member count would exceed the group limit");
+        }
+
+        Date now = new Date();
+        List<ChatGroupMember> membersToSave = new java.util.ArrayList<>(validMemberIds.size() + 1);
+
         ChatGroupMember owner = new ChatGroupMember();
         owner.setGroupId(group.getId());
         owner.setUserId(creatorId);
-        owner.setRole(1); // 群主
-        owner.setJoinTime(new Date());
+        owner.setRole(1);
+        owner.setJoinTime(now);
+        owner.setInviterId(null);
         owner.setIsMute(0);
         owner.setIsQuit(0);
-        owner.setCreatedAt(new Date());
-        owner.setUpdatedAt(new Date());
-        chatGroupMemberMapper.insert(owner);
+        owner.setQuitTime(null);
+        owner.setQuitReason(null);
+        owner.setCreateTime(now);
+        owner.setUpdateTime(now);
+        membersToSave.add(owner);
 
-        // 3. 添加初始成员（去重且排除群主，避免 uk_group_user 唯一约束冲突）
-        if (createDTO.getMemberIds() != null && !createDTO.getMemberIds().isEmpty()) {
-            List<String> distinctMemberIds = createDTO.getMemberIds().stream()
-                    .filter(id -> id != null && !id.trim().isEmpty())
-                    .distinct()
-                    .filter(id -> !id.equals(creatorId))
-                    .collect(Collectors.toList());
-            for (String memberId : distinctMemberIds) {
-                ChatGroupMember member = new ChatGroupMember();
-                member.setGroupId(group.getId());
-                member.setUserId(memberId);
-                member.setRole(3); // 普通成员
-                member.setJoinTime(new Date());
-                member.setInviterId(creatorId);
-                member.setIsMute(0);
-                member.setIsQuit(0);
-                member.setCreatedAt(new Date());
-                member.setUpdatedAt(new Date());
-                chatGroupMemberMapper.insert(member);
-            }
+        for (String memberId : validMemberIds) {
+            ChatGroupMember member = new ChatGroupMember();
+            member.setGroupId(group.getId());
+            member.setUserId(memberId);
+            member.setRole(3);
+            member.setJoinTime(now);
+            member.setInviterId(creatorId);
+            member.setIsMute(0);
+            member.setIsQuit(0);
+            member.setQuitTime(null);
+            member.setQuitReason(null);
+            member.setCreateTime(now);
+            member.setUpdateTime(now);
+            membersToSave.add(member);
         }
 
-        log.info("用户[{}]创建了群聊[{}]", creatorId, group.getId());
+        chatGroupMemberMapper.batchUpsertMembers(membersToSave);
+        log.info(String.format("Group created, creatorId=%s, groupId=%s, initialMemberCount=%d",
+                creatorId, group.getId(), membersToSave.size()));
         return getGroupInfo(group.getId(), creatorId);
     }
 
@@ -151,7 +177,7 @@ public class ChatGroupServiceImpl extends ServiceImpl<ChatGroupMapper, ChatGroup
         if (updateDTO.getIsMuteAll() != null) {
             group.setIsMuteAll(updateDTO.getIsMuteAll());
         }
-        group.setUpdatedAt(new Date());
+        group.setUpdateTime(new Date());
 
         this.updateById(group);
         log.info("用户[{}]更新了群聊[{}]信息", operatorId, updateDTO.getGroupId());
@@ -176,14 +202,14 @@ public class ChatGroupServiceImpl extends ServiceImpl<ChatGroupMapper, ChatGroup
 
         // 3. 解散群聊（软删除）
         group.setStatus(2);
-        group.setUpdatedAt(new Date());
+        group.setUpdateTime(new Date());
         this.updateById(group);
 
         // 4. 将所有成员标记为退出
         ChatGroupMember updateMember = new ChatGroupMember();
         updateMember.setIsQuit(1);
         updateMember.setQuitTime(new Date());
-        updateMember.setUpdatedAt(new Date());
+        updateMember.setUpdateTime(new Date());
 
         chatGroupMemberMapper.update(updateMember, new LambdaQueryWrapper<ChatGroupMember>()
                 .eq(ChatGroupMember::getGroupId, groupId)
@@ -246,22 +272,62 @@ public class ChatGroupServiceImpl extends ServiceImpl<ChatGroupMapper, ChatGroup
                         .eq(ChatGroup::getStatus, 1)
         );
 
+        // ===== N+1查询优化：批量查询替代循环查询 =====
+
+        // 1. 批量获取所有创建人信息
+        List<String> creatorIds = groups.stream()
+                .map(group -> String.valueOf(group.getCreatorId()))
+                .filter(id -> id != null)
+                .distinct()
+                .collect(Collectors.toList());
+
+        // 批量查询创建人信息
+        List<com.maxxvll.domain.ChatUser> creators = creatorIds.isEmpty() ?
+                List.of() :
+                chatUserMapper.selectList(
+                        new LambdaQueryWrapper<com.maxxvll.domain.ChatUser>()
+                                .in(com.maxxvll.domain.ChatUser::getId, creatorIds)
+                );
+
+        // 构建创建人ID -> 创建人信息的映射
+        var creatorMap = creators.stream()
+                .collect(Collectors.toMap(com.maxxvll.domain.ChatUser::getId, c -> c));
+
+        // 2. 批量获取所有群的成员数
+        List<Long> groupIdsList = groups.stream()
+                .map(ChatGroup::getId)
+                .collect(Collectors.toList());
+
+        // 批量查询每个群的成员数
+        var memberCountList = chatGroupMemberMapper.getMemberCountsByGroupIds(groupIdsList);
+        Map<Long, Long> memberCountMap = memberCountList.stream()
+                .collect(Collectors.toMap(ChatGroupMemberMapper.GroupMemberCount::getGroupId,
+                        ChatGroupMemberMapper.GroupMemberCount::getMemberCount));
+        var userRoleList = chatGroupMemberMapper.getUserRolesInGroups(userId, groupIdsList);
+        Map<Long, Integer> userRoleMap = userRoleList.stream()
+                .collect(Collectors.toMap(ChatGroupMemberMapper.UserGroupRole::getGroupId,
+                        ChatGroupMemberMapper.UserGroupRole::getRole));
+
+        // 4. 在内存中组装数据
         return groups.stream().map(group -> {
             GroupInfoVO vo = BeanConvertUtil.convert(group, GroupInfoVO.class);
             // 转换群头像为公共桶永久直链
             vo.setGroupAvatar(minioUtil.getAvatarUrl(group.getGroupAvatar()));
-            // 获取创建人昵称
+
+            // 从批量查询的Map中获取创建人昵称
             if (group.getCreatorId() != null) {
-                com.maxxvll.domain.ChatUser creator = chatUserMapper.selectById(group.getCreatorId());
+                com.maxxvll.domain.ChatUser creator = creatorMap.get(group.getCreatorId());
                 if (creator != null) {
                     vo.setCreatorNickname(creator.getNickname());
                 }
             }
-            // 获取当前成员数
-            vo.setCurrentMemberCount((int) chatGroupMemberService.getMemberCount(group.getId()));
-            // 获取当前用户角色
-            Integer myRole = chatGroupMemberService.getUserRole(group.getId(), userId);
-            vo.setMyRole(myRole != null ? myRole : 0);
+
+            // 从批量查询的Map中获取成员数
+            vo.setCurrentMemberCount(memberCountMap.getOrDefault(group.getId(), 0L).intValue());
+
+            // 从批量查询的Map中获取用户角色
+            vo.setMyRole(userRoleMap.getOrDefault(group.getId(), 0));
+
             return vo;
         }).collect(Collectors.toList());
     }
@@ -288,7 +354,7 @@ public class ChatGroupServiceImpl extends ServiceImpl<ChatGroupMapper, ChatGroup
 
         // 4. 更新群主
         group.setCreatorId(Long.valueOf(transferDTO.getNewOwnerId()));
-        group.setUpdatedAt(new Date());
+        group.setUpdateTime(new Date());
         this.updateById(group);
 
         // 5. 更新成员角色
@@ -300,7 +366,7 @@ public class ChatGroupServiceImpl extends ServiceImpl<ChatGroupMapper, ChatGroup
         );
         if (oldOwner != null) {
             oldOwner.setRole(3);
-            oldOwner.setUpdatedAt(new Date());
+            oldOwner.setUpdateTime(new Date());
             chatGroupMemberMapper.updateById(oldOwner);
         }
 
@@ -312,7 +378,7 @@ public class ChatGroupServiceImpl extends ServiceImpl<ChatGroupMapper, ChatGroup
         );
         if (newOwner != null) {
             newOwner.setRole(1);
-            newOwner.setUpdatedAt(new Date());
+            newOwner.setUpdateTime(new Date());
             chatGroupMemberMapper.updateById(newOwner);
         }
 
@@ -348,7 +414,7 @@ public class ChatGroupServiceImpl extends ServiceImpl<ChatGroupMapper, ChatGroup
         if (member != null) {
             member.setIsQuit(1);
             member.setQuitTime(new Date());
-            member.setUpdatedAt(new Date());
+            member.setUpdateTime(new Date());
             chatGroupMemberMapper.updateById(member);
         }
 
@@ -357,35 +423,162 @@ public class ChatGroupServiceImpl extends ServiceImpl<ChatGroupMapper, ChatGroup
 
     @Override
     public List<GroupInfoVO> searchGroup(String keyword, String currentUserId) {
-        List<ChatGroup> groups = this.list(
+        return searchGroupPage(keyword, currentUserId, 1, DEFAULT_GROUP_SEARCH_SIZE).getRecords();
+    }
+
+    @Override
+    public Page<GroupInfoVO> searchGroupPage(String keyword, String currentUserId, int current, int size) {
+        int normalizedCurrent = Math.max(1, current);
+        int normalizedSize = normalizeGroupSearchSize(size);
+        if (keyword == null || keyword.trim().isEmpty()) {
+            Page<GroupInfoVO> emptyPage = new Page<>(normalizedCurrent, normalizedSize, 0);
+            emptyPage.setRecords(List.of());
+            return emptyPage;
+        }
+
+        Page<ChatGroup> groupPage = this.page(
+                new Page<>(normalizedCurrent, normalizedSize),
                 new LambdaQueryWrapper<ChatGroup>()
                         .like(ChatGroup::getGroupName, keyword)
                         .eq(ChatGroup::getStatus, 1)
+                        .orderByDesc(ChatGroup::getUpdateTime)
+                        .orderByDesc(ChatGroup::getId)
         );
 
-        return groups.stream().map(group -> {
-            GroupInfoVO vo = BeanConvertUtil.convert(group, GroupInfoVO.class);
-            // 转换群头像为公共桶永久直链
-            vo.setGroupAvatar(minioUtil.getAvatarUrl(group.getGroupAvatar()));
-            vo.setCurrentMemberCount((int) chatGroupMemberService.getMemberCount(group.getId()));
+        Page<GroupInfoVO> result = new Page<>(groupPage.getCurrent(), groupPage.getSize(), groupPage.getTotal());
+        result.setRecords(buildSearchGroupVOs(groupPage.getRecords(), currentUserId));
+        return result;
+    }
 
-            // 判断当前用户状态
-            if (chatGroupMemberService.isGroupMember(group.getId(), currentUserId)) {
-                vo.setMyRole(chatGroupMemberService.getUserRole(group.getId(), currentUserId));
-                vo.setApplyStatus("member");
-            } else {
-                vo.setMyRole(0);
-                // 检查是否有待处理的申请
-                long pendingCount = groupApplicationMapper.selectCount(
-                        new LambdaQueryWrapper<GroupApplication>()
-                                .eq(GroupApplication::getGroupId, group.getId())
-                                .eq(GroupApplication::getApplicantId, Long.valueOf(currentUserId))
-                                .eq(GroupApplication::getStatus, 0)
-                );
-                vo.setApplyStatus(pendingCount > 0 ? "pending" : null);
-            }
-            return vo;
-        }).collect(Collectors.toList());
+    private List<GroupInfoVO> buildSearchGroupVOs(List<ChatGroup> groups, String currentUserId) {
+        if (groups == null || groups.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> groupIds = groups.stream()
+                .map(ChatGroup::getId)
+                .toList();
+        var memberCountList = chatGroupMemberMapper.getMemberCountsByGroupIds(groupIds);
+        Map<Long, Long> memberCountMap = memberCountList.stream()
+                .collect(Collectors.toMap(ChatGroupMemberMapper.GroupMemberCount::getGroupId,
+                        ChatGroupMemberMapper.GroupMemberCount::getMemberCount));
+        var userRoleList = chatGroupMemberMapper.getUserRolesInGroups(currentUserId, groupIds);
+        Map<Long, Integer> roleMap = userRoleList.stream()
+                .collect(Collectors.toMap(ChatGroupMemberMapper.UserGroupRole::getGroupId,
+                        ChatGroupMemberMapper.UserGroupRole::getRole));
+        Set<Long> pendingGroupIds = groupApplicationMapper
+                .selectGroupIdsByApplicantAndStatusAndGroupIds(
+                        Long.valueOf(currentUserId),
+                        ApplicationStatusConstants.STATUS_PENDING,
+                        groupIds
+                ).stream()
+                .collect(Collectors.toSet());
+        Map<String, ChatUser> creatorMap = loadUsers(groups.stream()
+                .map(ChatGroup::getCreatorId)
+                .filter(java.util.Objects::nonNull)
+                .map(String::valueOf)
+                .collect(Collectors.toCollection(LinkedHashSet::new)));
+
+        return groups.stream()
+                .map(group -> {
+                    GroupInfoVO vo = BeanConvertUtil.convert(group, GroupInfoVO.class);
+                    vo.setGroupAvatar(minioUtil.getAvatarUrl(group.getGroupAvatar()));
+                    vo.setCurrentMemberCount(memberCountMap.getOrDefault(group.getId(), 0L).intValue());
+
+                    ChatUser creator = creatorMap.get(String.valueOf(group.getCreatorId()));
+                    if (creator != null) {
+                        vo.setCreatorNickname(creator.getNickname());
+                    }
+
+                    Integer role = roleMap.get(group.getId());
+                    vo.setMyRole(role != null ? role : 0);
+                    if (role != null) {
+                        vo.setApplyStatus("member");
+                    } else if (pendingGroupIds.contains(group.getId())) {
+                        vo.setApplyStatus("pending");
+                    } else {
+                        vo.setApplyStatus(null);
+                    }
+                    return vo;
+                })
+                .collect(Collectors.toList());
+    }
+
+    private Map<String, ChatUser> loadUsers(Collection<String> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return chatUserMapper.selectList(
+                        new LambdaQueryWrapper<ChatUser>()
+                                .select(ChatUser::getId, ChatUser::getNickname)
+                                .in(ChatUser::getId, userIds)
+                ).stream()
+                .collect(Collectors.toMap(ChatUser::getId, user -> user, (left, right) -> left));
+    }
+
+    private int normalizeGroupSearchSize(int size) {
+        if (size <= 0) {
+            return DEFAULT_GROUP_SEARCH_SIZE;
+        }
+        return Math.min(size, MAX_GROUP_SEARCH_SIZE);
+    }
+
+    // ==================== 群公告功能实现 ====================
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void publishNotice(Long groupId, String notice, String operatorId) {
+        // 1. 检查群是否存在
+        ChatGroup group = this.getById(groupId);
+        if (group == null || group.getStatus() == 2) {
+            throw new BusinessException("群聊不存在或已解散");
+        }
+
+        // 2. 检查权限（只有群主和管理员可以发布公告）
+        Integer role = chatGroupMemberService.getUserRole(groupId, operatorId);
+        if (role == null || role > 2) {
+            throw new BusinessException("无权限发布群公告");
+        }
+
+        // 3. 更新公告
+        group.setNotice(notice);
+        group.setUpdateTime(new Date());
+        this.updateById(group);
+
+        log.info("用户[{}]发布了群聊[{}]公告，长度: {}", operatorId, groupId, notice != null ? notice.length() : 0);
+    }
+
+    @Override
+    public String getNotice(Long groupId) {
+        ChatGroup group = this.getById(groupId);
+        if (group == null || group.getStatus() == 2) {
+            throw new BusinessException("群聊不存在或已解散");
+        }
+        return group.getNotice();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteNotice(Long groupId, String operatorId) {
+        // 1. 检查群是否存在
+        ChatGroup group = this.getById(groupId);
+        if (group == null || group.getStatus() == 2) {
+            throw new BusinessException("群聊不存在或已解散");
+        }
+
+        // 2. 检查权限（只有群主和管理员可以删除公告）
+        Integer role = chatGroupMemberService.getUserRole(groupId, operatorId);
+        if (role == null || role > 2) {
+            throw new BusinessException("无权限删除群公告");
+        }
+
+        // 3. 清空公告
+        group.setNotice(null);
+        group.setUpdateTime(new Date());
+        this.updateById(group);
+
+        log.info("用户[{}]删除了群聊[{}]公告", operatorId, groupId);
     }
 }
 
