@@ -65,6 +65,18 @@ public class FriendApplicationVO {
     private String tagName;
 
     /**
+     * 分组ID
+     */
+    @Schema(description = "分组ID")
+    private Long groupId;
+
+    /**
+     * 分组名称
+     */
+    @Schema(description = "分组名称")
+    private String groupName;
+
+    /**
      * 权限范围
      */
     @Schema(description = "权限范围")

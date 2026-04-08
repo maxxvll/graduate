@@ -24,7 +24,7 @@ spring:
   # Redis配置
   data:
     redis:
-      host: ${REDIS_HOST:192.168.164.128}
+      host: 192.168.164.128
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:123456}
       lettuce:

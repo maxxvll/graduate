@@ -34,6 +34,11 @@ public class FriendRelationSetting extends BaseEntity {
     private String tagName;
 
     /**
+     * 所属分组ID
+     */
+    private Long groupId;
+
+    /**
      * 权限范围（控制好友可见性等）
      */
     private Integer permissionScope;

@@ -105,7 +105,9 @@ public class NettyManagerHandle extends SimpleChannelInboundHandler<TextWebSocke
                 Map<String, Object> dataMap = toStringObjectMap(rawData);
                 messageDispatcher.dispatch(ctx, type, dataMap);
             } else {
-                messageDispatcher.dispatch(ctx, type, Map.of("data", data));
+                Map<String, Object> dataMap = new HashMap<>();
+                dataMap.put("data", data);
+                messageDispatcher.dispatch(ctx, type, dataMap);
             }
         } catch (Exception e) {
             log.error("Handle websocket message failed", e);

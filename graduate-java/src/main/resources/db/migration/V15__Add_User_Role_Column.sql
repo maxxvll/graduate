@@ -1,0 +1,92 @@
+-- 操作日志表
+-- 用于记录用户的操作行为，便于审计和追踪
+CREATE TABLE IF NOT EXISTS `sys_operation_log` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `trace_id` VARCHAR(64) DEFAULT NULL COMMENT '链路追踪ID',
+    `user_id` VARCHAR(64) DEFAULT NULL COMMENT '操作用户ID',
+    `username` VARCHAR(100) DEFAULT NULL COMMENT '操作用户名',
+    `module` VARCHAR(50) DEFAULT NULL COMMENT '操作模块',
+    `action` VARCHAR(50) DEFAULT NULL COMMENT '操作动作',
+    `description` VARCHAR(500) DEFAULT NULL COMMENT '操作描述',
+    `method` VARCHAR(200) DEFAULT NULL COMMENT '请求方法',
+    `request_uri` VARCHAR(500) DEFAULT NULL COMMENT '请求URI',
+    `http_method` VARCHAR(20) DEFAULT NULL COMMENT 'HTTP方法',
+    `client_ip` VARCHAR(50) DEFAULT NULL COMMENT '客户端IP',
+    `user_agent` VARCHAR(500) DEFAULT NULL COMMENT '用户代理',
+    `device_type` VARCHAR(50) DEFAULT NULL COMMENT '设备类型',
+    `params` TEXT DEFAULT NULL COMMENT '请求参数(JSON格式)',
+    `result` TEXT DEFAULT NULL COMMENT '响应结果(JSON格式)',
+    `success` TINYINT(1) DEFAULT 1 COMMENT '是否成功: 0-失败, 1-成功',
+    `error_message` VARCHAR(1000) DEFAULT NULL COMMENT '错误信息',
+    `cost_time` INT DEFAULT NULL COMMENT '执行耗时(毫秒)',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (`id`),
+    INDEX `idx_user_id` (`user_id`),
+    INDEX `idx_module_action` (`module`, `action`),
+    INDEX `idx_create_time` (`create_time`),
+    INDEX `idx_trace_id` (`trace_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='系统操作日志表';
+
+-- 登录日志表
+-- 用于记录用户的登录行为，便于安全审计
+CREATE TABLE IF NOT EXISTS `sys_login_log` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `user_id` VARCHAR(64) DEFAULT NULL COMMENT '用户ID(登录成功后)',
+    `username` VARCHAR(100) DEFAULT NULL COMMENT '登录用户名',
+    `login_type` VARCHAR(20) DEFAULT NULL COMMENT '登录方式: PASSWORD-密码登录, QR_CODE-扫码登录, EMAIL-邮箱登录',
+    `client_ip` VARCHAR(50) DEFAULT NULL COMMENT '客户端IP',
+    `ip_location` VARCHAR(200) DEFAULT NULL COMMENT 'IP归属地',
+    `device_type` VARCHAR(50) DEFAULT NULL COMMENT '设备类型',
+    `browser` VARCHAR(100) DEFAULT NULL COMMENT '浏览器',
+    `os` VARCHAR(100) DEFAULT NULL COMMENT '操作系统',
+    `user_agent` VARCHAR(500) DEFAULT NULL COMMENT '完整UserAgent',
+    `login_status` TINYINT(1) DEFAULT 0 COMMENT '登录状态: 0-失败, 1-成功',
+    `fail_reason` VARCHAR(200) DEFAULT NULL COMMENT '失败原因',
+    `session_id` VARCHAR(100) DEFAULT NULL COMMENT '会话ID',
+    `login_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '登录时间',
+    `logout_time` DATETIME DEFAULT NULL COMMENT '登出时间',
+    `online_duration` INT DEFAULT NULL COMMENT '在线时长(秒)',
+    `is_suspicious` TINYINT(1) DEFAULT 0 COMMENT '是否可疑: 0-正常, 1-可疑',
+    `suspicious_reason` VARCHAR(500) DEFAULT NULL COMMENT '可疑原因',
+    `trace_id` VARCHAR(64) DEFAULT NULL COMMENT '链路追踪ID',
+    PRIMARY KEY (`id`),
+    INDEX `idx_user_id` (`user_id`),
+    INDEX `idx_username` (`username`),
+    INDEX `idx_login_time` (`login_time`),
+    INDEX `idx_client_ip` (`client_ip`),
+    INDEX `idx_login_status` (`login_status`),
+    INDEX `idx_is_suspicious` (`is_suspicious`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='系统登录日志表';
+
+-- 敏感操作审计表
+-- 用于记录高危操作，如权限变更、资金操作等
+CREATE TABLE IF NOT EXISTS `sys_audit_log` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `trace_id` VARCHAR(64) DEFAULT NULL COMMENT '链路追踪ID',
+    `audit_type` VARCHAR(50) NOT NULL COMMENT '审计类型: PERMISSION-权限变更, USER_MANAGEMENT-用户管理, SYSTEM_CONFIG-系统配置, FILE_ACCESS-文件访问, DATA_EXPORT-数据导出',
+    `action` VARCHAR(100) NOT NULL COMMENT '操作动作',
+    `user_id` VARCHAR(64) DEFAULT NULL COMMENT '操作用户ID',
+    `username` VARCHAR(100) DEFAULT NULL COMMENT '操作用户名',
+    `target_type` VARCHAR(50) DEFAULT NULL COMMENT '目标类型: USER-用户, ROLE-角色, PERMISSION-权限, GROUP-群组',
+    `target_id` VARCHAR(64) DEFAULT NULL COMMENT '目标ID',
+    `target_name` VARCHAR(200) DEFAULT NULL COMMENT '目标名称',
+    `before_value` TEXT DEFAULT NULL COMMENT '变更前值(JSON)',
+    `after_value` TEXT DEFAULT NULL COMMENT '变更后值(JSON)',
+    `client_ip` VARCHAR(50) DEFAULT NULL COMMENT '客户端IP',
+    `request_uri` VARCHAR(500) DEFAULT NULL COMMENT '请求URI',
+    `method` VARCHAR(200) DEFAULT NULL COMMENT '请求方法',
+    `params` TEXT DEFAULT NULL COMMENT '请求参数',
+    `result` TEXT DEFAULT NULL COMMENT '响应结果(JSON)',
+    `success` TINYINT(1) DEFAULT 1 COMMENT '是否成功',
+    `error_message` VARCHAR(1000) DEFAULT NULL COMMENT '错误信息',
+    `risk_level` VARCHAR(20) DEFAULT 'LOW' COMMENT '风险等级: LOW-低, MEDIUM-中, HIGH-高, CRITICAL-严重',
+    `cost_time` INT DEFAULT NULL COMMENT '执行耗时(毫秒)',
+    `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (`id`),
+    INDEX `idx_audit_type` (`audit_type`),
+    INDEX `idx_user_id` (`user_id`),
+    INDEX `idx_target` (`target_type`, `target_id`),
+    INDEX `idx_risk_level` (`risk_level`),
+    INDEX `idx_create_time` (`create_time`),
+    INDEX `idx_trace_id` (`trace_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='敏感操作审计日志表';

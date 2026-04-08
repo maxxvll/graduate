@@ -71,6 +71,8 @@ public class FriendApplicationServiceImpl extends ServiceImpl<FriendApplicationM
     private FriendRelationSettingMapper friendRelationSettingMapper;
     @Resource
     private RedissonCacheUtil redissonCacheUtil;
+    @Resource
+    private com.maxxvll.mapper.FriendGroupMapper friendGroupMapper;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -299,6 +301,15 @@ public class FriendApplicationServiceImpl extends ServiceImpl<FriendApplicationM
                 otherUserIds.stream().map(String::valueOf).collect(Collectors.toList())
         );
 
+        // 加载分组信息
+        Map<Long, com.maxxvll.domain.FriendGroup> groupMap = Map.of();
+        try {
+            List<com.maxxvll.domain.FriendGroup> groups = friendGroupMapper.selectByOwnerUserIdOrderByOrder(userIdLong);
+            groupMap = groups.stream().collect(Collectors.toMap(com.maxxvll.domain.FriendGroup::getId, g -> g, (a, b) -> a));
+        } catch (Exception e) {
+            log.warn("Failed to load friend groups for userId={}", userId, e);
+        }
+
         List<FriendApplicationVO> result = new ArrayList<>(accepted.size());
         for (FriendApplication app : accepted) {
             Long otherId = app.getApplicantId().equals(userIdLong) ? app.getTargetUserId() : app.getApplicantId();
@@ -327,6 +338,13 @@ public class FriendApplicationServiceImpl extends ServiceImpl<FriendApplicationM
             if (setting != null) {
                 vo.setRemarkName(setting.getRemarkName());
                 vo.setTagName(setting.getTagName());
+                vo.setGroupId(setting.getGroupId());
+                if (setting.getGroupId() != null) {
+                    com.maxxvll.domain.FriendGroup group = groupMap.get(setting.getGroupId());
+                    if (group != null) {
+                        vo.setGroupName(group.getGroupName());
+                    }
+                }
                 vo.setPermissionScope(setting.getPermissionScope());
                 vo.setStarred(isFlagEnabled(setting.getIsStarred()));
                 vo.setBlacklisted(isFlagEnabled(setting.getIsBlacklisted()));
@@ -365,6 +383,10 @@ public class FriendApplicationServiceImpl extends ServiceImpl<FriendApplicationM
         }
         if (updateDTO.getTagName() != null) {
             setting.setTagName(normalizeOptionalText(updateDTO.getTagName()));
+            changed = true;
+        }
+        if (updateDTO.getGroupId() != null) {
+            setting.setGroupId(updateDTO.getGroupId());
             changed = true;
         }
         if (updateDTO.getPermissionScope() != null) {

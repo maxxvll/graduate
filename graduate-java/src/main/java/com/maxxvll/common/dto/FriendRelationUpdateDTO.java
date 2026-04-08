@@ -42,6 +42,12 @@ public class FriendRelationUpdateDTO {
     private String tagName;
 
     /**
+     * 分组ID
+     */
+    @Schema(description = "分组ID")
+    private Long groupId;
+
+    /**
      * 权限范围：0-完全可见，1-仅好友可见，2-仅自己可见
      */
     @Schema(description = "权限范围", example = "0", allowableValues = {"0", "1", "2"})
