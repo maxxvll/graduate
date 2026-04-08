@@ -274,12 +274,28 @@ public class UserController extends BaseController {
             throw new BusinessException("请先登录");
         }
 
+        // 获取用户详细信息
+        UserInfoVO currentUser = UserContextUtil.getCurrentUser();
+        if (currentUser == null) {
+            throw new BusinessException("用户信息获取失败");
+        }
+
         // 更新状态为已确认
         statusVO.setStatus(QrCodeStatus.CONFIRMED.getCode());
-        
-        // 生成登录token（使用Sa-Token框架的logout后再login）
+
+        // 为新设备生成 Token
+        // 使用固定设备类型 "DESKTOP"，实现同端互斥登录
+        // 先踢出该用户在 DESKTOP 端的旧设备，确保只有一个桌面端在线
+        String deviceType = "DESKTOP";
+        StpUtil.kickout(Long.parseLong(userId), deviceType);
+        StpUtil.login(Long.parseLong(userId), deviceType);
         String token = StpUtil.getTokenValue();
         statusVO.setToken(token);
+
+        // 设置用户信息
+        statusVO.setUserId(Long.parseLong(currentUser.getId()));
+        statusVO.setUsername(currentUser.getUsername());
+        statusVO.setNickname(currentUser.getNickname());
 
         // 重新设置到Redis（保持5分钟过期时间，给客户端时间拉取）
         redissonCacheUtils.set(redisKey, statusVO, 5, TimeUnit.MINUTES);

@@ -44,8 +44,10 @@ public class ChatMessageSendDTO {
 
     /**
      * 接收者ID（单聊：用户ID；群聊：群ID）
+     * 群聊时可为空，由后端根据 sessionId 解析
      */
     @Schema(description = "接收者ID", example = "10001")
+    @NotRequired
     private String receiverId;
 
     /**

@@ -1,5 +1,6 @@
 package com.maxxvll.common.dto;
 
+import com.maxxvll.common.annotation.NotRequired;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -30,6 +31,7 @@ public class FriendRelationUpdateDTO {
     /**
      * 备注名
      */
+    @NotRequired
     @Schema(description = "备注名", example = "张三")
     @Size(max = 64, message = "备注不能超过64个字符")
     private String remarkName;
@@ -37,6 +39,7 @@ public class FriendRelationUpdateDTO {
     /**
      * 标签
      */
+    @NotRequired
     @Schema(description = "标签", example = "同事")
     @Size(max = 64, message = "标签不能超过64个字符")
     private String tagName;
@@ -44,12 +47,14 @@ public class FriendRelationUpdateDTO {
     /**
      * 分组ID
      */
+    @NotRequired
     @Schema(description = "分组ID")
     private Long groupId;
 
     /**
      * 权限范围：0-完全可见，1-仅好友可见，2-仅自己可见
      */
+    @NotRequired
     @Schema(description = "权限范围", example = "0", allowableValues = {"0", "1", "2"})
     @Min(value = 0, message = "朋友权限取值无效")
     @Max(value = 2, message = "朋友权限取值无效")
@@ -58,6 +63,7 @@ public class FriendRelationUpdateDTO {
     /**
      * 是否星标
      */
+    @NotRequired
     @Schema(description = "是否星标", example = "true")
     private Boolean starred;
 }

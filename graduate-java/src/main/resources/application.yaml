@@ -241,6 +241,11 @@ sa-token:
   enabled: true
   allow-cross-origin: true
   allow-origin: ${CORS_ALLOWED_ORIGINS:http://localhost:5100}
+  # 同端互斥登录策略
+  max-login-count: 2
+  max-concurrent-login-count: 2
+  # 同端互斥配置：true表示同端只能登录一个设备，新登录会踢出旧登录
+  is-share-memory: false
   exclude-paths:
     - /favicon.ico
     - /user/login
@@ -250,6 +255,7 @@ sa-token:
     - /user/qrcode/status
     - /user/sendEmailCode
     - /cloud/access/**
+    - /api/cloud/access/**
     - /test/**
 
 # WebSocket配置

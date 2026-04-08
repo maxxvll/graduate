@@ -79,6 +79,8 @@ public class XssFilter implements Filter {
                 uri.startsWith("/swagger-ui") ||
                 uri.startsWith("/v3/api-docs") ||
                 uri.startsWith("/swagger-resources") ||
+                uri.startsWith("/api/cloud/") ||
+                uri.startsWith("/cloud/") ||
                 uri.startsWith("/webjars") ||
                 uri.contains("/static/") ||
                 uri.endsWith(".css") ||

@@ -29,6 +29,15 @@ public interface ChatMessageService extends IService<ChatMessage> {
     Page<ChatMessage> getMessages(String sessionId, int current, int size);
 
     /**
+     * 获取指定会话在指定时间之后的消息（增量同步）
+     *
+     * @param sessionId  会话ID
+     * @param afterTime  起始时间戳（毫秒），只返回 send_time > afterTime 的消息
+     * @return 分页消息对象（不限大小，返回全部更新）
+     */
+    Page<ChatMessage> getMessages(String sessionId, Long afterTime);
+
+    /**
      * 获取指定会话的所有消息（已废弃，请使用分页方法）
      * @deprecated 使用 getMessages(sessionId, current, size) 替代
      */

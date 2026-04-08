@@ -38,4 +38,22 @@ public class QrCodeStatusVO {
      */
     @Schema(description = "登录Token")
     private String token;
+
+    /**
+     * 用户ID
+     */
+    @Schema(description = "用户ID")
+    private Long userId;
+
+    /**
+     * 用户名
+     */
+    @Schema(description = "用户名")
+    private String username;
+
+    /**
+     * 用户昵称
+     */
+    @Schema(description = "用户昵称")
+    private String nickname;
 }

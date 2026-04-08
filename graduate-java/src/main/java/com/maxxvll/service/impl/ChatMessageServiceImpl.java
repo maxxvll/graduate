@@ -312,14 +312,15 @@ public class ChatMessageServiceImpl extends ServiceImpl<ChatMessageMapper, ChatM
             throw new BusinessException("消息保存失败: " + e.getMessage());
         }
 
-        // 5. 发布消息事件（推送、离线存储等）
+        // 5. 先补充可访问URL，再发布消息事件（确保WebSocket推送包含有效URL）
         ChatMessage resultMsg = messageToSave.get(messageToSave.size() - 1);
-        messageEventPublisher.publishMessageSentEvent(resultMsg);
 
         if (StrUtil.isNotBlank(resultMsg.getFileUrl())) {
             String accessibleUrl = minioUtil.getChatFileUrl(resultMsg.getFileUrl(), isPublicFile);
             resultMsg.setFileUrl(accessibleUrl);
         }
+
+        messageEventPublisher.publishMessageSentEvent(resultMsg);
 
         return resultMsg;
     }
@@ -393,6 +394,37 @@ public class ChatMessageServiceImpl extends ServiceImpl<ChatMessageMapper, ChatM
 
         log.info("分页查询消息成功，sessionId: {}, current: {}, size: {}, total: {}",
                 sessionId, current, size, resultPage.getTotal());
+        return resultPage;
+    }
+
+    /**
+     * 增量查询：返回指定会话在 afterTime 之后的所有消息
+     */
+    @Override
+    public Page<ChatMessage> getMessages(String sessionId, Long afterTime) {
+        if (StrUtil.isBlank(sessionId)) {
+            throw new BusinessException("会话ID不能为空");
+        }
+
+        Date afterDate = new Date(afterTime);
+        Date retentionCutoff = getMessageRetentionCutoff();
+
+        // 不限大小分页（MAX_VALUE），返回全部增量消息
+        Page<ChatMessage> page = new Page<>(1, Integer.MAX_VALUE);
+        LambdaQueryWrapper<ChatMessage> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ChatMessage::getSessionId, sessionId)
+                .eq(ChatMessage::getIsDeleted, 0)
+                .ge(ChatMessage::getSendTime, retentionCutoff)
+                .gt(ChatMessage::getSendTime, afterDate)
+                .orderByDesc(ChatMessage::getSendTime);
+
+        Page<ChatMessage> resultPage = page(page, wrapper);
+        fillFileAccessibleUrls(resultPage.getRecords());
+        enrichSenderInfo(resultPage.getRecords());
+        enrichQuoteMessageInfo(resultPage.getRecords());
+
+        log.info("增量查询消息成功，sessionId: {}, afterTime: {}, count: {}",
+                sessionId, afterTime, resultPage.getRecords().size());
         return resultPage;
     }
 

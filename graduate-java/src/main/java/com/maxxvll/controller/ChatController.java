@@ -108,15 +108,20 @@ public class ChatController extends BaseController {
     }
 
     /**
-     * 获取指定会话的历史消息（分页）
+     * 获取指定会话的历史消息（分页或增量）
+     * 当传入 afterTime（毫秒时间戳）时，返回该时间之后的所有新消息（增量同步）；
+     * 否则按 current/size 分页返回。
      */
     @GetMapping("/message/list")
-    @Operation(summary = "获取消息列表", description = "获取指定会话的历史消息，支持分页")
+    @Operation(summary = "获取消息列表", description = "获取指定会话的历史消息，支持分页或增量同步（传 afterTime）")
     public Result<Page<ChatMessageVO>> getMessageList(
             @Parameter(description = "会话ID") @RequestParam @NotBlank String sessionId,
             @Parameter(description = "当前页码") @RequestParam(defaultValue = "1") @PositiveOrZero int current,
-            @Parameter(description = "每页大小") @RequestParam(defaultValue = "50") @Positive @Max(100) int size) {
-        Page<ChatMessage> page = chatMessageService.getMessages(sessionId, current, size);
+            @Parameter(description = "每页大小") @RequestParam(defaultValue = "50") @Positive @Max(100) int size,
+            @Parameter(description = "增量同步起始时间戳（毫秒），有值时忽略分页参数") @RequestParam(required = false) @PositiveOrZero Long afterTime) {
+        Page<ChatMessage> page = afterTime != null
+                ? chatMessageService.getMessages(sessionId, afterTime)
+                : chatMessageService.getMessages(sessionId, current, size);
         Page<ChatMessageVO> voPage = BeanConvertUtil.convertPage(page, ChatMessageVO.class);
         return success("获取成功", voPage);
     }

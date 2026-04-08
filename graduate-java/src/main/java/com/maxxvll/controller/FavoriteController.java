@@ -69,10 +69,11 @@ public class FavoriteController extends BaseController {
 
     /**
      * 搜索收藏
+     * keyword 可选：有值时按内容模糊搜索，无值时仅按类型筛选
      */
     @GetMapping("/search")
     public Result<Page<Favorite>> searchFavorites(
-            @RequestParam String keyword,
+            @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String messageType,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int size) {
