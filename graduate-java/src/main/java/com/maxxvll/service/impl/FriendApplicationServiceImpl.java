@@ -16,6 +16,7 @@ import com.maxxvll.common.event.FriendApplicationEvent;
 import com.maxxvll.common.exception.BusinessException;
 import com.maxxvll.common.producer.FriendApplicationEventProducer;
 import com.maxxvll.common.vo.FriendApplicationVO;
+import com.maxxvll.component.ChatPushSupport;
 import com.maxxvll.domain.ChatMessage;
 import com.maxxvll.domain.ChatUser;
 import com.maxxvll.domain.FriendApplication;
@@ -23,12 +24,15 @@ import com.maxxvll.domain.FriendRelationSetting;
 import com.maxxvll.mapper.ChatUserMapper;
 import com.maxxvll.mapper.FriendApplicationMapper;
 import com.maxxvll.mapper.FriendRelationSettingMapper;
+import com.maxxvll.netty.WebSocketConstants;
 import com.maxxvll.service.ChatMessageService;
 import com.maxxvll.service.ChatSessionService;
 import com.maxxvll.service.FriendApplicationService;
 import com.maxxvll.utils.BeanConvertUtil;
 import com.maxxvll.utils.MinioUtil;
 import com.maxxvll.utils.RedissonCacheUtil;
+import com.maxxvll.component.ChatPushSupport;
+import com.maxxvll.netty.WebSocketConstants;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
@@ -39,6 +43,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -73,6 +78,9 @@ public class FriendApplicationServiceImpl extends ServiceImpl<FriendApplicationM
     private RedissonCacheUtil redissonCacheUtil;
     @Resource
     private com.maxxvll.mapper.FriendGroupMapper friendGroupMapper;
+
+    @Resource
+    private ChatPushSupport chatPushSupport;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -697,6 +705,9 @@ public class FriendApplicationServiceImpl extends ServiceImpl<FriendApplicationM
         String cacheKey = RedisKeyConstants.buildKey(RedisKeyConstants.FRIEND_PREFIX, RedisKeyConstants.FRIEND_LIST, userId);
         redissonCacheUtil.delete(cacheKey);
         log.debug("好友列表缓存已清除, userId={}", userId);
+
+        // 推送好友列表更新事件给客户端
+        pushFriendListUpdateEvent(userId);
     }
 
     /**
@@ -706,5 +717,28 @@ public class FriendApplicationServiceImpl extends ServiceImpl<FriendApplicationM
         String cacheKey = RedisKeyConstants.buildKey(RedisKeyConstants.FRIEND_PREFIX, RedisKeyConstants.FRIEND_BLACKLIST, userId);
         redissonCacheUtil.delete(cacheKey);
         log.debug("黑名单缓存已清除, userId={}", userId);
+    }
+
+
+    /**
+     * 推送好友列表更新事件到客户端（WebSocket）
+     */
+    private void pushFriendListUpdateEvent(String userId) {
+        try {
+            // 获取好友列表
+            List<FriendApplicationVO> friendList = getFriendList(userId);
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("friends", friendList);
+
+            chatPushSupport.pushCacheSyncEvent(
+                userId,
+                WebSocketConstants.MessageType.CACHE_SYNC_FRIEND_LIST,
+                data
+            );
+            log.debug("Pushed friend list update event to userId={}", userId);
+        } catch (Exception e) {
+            log.warn("Failed to push friend list update event, userId={}", userId, e);
+        }
     }
 }

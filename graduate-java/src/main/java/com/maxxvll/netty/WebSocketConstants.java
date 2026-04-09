@@ -44,6 +44,18 @@ public class WebSocketConstants {
         public static final String CONNECTED = "connected";
         public static final String MESSAGE = "message";
         public static final String READ_SYNC = "read_sync";
+
+        // 缓存同步事件类型
+        public static final String CACHE_SYNC_FRIEND_LIST = "cache_sync_friend_list";
+        public static final String CACHE_SYNC_FRIEND_UPDATE = "cache_sync_friend_update";
+        public static final String CACHE_SYNC_FRIEND_DELETE = "cache_sync_friend_delete";
+        public static final String CACHE_SYNC_GROUP_LIST = "cache_sync_group_list";
+        public static final String CACHE_SYNC_GROUP_UPDATE = "cache_sync_group_update";
+        public static final String CACHE_SYNC_GROUP_DELETE = "cache_sync_group_delete";
+        public static final String CACHE_SYNC_GROUP_MEMBER = "cache_sync_group_member";
+        public static final String CACHE_SYNC_CLOUD_FILE = "cache_sync_cloud_file";
+        public static final String CACHE_SYNC_FAVORITE_ADD = "cache_sync_favorite_add";
+        public static final String CACHE_SYNC_FAVORITE_REMOVE = "cache_sync_favorite_remove";
     }
 
     private WebSocketConstants() {

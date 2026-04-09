@@ -293,16 +293,17 @@ public class ChatGroupServiceImpl extends ServiceImpl<ChatGroupMapper, ChatGroup
         var creatorMap = creators.stream()
                 .collect(Collectors.toMap(com.maxxvll.domain.ChatUser::getId, c -> c));
 
-        // 2. 批量获取所有群的成员数
+        // 2. 获取所有群的成员数（使用直接查询，避免 MyBatis foreach 批量查询的问题）
         List<Long> groupIdsList = groups.stream()
                 .map(ChatGroup::getId)
                 .collect(Collectors.toList());
 
-        // 批量查询每个群的成员数
-        var memberCountList = chatGroupMemberMapper.getMemberCountsByGroupIds(groupIdsList);
-        Map<Long, Long> memberCountMap = memberCountList.stream()
-                .collect(Collectors.toMap(ChatGroupMemberMapper.GroupMemberCount::getGroupId,
-                        ChatGroupMemberMapper.GroupMemberCount::getMemberCount));
+        // 使用直接查询获取每个群的成员数（更可靠）
+        Map<Long, Long> memberCountMap = new java.util.HashMap<>();
+        for (Long groupId : groupIdsList) {
+            memberCountMap.put(groupId, chatGroupMemberService.getMemberCount(groupId));
+        }
+
         var userRoleList = chatGroupMemberMapper.getUserRolesInGroups(userId, groupIdsList);
         Map<Long, Integer> userRoleMap = userRoleList.stream()
                 .collect(Collectors.toMap(ChatGroupMemberMapper.UserGroupRole::getGroupId,
@@ -322,10 +323,10 @@ public class ChatGroupServiceImpl extends ServiceImpl<ChatGroupMapper, ChatGroup
                 }
             }
 
-            // 从批量查询的Map中获取成员数
+            // 从Map中获取成员数
             vo.setCurrentMemberCount(memberCountMap.getOrDefault(group.getId(), 0L).intValue());
 
-            // 从批量查询的Map中获取用户角色
+            // 从Map中获取用户角色
             vo.setMyRole(userRoleMap.getOrDefault(group.getId(), 0));
 
             return vo;
@@ -458,10 +459,13 @@ public class ChatGroupServiceImpl extends ServiceImpl<ChatGroupMapper, ChatGroup
         List<Long> groupIds = groups.stream()
                 .map(ChatGroup::getId)
                 .toList();
-        var memberCountList = chatGroupMemberMapper.getMemberCountsByGroupIds(groupIds);
-        Map<Long, Long> memberCountMap = memberCountList.stream()
-                .collect(Collectors.toMap(ChatGroupMemberMapper.GroupMemberCount::getGroupId,
-                        ChatGroupMemberMapper.GroupMemberCount::getMemberCount));
+
+        // 使用直接查询获取每个群的成员数（避免 MyBatis foreach 批量查询的问题）
+        Map<Long, Long> memberCountMap = new java.util.HashMap<>();
+        for (Long groupId : groupIds) {
+            memberCountMap.put(groupId, chatGroupMemberService.getMemberCount(groupId));
+        }
+
         var userRoleList = chatGroupMemberMapper.getUserRolesInGroups(currentUserId, groupIds);
         Map<Long, Integer> roleMap = userRoleList.stream()
                 .collect(Collectors.toMap(ChatGroupMemberMapper.UserGroupRole::getGroupId,

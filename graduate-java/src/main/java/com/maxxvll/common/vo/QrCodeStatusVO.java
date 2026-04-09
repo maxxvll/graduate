@@ -40,10 +40,10 @@ public class QrCodeStatusVO {
     private String token;
 
     /**
-     * 用户ID
+     * 用户ID (String 类型，与 ChatUser.id 保持一致)
      */
     @Schema(description = "用户ID")
-    private Long userId;
+    private String userId;
 
     /**
      * 用户名

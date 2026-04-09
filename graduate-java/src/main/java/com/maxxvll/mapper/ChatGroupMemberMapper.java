@@ -15,19 +15,26 @@ import java.util.Map;
 
 public interface ChatGroupMemberMapper extends BaseMapper<ChatGroupMember> {
 
+    /**
+     * 批量获取群成员数
+     * 注意：由于 MyBatis foreach 对 IN 子句的处理可能存在问题，
+     * 这里改用 Collection 参数配合 MyBatis Plus 默认的 IN 处理
+     */
     @Select("""
             <script>
             SELECT group_id AS groupId, COUNT(*) AS memberCount
             FROM chat_group_member
-            WHERE group_id IN
-            <foreach collection='groupIds' item='id' open='(' separator=',' close=')'>
+            WHERE is_quit = 0
+            <if test="groupIds != null and groupIds.size() > 0">
+              AND group_id IN
+              <foreach collection="groupIds" item="id" open="(" separator="," close=")">
                 #{id}
-            </foreach>
-              AND is_quit = 0
+              </foreach>
+            </if>
             GROUP BY group_id
             </script>
             """)
-    List<GroupMemberCount> getMemberCountsByGroupIds(@Param("groupIds") List<Long> groupIds);
+    List<GroupMemberCount> getMemberCountsByGroupIds(@Param("groupIds") Collection<Long> groupIds);
 
     @Getter
     @Setter

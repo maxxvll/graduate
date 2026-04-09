@@ -63,6 +63,7 @@ logging:
     com.maxxvll: debug
     org.springframework.web: debug
     org.springframework.kafka: info
+    com.maxxvll.mapper: debug
 
 # Actuator配置
 management:

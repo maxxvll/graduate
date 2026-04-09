@@ -11,6 +11,7 @@ import com.maxxvll.common.enums.MessageType;
 import com.maxxvll.common.enums.SessionType;
 import com.maxxvll.common.exception.BusinessException;
 import com.maxxvll.common.vo.GroupApplicationVO;
+import com.maxxvll.component.ChatPushSupport;
 import com.maxxvll.domain.ChatGroup;
 import com.maxxvll.domain.ChatGroupMember;
 import com.maxxvll.domain.ChatMessage;
@@ -54,6 +55,9 @@ public class GroupApplicationServiceImpl extends ServiceImpl<GroupApplicationMap
     private ChatSessionService chatSessionService;
     @Resource
     private ChatMessageService chatMessageService;
+
+    @Resource
+    private ChatPushSupport chatPushSupport;
 
     @Override
     @Transactional(rollbackFor = Exception.class)

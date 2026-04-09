@@ -203,8 +203,8 @@ public class NettyManagerHandle extends SimpleChannelInboundHandler<TextWebSocke
         ctx.channel().attr(WebSocketConstants.DEVICE_TYPE_KEY).set(deviceType);
         nettyChannelManager.bindChannel(userId, ctx.channel(), deviceType);
 
-        log.info("WebSocket handshake completed, userId={}, deviceType={}, remoteAddress={}",
-                userId, deviceType, ctx.channel().remoteAddress());
+        log.info("WebSocket handshake completed, userId={}, userIdType={}, deviceType={}, remoteAddress={}",
+                userId, userId.getClass().getSimpleName(), deviceType, ctx.channel().remoteAddress());
         sendConnectionSuccessMessage(ctx, userId);
     }
 

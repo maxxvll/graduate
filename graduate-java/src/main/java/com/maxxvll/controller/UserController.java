@@ -287,13 +287,14 @@ public class UserController extends BaseController {
         // 使用固定设备类型 "DESKTOP"，实现同端互斥登录
         // 先踢出该用户在 DESKTOP 端的旧设备，确保只有一个桌面端在线
         String deviceType = "DESKTOP";
-        StpUtil.kickout(Long.parseLong(userId), deviceType);
-        StpUtil.login(Long.parseLong(userId), deviceType);
+        // 保持 userId 为 String 类型，与正常登录一致，避免 WebSocket channel 绑定格式不匹配
+        StpUtil.kickout(userId, deviceType);
+        StpUtil.login(userId, deviceType);
         String token = StpUtil.getTokenValue();
         statusVO.setToken(token);
 
-        // 设置用户信息
-        statusVO.setUserId(Long.parseLong(currentUser.getId()));
+        // 设置用户信息 (保持 String 类型)
+        statusVO.setUserId(currentUser.getId());
         statusVO.setUsername(currentUser.getUsername());
         statusVO.setNickname(currentUser.getNickname());
 
